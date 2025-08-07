@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Polls – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800">
+  <div class="max-w-5xl mx-auto py-10 px-4">
+    <h1 class="text-3xl font-bold text-indigo-600 mb-6 text-center">📋 Browse Public Polls</h1>
+
+    <!-- Search & Filter (Optional) -->
+    <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+      <input type="text" id="search" class="border px-4 py-2 rounded w-full md:w-1/2" placeholder="Search polls...">
+      <select id="filter" class="border px-4 py-2 rounded w-full md:w-1/4">
+        <option value="">All Categories</option>
+        <option value="Politics">Politics</option>
+        <option value="Brands">Brands</option>
+        <option value="Real Estate">Real Estate</option>
+        <option value="Startups">Startups</option>
+      </select>
+    </div>
+
+    <!-- Poll Feed -->
+    <div id="pollList" class="space-y-6"></div>
+  </div>
+
+  <script>
+    const polls = [
+      {
+        title: "Which logo should we use?",
+        options: ["Logo A", "Logo B"],
+        votes: [56, 44],
+        category: "Brands",
+        comments: 6
+      },
+      {
+        title: "Should remote work be a human right?",
+        options: ["Yes", "No"],
+        votes: [322, 166],
+        category: "Politics",
+        comments: 14
+      },
+      {
+        title: "Best place to invest in 2025?",
+        options: ["Istanbul", "Kyrenia", "Dubai"],
+        votes: [120, 95, 78],
+        category: "Real Estate",
+        comments: 10
+      }
+    ];
+
+    const pollList = document.getElementById("pollList");
+    const search = document.getElementById("search");
+    const filter = document.getElementById("filter");
+
+    function renderPolls() {
+      const searchVal = search.value.toLowerCase();
+      const categoryVal = filter.value;
+      pollList.innerHTML = "";
+
+      polls
+        .filter(p =>
+          (p.title.toLowerCase().includes(searchVal)) &&
+          (!categoryVal || p.category === categoryVal)
+        )
+        .forEach(p => {
+          const totalVotes = p.votes.reduce((a, b) => a + b, 0);
+          const pollCard = `
+            <div class="bg-gray-100 p-5 rounded shadow">
+              <div class="flex justify-between mb-2 text-sm text-gray-500">
+                <span>Category: ${p.category}</span>
+                <span>${p.comments} comments</span>
+              </div>
+              <h2 class="text-xl font-semibold mb-3">${p.title}</h2>
+              <div class="flex gap-4">
+                ${p.options.map((opt, i) => `
+                  <button class="flex-1 bg-white border rounded py-2 hover:bg-indigo-100">
+                    ${opt} (${p.votes[i]})
+                  </button>`).join("")}
+              </div>
+              <p class="text-sm text-gray-600 mt-3">${totalVotes} total votes</p>
+            </div>
+          `;
+          pollList.innerHTML += pollCard;
+        });
+    }
+
+    search.addEventListener("input", renderPolls);
+    filter.addEventListener("change", renderPolls);
+    window.addEventListener("DOMContentLoaded", renderPolls);
+  </script>
+</body>
+</html>
