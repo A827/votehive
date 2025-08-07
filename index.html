@@ -10,7 +10,7 @@
   <header class="bg-white shadow-md sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
       <h1 class="text-xl font-bold text-indigo-600">📊 VoteHive</h1>
-      <button class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create Poll</button>
+      <button onclick="openCreatePoll()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create Poll</button>
     </div>
   </header>
 
@@ -18,54 +18,91 @@
     <!-- Sidebar Categories -->
     <aside class="md:col-span-1">
       <h2 class="text-lg font-semibold mb-3">Categories</h2>
-      <ul class="space-y-2">
-        <li><a href="#" class="text-indigo-600 hover:underline">🔥 Trending</a></li>
-        <li><a href="#" class="hover:underline">Politics & Society</a></li>
-        <li><a href="#" class="hover:underline">Startups & Tech</a></li>
-        <li><a href="#" class="hover:underline">Real Estate</a></li>
-        <li><a href="#" class="hover:underline">Parenting & Education</a></li>
-        <li><a href="#" class="hover:underline">Finance & Investment</a></li>
-        <li><a href="#" class="hover:underline">Design & Brands</a></li>
-        <li><a href="#" class="hover:underline">Health & Wellness</a></li>
-        <li><a href="#" class="hover:underline">Entertainment</a></li>
-        <li><a href="#" class="hover:underline">Global & Cultural</a></li>
-      </ul>
+      <ul class="space-y-2" id="categoryList"></ul>
     </aside>
 
     <!-- Main Feed -->
-    <section class="md:col-span-3 space-y-6">
-      <!-- Poll Card -->
-      <div class="bg-white p-5 rounded shadow">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm text-gray-500">Category: Brands & Products</span>
-          <span class="text-xs text-gray-400">Posted 2h ago</span>
-        </div>
-        <h3 class="text-lg font-semibold mb-4">Which logo is stronger for our rebrand?</h3>
-        <div class="flex space-x-4">
-          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Logo A</button>
-          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Logo B</button>
-        </div>
-        <p class="text-sm text-gray-500 mt-3">123 votes • 5 comments</p>
-      </div>
-
-      <!-- Another Poll -->
-      <div class="bg-white p-5 rounded shadow">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm text-gray-500">Category: Politics & Society</span>
-          <span class="text-xs text-gray-400">Posted 5h ago</span>
-        </div>
-        <h3 class="text-lg font-semibold mb-4">Should voting be mandatory in your country?</h3>
-        <div class="flex space-x-4">
-          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Yes</button>
-          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">No</button>
-        </div>
-        <p class="text-sm text-gray-500 mt-3">378 votes • 22 comments</p>
-      </div>
-    </section>
+    <section class="md:col-span-3 space-y-6" id="pollFeed"></section>
   </main>
 
   <footer class="bg-white mt-10 p-4 text-center text-sm text-gray-500">
     © 2025 VoteHive. All rights reserved.
   </footer>
+
+  <script>
+    const categories = [
+      "Trending", "Politics & Society", "Startups & Tech", "Real Estate",
+      "Parenting & Education", "Finance & Investment", "Design & Brands",
+      "Health & Wellness", "Entertainment", "Global & Cultural"
+    ];
+
+    const polls = [
+      {
+        id: 1,
+        category: "Brands & Products",
+        question: "Which logo is stronger for our rebrand?",
+        options: ["Logo A", "Logo B"],
+        votes: [0, 0],
+        posted: "2h ago",
+        comments: 5
+      },
+      {
+        id: 2,
+        category: "Politics & Society",
+        question: "Should voting be mandatory in your country?",
+        options: ["Yes", "No"],
+        votes: [0, 0],
+        posted: "5h ago",
+        comments: 22
+      }
+    ];
+
+    function renderCategories() {
+      const list = document.getElementById("categoryList");
+      categories.forEach(cat => {
+        const li = document.createElement("li");
+        li.innerHTML = `<a href="#" class="hover:underline">${cat}</a>`;
+        list.appendChild(li);
+      });
+    }
+
+    function vote(pollId, optionIndex) {
+      polls.find(p => p.id === pollId).votes[optionIndex]++;
+      renderPolls();
+    }
+
+    function renderPolls() {
+      const feed = document.getElementById("pollFeed");
+      feed.innerHTML = "";
+      polls.forEach(poll => {
+        const totalVotes = poll.votes.reduce((a, b) => a + b, 0);
+        const optionsHtml = poll.options.map((opt, idx) => `
+          <button onclick="vote(${poll.id}, ${idx})" class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">
+            ${opt} (${poll.votes[idx]})
+          </button>
+        `).join("");
+
+        const html = `
+          <div class="bg-white p-5 rounded shadow">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-gray-500">Category: ${poll.category}</span>
+              <span class="text-xs text-gray-400">Posted ${poll.posted}</span>
+            </div>
+            <h3 class="text-lg font-semibold mb-4">${poll.question}</h3>
+            <div class="flex space-x-4">${optionsHtml}</div>
+            <p class="text-sm text-gray-500 mt-3">${totalVotes} votes • ${poll.comments} comments</p>
+          </div>
+        `;
+        feed.innerHTML += html;
+      });
+    }
+
+    function openCreatePoll() {
+      alert("Create poll page coming soon...");
+    }
+
+    renderCategories();
+    renderPolls();
+  </script>
 </body>
 </html>
