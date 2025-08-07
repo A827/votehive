@@ -6,103 +6,89 @@
   <title>VoteHive – Where Ideas Compete</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-white text-gray-800">
   <header class="bg-white shadow-md sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-      <h1 class="text-xl font-bold text-indigo-600">📊 VoteHive</h1>
-      <button onclick="openCreatePoll()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create Poll</button>
+      <h1 class="text-2xl font-bold text-indigo-600">📊 VoteHive</h1>
+      <div class="space-x-4">
+        <a href="#create" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create Poll</a>
+        <a href="#browse" class="text-indigo-600 font-medium hover:underline">Browse Polls</a>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-    <!-- Sidebar Categories -->
-    <aside class="md:col-span-1">
-      <h2 class="text-lg font-semibold mb-3">Categories</h2>
-      <ul class="space-y-2" id="categoryList"></ul>
-    </aside>
+  <main class="max-w-7xl mx-auto px-4 py-12 space-y-16">
+    <!-- Hero Section -->
+    <section class="text-center">
+      <h2 class="text-4xl md:text-5xl font-bold mb-4">Where Ideas Compete</h2>
+      <p class="text-lg text-gray-600 mb-6">Create, vote, and discover the most influential ideas across industries.</p>
+      <div class="flex justify-center space-x-4">
+        <a href="#create" class="bg-indigo-600 text-white px-6 py-3 rounded hover:bg-indigo-700">Create a Poll</a>
+        <a href="#browse" class="bg-gray-100 text-indigo-600 px-6 py-3 rounded hover:bg-gray-200">Browse Polls</a>
+      </div>
+    </section>
 
-    <!-- Main Feed -->
-    <section class="md:col-span-3 space-y-6" id="pollFeed"></section>
+    <!-- How it Works -->
+    <section class="text-center">
+      <h3 class="text-2xl font-semibold mb-6">How It Works</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <div class="text-4xl text-indigo-500 mb-2">📝</div>
+          <h4 class="text-lg font-semibold">1. Submit</h4>
+          <p class="text-gray-500">Post your question, idea, or debate to the crowd.</p>
+        </div>
+        <div>
+          <div class="text-4xl text-indigo-500 mb-2">🗳️</div>
+          <h4 class="text-lg font-semibold">2. Vote</h4>
+          <p class="text-gray-500">Let the public decide and engage with real-time voting.</p>
+        </div>
+        <div>
+          <div class="text-4xl text-indigo-500 mb-2">📊</div>
+          <h4 class="text-lg font-semibold">3. Track</h4>
+          <p class="text-gray-500">See results live and explore trends over time.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Categories -->
+    <section>
+      <h3 class="text-2xl font-semibold mb-6 text-center">Explore Categories</h3>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Politics</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Startups</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Real Estate</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Design</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Parenting</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Brands</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Finance</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Health</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Global</div>
+        <div class="bg-gray-100 p-4 rounded hover:bg-indigo-50 cursor-pointer">Entertainment</div>
+      </div>
+    </section>
+
+    <!-- Why VoteHive -->
+    <section class="text-center">
+      <h3 class="text-2xl font-semibold mb-6">Why VoteHive?</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <h4 class="font-semibold">✅ Open & Honest</h4>
+          <p class="text-gray-500">A neutral space to test ideas and hear public opinion.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold">📈 Trend Insight</h4>
+          <p class="text-gray-500">Capture data and understand what people really think.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold">🧠 AI-Ready</h4>
+          <p class="text-gray-500">Designed to evolve with data and AI analysis in future.</p>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="bg-white mt-10 p-4 text-center text-sm text-gray-500">
-    © 2025 VoteHive. All rights reserved.
+  <footer class="bg-gray-50 mt-20 p-6 text-center text-sm text-gray-500 border-t">
+    © 2025 VoteHive. | <a href="#" class="hover:underline">About</a> | <a href="#" class="hover:underline">Contact</a>
   </footer>
-
-  <script>
-    const categories = [
-      "Trending", "Politics & Society", "Startups & Tech", "Real Estate",
-      "Parenting & Education", "Finance & Investment", "Design & Brands",
-      "Health & Wellness", "Entertainment", "Global & Cultural"
-    ];
-
-    const polls = [
-      {
-        id: 1,
-        category: "Brands & Products",
-        question: "Which logo is stronger for our rebrand?",
-        options: ["Logo A", "Logo B"],
-        votes: [0, 0],
-        posted: "2h ago",
-        comments: 5
-      },
-      {
-        id: 2,
-        category: "Politics & Society",
-        question: "Should voting be mandatory in your country?",
-        options: ["Yes", "No"],
-        votes: [0, 0],
-        posted: "5h ago",
-        comments: 22
-      }
-    ];
-
-    function renderCategories() {
-      const list = document.getElementById("categoryList");
-      categories.forEach(cat => {
-        const li = document.createElement("li");
-        li.innerHTML = `<a href="#" class="hover:underline">${cat}</a>`;
-        list.appendChild(li);
-      });
-    }
-
-    function vote(pollId, optionIndex) {
-      polls.find(p => p.id === pollId).votes[optionIndex]++;
-      renderPolls();
-    }
-
-    function renderPolls() {
-      const feed = document.getElementById("pollFeed");
-      feed.innerHTML = "";
-      polls.forEach(poll => {
-        const totalVotes = poll.votes.reduce((a, b) => a + b, 0);
-        const optionsHtml = poll.options.map((opt, idx) => `
-          <button onclick="vote(${poll.id}, ${idx})" class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">
-            ${opt} (${poll.votes[idx]})
-          </button>
-        `).join("");
-
-        const html = `
-          <div class="bg-white p-5 rounded shadow">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm text-gray-500">Category: ${poll.category}</span>
-              <span class="text-xs text-gray-400">Posted ${poll.posted}</span>
-            </div>
-            <h3 class="text-lg font-semibold mb-4">${poll.question}</h3>
-            <div class="flex space-x-4">${optionsHtml}</div>
-            <p class="text-sm text-gray-500 mt-3">${totalVotes} votes • ${poll.comments} comments</p>
-          </div>
-        `;
-        feed.innerHTML += html;
-      });
-    }
-
-    function openCreatePoll() {
-      alert("Create poll page coming soon...");
-    }
-
-    renderCategories();
-    renderPolls();
-  </script>
 </body>
 </html>
