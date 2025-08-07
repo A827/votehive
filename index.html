@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoteHive – Where Ideas Compete</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <header class="bg-white shadow-md sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-xl font-bold text-indigo-600">📊 VoteHive</h1>
+      <button class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Create Poll</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+    <!-- Sidebar Categories -->
+    <aside class="md:col-span-1">
+      <h2 class="text-lg font-semibold mb-3">Categories</h2>
+      <ul class="space-y-2">
+        <li><a href="#" class="text-indigo-600 hover:underline">🔥 Trending</a></li>
+        <li><a href="#" class="hover:underline">Politics & Society</a></li>
+        <li><a href="#" class="hover:underline">Startups & Tech</a></li>
+        <li><a href="#" class="hover:underline">Real Estate</a></li>
+        <li><a href="#" class="hover:underline">Parenting & Education</a></li>
+        <li><a href="#" class="hover:underline">Finance & Investment</a></li>
+        <li><a href="#" class="hover:underline">Design & Brands</a></li>
+        <li><a href="#" class="hover:underline">Health & Wellness</a></li>
+        <li><a href="#" class="hover:underline">Entertainment</a></li>
+        <li><a href="#" class="hover:underline">Global & Cultural</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Feed -->
+    <section class="md:col-span-3 space-y-6">
+      <!-- Poll Card -->
+      <div class="bg-white p-5 rounded shadow">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm text-gray-500">Category: Brands & Products</span>
+          <span class="text-xs text-gray-400">Posted 2h ago</span>
+        </div>
+        <h3 class="text-lg font-semibold mb-4">Which logo is stronger for our rebrand?</h3>
+        <div class="flex space-x-4">
+          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Logo A</button>
+          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Logo B</button>
+        </div>
+        <p class="text-sm text-gray-500 mt-3">123 votes • 5 comments</p>
+      </div>
+
+      <!-- Another Poll -->
+      <div class="bg-white p-5 rounded shadow">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm text-gray-500">Category: Politics & Society</span>
+          <span class="text-xs text-gray-400">Posted 5h ago</span>
+        </div>
+        <h3 class="text-lg font-semibold mb-4">Should voting be mandatory in your country?</h3>
+        <div class="flex space-x-4">
+          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">Yes</button>
+          <button class="flex-1 bg-gray-100 hover:bg-indigo-100 text-center py-2 rounded border">No</button>
+        </div>
+        <p class="text-sm text-gray-500 mt-3">378 votes • 22 comments</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white mt-10 p-4 text-center text-sm text-gray-500">
+    © 2025 VoteHive. All rights reserved.
+  </footer>
+</body>
+</html>
