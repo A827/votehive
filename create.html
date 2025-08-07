@@ -50,6 +50,16 @@
       </div>
 
       <div>
+        <label class="block text-sm font-medium mb-1" for="duration">Poll Duration</label>
+        <select id="duration" name="duration" class="w-full border border-gray-300 rounded px-4 py-2">
+          <option value="1">1 Day</option>
+          <option value="3">3 Days</option>
+          <option value="7">7 Days</option>
+          <option value="custom">Custom (Coming Soon)</option>
+        </select>
+      </div>
+
+      <div>
         <label class="block text-sm font-medium mb-1" for="options">Poll Options</label>
         <input type="text" class="w-full mb-2 border border-gray-300 rounded px-4 py-2" placeholder="Option 1">
         <input type="text" class="w-full mb-2 border border-gray-300 rounded px-4 py-2" placeholder="Option 2">
@@ -62,3 +72,16 @@
       </div>
     </form>
   </section>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6 mt-2 md:mt-0">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
