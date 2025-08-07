@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoteHive – Poll</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Poll Content -->
+  <main class="max-w-3xl mx-auto px-4 py-12">
+    <h1 class="text-2xl font-bold mb-4" id="poll-title">Loading...</h1>
+    <p class="text-sm text-gray-500 mb-2" id="poll-category"></p>
+    <p class="text-sm text-indigo-600 font-semibold mb-4">⏳ Time left: <span id="countdown">Loading...</span></p>
+
+    <form id="vote-form" class="space-y-4 mb-8">
+      <div>
+        <input type="radio" name="vote" value="Option 1" id="opt1" class="mr-2">
+        <label for="opt1" id="label-opt1">Option 1</label>
+      </div>
+      <div>
+        <input type="radio" name="vote" value="Option 2" id="opt2" class="mr-2">
+        <label for="opt2" id="label-opt2">Option 2</label>
+      </div>
+      <div>
+        <input type="radio" name="vote" value="Option 3" id="opt3" class="mr-2">
+        <label for="opt3" id="label-opt3">Option 3</label>
+      </div>
+      <div>
+        <input type="radio" name="vote" value="Option 4" id="opt4" class="mr-2">
+        <label for="opt4" id="label-opt4">Option 4</label>
+      </div>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
+    </form>
+
+    <div id="results" class="hidden">
+      <h2 class="text-lg font-semibold mb-4">Results</h2>
+      <ul class="space-y-2">
+        <li>Option 1: <span id="result1">0</span> votes</li>
+        <li>Option 2: <span id="result2">0</span> votes</li>
+        <li>Option 3: <span id="result3">0</span> votes</li>
+        <li>Option 4: <span id="result4">0</span> votes</li>
+      </ul>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Countdown and Voting Script -->
+  <script>
+    // Fake poll data
+    const pollData = {
+      title: "What’s the best productivity tool in 2025?",
+      category: "Startups",
+      options: ["Notion", "Trello", "Slack", "ClickUp"],
+      endTime: Date.now() + 2 * 86400000 // 2 days from now
+    };
+
+    document.getElementById("poll-title").innerText = pollData.title;
+    document.getElementById("poll-category").innerText = pollData.category;
+
+    pollData.options.forEach((opt, i) => {
+      const label = document.getElementById(`label-opt${i+1}`);
+      const input = document.getElementById(`opt${i+1}`);
+      if (label && input) {
+        label.innerText = opt;
+        input.value = opt;
+      }
+    });
+
+    function updateCountdown() {
+      const now = Date.now();
+      const distance = pollData.endTime - now;
+      if (distance < 0) {
+        document.getElementById("countdown").innerText = "Poll Closed";
+        document.getElementById("vote-form").classList.add("hidden");
+        document.getElementById("results").classList.remove("hidden");
+        return;
+      }
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      document.getElementById("countdown").innerText = `${days}d ${hours}h ${mins}m`;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    document.getElementById("vote-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const selected = document.querySelector("input[name='vote']:checked");
+      if (!selected) return alert("Please select an option.");
+      alert("Thanks for voting for: " + selected.value);
+      document.getElementById("vote-form").classList.add("hidden");
+      document.getElementById("results").classList.remove("hidden");
+    });
+  </script>
+</body>
+</html>
