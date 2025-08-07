@@ -1,95 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Browse Polls – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
 </head>
-<body class="bg-white text-gray-800">
-  <div class="max-w-5xl mx-auto py-10 px-4">
-    <h1 class="text-3xl font-bold text-indigo-600 mb-6 text-center">📋 Browse Public Polls</h1>
-
-    <!-- Search & Filter (Optional) -->
-    <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
-      <input type="text" id="search" class="border px-4 py-2 rounded w-full md:w-1/2" placeholder="Search polls...">
-      <select id="filter" class="border px-4 py-2 rounded w-full md:w-1/4">
-        <option value="">All Categories</option>
-        <option value="Politics">Politics</option>
-        <option value="Brands">Brands</option>
-        <option value="Real Estate">Real Estate</option>
-        <option value="Startups">Startups</option>
-      </select>
+<body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
+      </nav>
     </div>
+  </header>
 
-    <!-- Poll Feed -->
-    <div id="pollList" class="space-y-6"></div>
-  </div>
+  <!-- Page Title -->
+  <section class="text-center py-12 bg-gray-50">
+    <h1 class="text-3xl font-bold mb-2">Browse Polls</h1>
+    <p class="text-gray-600">Explore active debates and cast your vote on trending topics.</p>
+  </section>
 
-  <script>
-    const polls = [
-      {
-        title: "Which logo should we use?",
-        options: ["Logo A", "Logo B"],
-        votes: [56, 44],
-        category: "Brands",
-        comments: 6
-      },
-      {
-        title: "Should remote work be a human right?",
-        options: ["Yes", "No"],
-        votes: [322, 166],
-        category: "Politics",
-        comments: 14
-      },
-      {
-        title: "Best place to invest in 2025?",
-        options: ["Istanbul", "Kyrenia", "Dubai"],
-        votes: [120, 95, 78],
-        category: "Real Estate",
-        comments: 10
-      }
-    ];
+  <!-- Poll Grid -->
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Example Poll Card -->
+      <div class="bg-white shadow rounded p-4">
+        <div class="flex items-center gap-2 text-sm mb-2">
+          <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">31k</span>
+          <span class="text-gray-500">Finance</span>
+        </div>
+        <h4 class="font-semibold mb-2">Is cryptocurrency the future of global finance?</h4>
+        <p class="text-sm text-gray-600 mb-3">48% of participants believe crypto will be widely adopted by 2030.</p>
+        <span class="text-xs text-gray-500">Summary by AI</span>
+      </div>
 
-    const pollList = document.getElementById("pollList");
-    const search = document.getElementById("search");
-    const filter = document.getElementById("filter");
+      <div class="bg-white shadow rounded p-4">
+        <div class="flex items-center gap-2 text-sm mb-2">
+          <span class="bg-green-100 text-green-600 px-2 py-1 rounded-full font-medium">22k</span>
+          <span class="text-gray-500">Parenting</span>
+        </div>
+        <h4 class="font-semibold mb-2">Should screen time be limited for children under 12?</h4>
+        <p class="text-sm text-gray-600 mb-3">Most respondents support stricter digital limits for kids.</p>
+        <span class="text-xs text-gray-500">Summary by AI</span>
+      </div>
 
-    function renderPolls() {
-      const searchVal = search.value.toLowerCase();
-      const categoryVal = filter.value;
-      pollList.innerHTML = "";
+      <div class="bg-white shadow rounded p-4">
+        <div class="flex items-center gap-2 text-sm mb-2">
+          <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">40k</span>
+          <span class="text-gray-500">Design</span>
+        </div>
+        <h4 class="font-semibold mb-2">Is minimalism still the dominant design trend?</h4>
+        <p class="text-sm text-gray-600 mb-3">Opinions are split; 55% agree it’s losing relevance in 2025.</p>
+        <span class="text-xs text-gray-500">Summary by AI</span>
+      </div>
 
-      polls
-        .filter(p =>
-          (p.title.toLowerCase().includes(searchVal)) &&
-          (!categoryVal || p.category === categoryVal)
-        )
-        .forEach(p => {
-          const totalVotes = p.votes.reduce((a, b) => a + b, 0);
-          const pollCard = `
-            <div class="bg-gray-100 p-5 rounded shadow">
-              <div class="flex justify-between mb-2 text-sm text-gray-500">
-                <span>Category: ${p.category}</span>
-                <span>${p.comments} comments</span>
-              </div>
-              <h2 class="text-xl font-semibold mb-3">${p.title}</h2>
-              <div class="flex gap-4">
-                ${p.options.map((opt, i) => `
-                  <button class="flex-1 bg-white border rounded py-2 hover:bg-indigo-100">
-                    ${opt} (${p.votes[i]})
-                  </button>`).join("")}
-              </div>
-              <p class="text-sm text-gray-600 mt-3">${totalVotes} total votes</p>
-            </div>
-          `;
-          pollList.innerHTML += pollCard;
-        });
-    }
+      <!-- Add more poll cards below -->
+    </div>
+  </section>
 
-    search.addEventListener("input", renderPolls);
-    filter.addEventListener("change", renderPolls);
-    window.addEventListener("DOMContentLoaded", renderPolls);
-  </script>
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6 mt-2 md:mt-0">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
