@@ -1,59 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Poll – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoteHive Poll</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-4 text-sm">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create</a>
-      </nav>
-    </div>
-  </header>
+  <div class="max-w-2xl mx-auto px-4 py-10">
+    <h1 id="pollTitle" class="text-3xl font-bold mb-4">Loading poll...</h1>
+    <p id="pollCategory" class="text-sm text-gray-500 mb-6"></p>
 
-  <!-- Poll Content -->
-  <section class="max-w-2xl mx-auto px-4 py-12">
-    <h1 id="poll-title" class="text-3xl font-bold mb-2">Loading...</h1>
-    <p id="poll-category" class="text-sm text-gray-500 mb-4"></p>
-    <div id="countdown" class="mb-6 text-sm text-indigo-600 font-medium"></div>
+    <form id="voteForm" class="space-y-4 mb-6"></form>
 
-    <form id="vote-form" class="space-y-4"></form>
-    <button id="submit-vote" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
+    <p id="countdown" class="text-sm text-gray-600 mb-4"></p>
+    <p id="shareLink" class="text-sm text-indigo-600 break-all"></p>
+  </div>
 
-    <!-- Share link -->
-    <div class="mt-8">
-      <label class="block text-sm font-medium mb-1">Share this poll:</label>
-      <div class="flex">
-        <input type="text" id="share-link" class="flex-grow border border-gray-300 px-3 py-2 rounded-l" readonly>
-        <button onclick="copyLink()" class="bg-indigo-600 text-white px-4 rounded-r">Copy</button>
-      </div>
-      <p id="copy-status" class="text-xs mt-1 text-green-600 hidden">✅ Link copied!</p>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Script -->
   <script>
     const polls = {
       "startup-vs-enterprise": {
@@ -71,77 +34,65 @@
       "real-estate-safe": {
         title: "Which property investment is safer?",
         category: "Real Estate",
-        options: ["Apartments", "Villas", "Commercial"],
+        options: ["Off-Plan", "Completed Project", "Land"],
         endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
       },
       "flat-vs-skeuo": {
-        title: "Which UI design style do you prefer?",
+        title: "Which design trend is better?",
         category: "Design",
         options: ["Flat Design", "Skeuomorphic Design"],
-        endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
+        endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString()
       },
       "global-online-vote": {
-        title: "Should national elections support online voting globally?",
+        title: "Should global elections allow online voting?",
         category: "Global",
-        options: ["Yes, it's time", "No, too risky", "Maybe in the future"],
-        endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString()
+        options: ["Yes", "No", "Only Locally"],
+        endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
       }
     };
 
-    const params = new URLSearchParams(window.location.search);
-    const pollId = params.get("id");
-    const poll = polls[pollId];
+    const urlParams = new URLSearchParams(window.location.search);
+    const pollId = urlParams.get("id");
+
+    const storedPolls = JSON.parse(localStorage.getItem("customPolls") || "{}");
+    const poll = storedPolls[pollId] || polls[pollId];
+
+    const titleEl = document.getElementById("pollTitle");
+    const categoryEl = document.getElementById("pollCategory");
+    const formEl = document.getElementById("voteForm");
+    const countdownEl = document.getElementById("countdown");
+    const shareLinkEl = document.getElementById("shareLink");
 
     if (!poll) {
-      document.getElementById("poll-title").innerText = "Poll not found.";
-      document.getElementById("submit-vote").style.display = "none";
+      titleEl.textContent = "Poll not found.";
+      formEl.remove();
     } else {
-      document.getElementById("poll-title").innerText = poll.title;
-      document.getElementById("poll-category").innerText = poll.category;
-      document.getElementById("share-link").value = window.location.href;
+      titleEl.textContent = poll.title;
+      categoryEl.textContent = `Category: ${poll.category}`;
+      shareLinkEl.textContent = `${window.location.origin}${window.location.pathname}?id=${pollId}`;
 
-      const form = document.getElementById("vote-form");
-      poll.options.forEach((opt, i) => {
-        const id = `opt${i}`;
-        const optionHTML = `
-          <div>
-            <input type="radio" name="vote" id="${id}" value="${opt}" class="mr-2">
-            <label for="${id}" class="text-gray-700">${opt}</label>
-          </div>
-        `;
-        form.insertAdjacentHTML("beforeend", optionHTML);
-      });
-
-      updateCountdown(poll.endTime);
-      setInterval(() => updateCountdown(poll.endTime), 60000);
-    }
-
-    function updateCountdown(endTime) {
-      const countdown = document.getElementById("countdown");
-      const end = new Date(endTime);
+      const endTime = new Date(poll.endTime);
       const now = new Date();
-      const diff = end - now;
-
-      if (diff <= 0) {
-        countdown.innerText = "⏱️ Poll Closed";
-        document.getElementById("submit-vote").disabled = true;
-        return;
+      if (now > endTime) {
+        countdownEl.textContent = "Poll closed.";
+        formEl.innerHTML = "<p class='text-red-500'>Voting is closed for this poll.</p>";
+      } else {
+        countdownEl.textContent = `Poll ends on: ${endTime.toLocaleString()}`;
+        poll.options.forEach((opt, i) => {
+          const label = document.createElement("label");
+          label.className = "block border border-gray-300 rounded p-2 cursor-pointer hover:bg-gray-50";
+          label.innerHTML = `
+            <input type="radio" name="option" value="${opt}" class="mr-2">
+            ${opt}
+          `;
+          formEl.appendChild(label);
+        });
+        const btn = document.createElement("button");
+        btn.type = "submit";
+        btn.textContent = "Vote";
+        btn.className = "mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700";
+        formEl.appendChild(btn);
       }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const mins = Math.floor((diff / (1000 * 60)) % 60);
-      countdown.innerText = `⏳ Closes in ${days}d ${hours}h ${mins}m`;
-    }
-
-    function copyLink() {
-      const input = document.getElementById("share-link");
-      input.select();
-      document.execCommand("copy");
-      document.getElementById("copy-status").classList.remove("hidden");
-      setTimeout(() => {
-        document.getElementById("copy-status").classList.add("hidden");
-      }, 2000);
     }
   </script>
 </body>
