@@ -16,91 +16,259 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
         <button id="logoutBtn" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log Out</button>
       </nav>
     </div>
   </header>
 
-  <!-- Dashboard Content -->
+  <!-- Guard -->
+  <script>
+    if (localStorage.getItem('role') !== 'superadmin') {
+      location.href = 'login.html';
+    }
+  </script>
+
+  <!-- Content -->
   <main class="max-w-7xl mx-auto px-4 py-10">
     <h1 class="text-3xl font-bold mb-6">Superadmin Dashboard</h1>
-    <p class="text-gray-700 mb-8">Welcome, Superadmin! Manage all polls and users from here.</p>
 
-    <!-- Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Top stats -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <div class="bg-white shadow rounded p-6">
-        <h2 class="text-lg font-semibold mb-2">Total Polls</h2>
-        <p id="totalPolls" class="text-3xl font-bold text-indigo-700">0</p>
+        <div class="text-sm text-gray-500">Total Users</div>
+        <div id="statUsers" class="text-3xl font-extrabold text-green-700 mt-1">0</div>
       </div>
       <div class="bg-white shadow rounded p-6">
-        <h2 class="text-lg font-semibold mb-2">Total Users</h2>
-        <p id="totalUsers" class="text-3xl font-bold text-green-700">0</p>
+        <div class="text-sm text-gray-500">Total Polls</div>
+        <div id="statPolls" class="text-3xl font-extrabold text-indigo-700 mt-1">0</div>
       </div>
       <div class="bg-white shadow rounded p-6">
-        <h2 class="text-lg font-semibold mb-2">Open Polls</h2>
-        <p id="openPolls" class="text-3xl font-bold text-yellow-700">0</p>
+        <div class="text-sm text-gray-500">Open Polls</div>
+        <div id="statOpen" class="text-3xl font-extrabold text-yellow-700 mt-1">0</div>
       </div>
-    </div>
+      <div class="bg-white shadow rounded p-6">
+        <div class="text-sm text-gray-500">Pending Applications</div>
+        <div id="statPending" class="text-3xl font-extrabold text-purple-700 mt-1">0</div>
+      </div>
+    </section>
 
-    <!-- Poll List -->
-    <section class="mt-10">
-      <h2 class="text-2xl font-bold mb-4">All Polls</h2>
-      <div id="pollList" class="bg-white rounded shadow p-4 divide-y"></div>
+    <!-- Pending applications -->
+    <section class="bg-white shadow rounded p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Pending Applications</h2>
+        <span class="text-sm text-gray-500" id="pendingHint"></span>
+      </div>
+      <div id="pendingList" class="divide-y"></div>
+    </section>
+
+    <!-- Existing polls -->
+    <section class="bg-white shadow rounded p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">All Polls</h2>
+        <div class="flex items-center gap-2">
+          <input id="search" type="text" placeholder="Search title…" class="border rounded px-3 py-2 w-64">
+          <select id="filterState" class="border rounded px-3 py-2">
+            <option value="">All states</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div id="pollList" class="divide-y"></div>
     </section>
   </main>
 
   <script>
-    // Access control
-    const role = localStorage.getItem("role");
-    if (role !== "superadmin") {
-      window.location.href = "login.html";
-    }
+    // Helpers
+    const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
+    const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
+    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
 
     // Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("role");
-      localStorage.removeItem("username");
-      window.location.href = "index.html";
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('role');
+      localStorage.removeItem('username');
+      location.href = 'index.html';
     });
 
-    // Load dummy data from localStorage
-    function loadDashboard() {
-      const polls = JSON.parse(localStorage.getItem("customPolls") || "{}");
-      const users = JSON.parse(localStorage.getItem("userList") || "[]");
+    // Render stats + sections
+    function render() {
+      // Stats
+      const users = getUsers();
+      const polls = getPolls();
+      const pending = getPending();
 
-      document.getElementById("totalPolls").textContent = Object.keys(polls).length;
-      document.getElementById("totalUsers").textContent = users.length;
+      document.getElementById('statUsers').textContent = users.length;
+      document.getElementById('statPolls').textContent = Object.keys(polls).length;
+      document.getElementById('statPending').textContent = Object.keys(pending).length;
+      const openCount = Object.values(polls).filter(p => new Date(p.endTime) > new Date()).length;
+      document.getElementById('statOpen').textContent = openCount;
 
-      const openPollsCount = Object.values(polls).filter(p => new Date(p.endTime) > new Date()).length;
-      document.getElementById("openPolls").textContent = openPollsCount;
-
-      const pollList = document.getElementById("pollList");
-      pollList.innerHTML = "";
-      Object.entries(polls).forEach(([id, poll]) => {
-        const item = document.createElement("div");
-        item.className = "py-3 flex justify-between items-center";
-        item.innerHTML = `
-          <div>
-            <p class="font-semibold">${poll.title}</p>
-            <p class="text-sm text-gray-500">${poll.category || "General"} – Ends: ${new Date(poll.endTime).toLocaleString()}</p>
+      // Pending list
+      const el = document.getElementById('pendingList');
+      const items = Object.entries(pending).sort((a,b) => new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
+      document.getElementById('pendingHint').textContent = items.length ? '' : 'No applications pending.';
+      el.innerHTML = '';
+      items.forEach(([pid, p]) => {
+        const opts = (p.options || []).join(', ');
+        const row = document.createElement('div');
+        row.className = 'py-4 flex gap-4 justify-between items-start';
+        row.innerHTML = `
+          <div class="flex-1">
+            <div class="text-sm text-gray-500">Applicant: <strong>${p.applicant || 'guest'}</strong> • Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
+            <div class="font-semibold mt-1">${p.title}</div>
+            <div class="text-sm text-gray-600 mt-1">Category: ${p.category || 'General'}</div>
+            <div class="text-sm text-gray-600 mt-1">Options: ${opts}</div>
+            ${p.context ? `<div class="text-sm text-gray-500 mt-2">${p.context}</div>` : ''}
           </div>
-          <button data-id="${id}" class="deletePoll text-red-600 hover:underline text-sm">Delete</button>
+          <div class="w-64 shrink-0 space-y-2">
+            <label class="block text-sm font-medium">Duration</label>
+            <select data-pid="${pid}" class="dur border rounded px-2 py-1 w-full">
+              <option value="1">1 day</option>
+              <option value="3">3 days</option>
+              <option value="7" selected>7 days</option>
+              <option value="30">30 days</option>
+            </select>
+            <div class="flex gap-2">
+              <button data-pid="${pid}" class="approve bg-indigo-600 text-white px-3 py-1 rounded text-sm">Approve</button>
+              <button data-pid="${pid}" class="reject bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Reject</button>
+            </div>
+          </div>
         `;
-        pollList.appendChild(item);
+        el.appendChild(row);
       });
 
-      // Delete poll buttons
-      document.querySelectorAll(".deletePoll").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-id");
-          delete polls[id];
-          localStorage.setItem("customPolls", JSON.stringify(polls));
-          loadDashboard();
+      // Bind approve/reject
+      el.querySelectorAll('.approve').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = btn.getAttribute('data-pid');
+          const durSel = el.querySelector(`.dur[data-pid="${pid}"]`);
+          const days = parseInt(durSel?.value || '7', 10);
+          approveApplication(pid, days);
         });
       });
+      el.querySelectorAll('.reject').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = btn.getAttribute('data-pid');
+          if (confirm('Reject this application?')) {
+            const pend = getPending();
+            delete pend[pid];
+            setPending(pend);
+            render();
+          }
+        });
+      });
+
+      // Poll list
+      renderPollList();
     }
 
-    loadDashboard();
+    function approveApplication(pid, days) {
+      const pending = getPending();
+      const app = pending[pid];
+      if (!app) return;
+
+      // Create poll id from title
+      let id = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      if (!id) id = 'poll-' + Date.now();
+      const polls = getPolls();
+      if (polls[id]) id = id + '-' + Date.now();
+
+      const endTime = new Date(Date.now() + days*24*60*60*1000).toISOString();
+      polls[id] = {
+        title: app.title,
+        category: app.category,
+        options: app.options,
+        endTime,
+        createdBy: app.applicant || 'guest',
+        featured: false
+      };
+      setPolls(polls);
+
+      // Remove from pending
+      delete pending[pid];
+      setPending(pending);
+
+      render();
+      alert('Approved and published!');
+    }
+
+    // Polls table
+    function renderPollList() {
+      const list = document.getElementById('pollList');
+      const polls = getPolls();
+      const term = (document.getElementById('search').value || '').toLowerCase();
+      const state = document.getElementById('filterState').value;
+
+      const entries = Object.entries(polls).filter(([id, p]) => {
+        const titleOk = !term || (p.title || '').toLowerCase().includes(term);
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const stateOk = !state || (state === 'open' && !closed) || (state === 'closed' && closed);
+        return titleOk && stateOk;
+      }).sort((a,b) => new Date(a[1].endTime) - new Date(b[1].endTime));
+
+      list.innerHTML = '';
+      if (entries.length === 0) {
+        list.innerHTML = '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
+        return;
+      }
+
+      entries.forEach(([id, p]) => {
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const row = document.createElement('div');
+        row.className = 'py-4 flex items-start justify-between gap-4';
+        row.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${closed ? 'Closed' : 'Open'}</span>
+              <span class="text-xs text-gray-500">${p.category || 'General'}</span>
+              ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
+            </div>
+            <div class="font-semibold mt-1">${p.title}</div>
+            <div class="text-xs text-gray-500">Ends: ${isNaN(end) ? 'N/A' : end.toLocaleString()}</div>
+            <div class="text-xs text-gray-500">By: ${p.createdBy || '—'}</div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
+            <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured ? 'Unfeature' : 'Feature'}</button>
+            <button data-id="${id}" class="closeNow bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
+            <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      // Bind actions
+      list.querySelectorAll('.feature').forEach(b => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        const polls = getPolls();
+        polls[id].featured = !polls[id].featured;
+        setPolls(polls); render();
+      }));
+      list.querySelectorAll('.closeNow').forEach(b => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        const polls = getPolls();
+        polls[id].endTime = new Date(Date.now() - 1000).toISOString();
+        setPolls(polls); render();
+      }));
+      list.querySelectorAll('.delete').forEach(b => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        if (!confirm('Delete this poll?')) return;
+        const polls = getPolls();
+        delete polls[id];
+        setPolls(polls); render();
+      }));
+    }
+
+    document.getElementById('search').addEventListener('input', renderPollList);
+    document.getElementById('filterState').addEventListener('change', renderPollList);
+
+    render();
   </script>
 </body>
 </html>
