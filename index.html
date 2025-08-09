@@ -17,6 +17,7 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="trending.html" class="hover:underline">Trending Polls</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
         <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
@@ -32,6 +33,17 @@
       <a href="create.html" class="bg-white text-indigo-700 px-6 py-3 rounded font-semibold text-sm hover:bg-gray-100">Create a Poll</a>
       <a href="browse.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
       <a href="my-polls.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">My Polls</a>
+    </div>
+  </section>
+
+  <!-- Your Recent Polls (dynamic) -->
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-2xl font-bold">Your Recent Polls</h2>
+      <a href="my-polls.html" class="text-indigo-600 hover:underline text-sm">View all →</a>
+    </div>
+    <div id="recentPolls" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Filled by JS -->
     </div>
   </section>
 
@@ -105,5 +117,47 @@
       </div>
     </div>
   </footer>
+
+  <!-- Dynamic Recent Polls Script -->
+  <script>
+    (function renderRecent() {
+      const wrap = document.getElementById('recentPolls');
+      if (!wrap) return;
+
+      let data = {};
+      try { data = JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { data = {}; }
+
+      const entries = Object.entries(data)
+        .sort((a, b) => new Date(b[1].endTime) - new Date(a[1].endTime))
+        .slice(0, 6);
+
+      if (entries.length === 0) {
+        wrap.innerHTML = `
+          <div class="col-span-full text-center bg-gray-50 rounded p-8">
+            <p class="text-gray-600 mb-3">You don’t have any polls yet.</p>
+            <a href="create.html" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded text-sm">Create a Poll</a>
+          </div>`;
+        return;
+      }
+
+      wrap.innerHTML = '';
+      entries.forEach(([id, p]) => {
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        wrap.insertAdjacentHTML('beforeend', `
+          <div class="bg-white shadow rounded p-4 flex flex-col">
+            <div class="flex items-center gap-2 text-sm mb-2">
+              <span class="px-2 py-1 rounded-full ${badge}">${closed ? 'Closed' : 'Open'}</span>
+              <span class="text-gray-500">${p.category || 'General'}</span>
+            </div>
+            <h4 class="font-semibold mb-2">${p.title || 'Untitled poll'}</h4>
+            <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end) ? 'N/A' : end.toLocaleString()}</p>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
+          </div>
+        `);
+      });
+    })();
+  </script>
 </body>
 </html>
