@@ -2,6 +2,7 @@
    - Session: localStorage.session = { username, role, loggedInAt }
    - Users:   localStorage.userList = [{ username, role, createdAt, lastLoginAt }]
    - Auto-injects a username pill + dropdown into the page header.
+   - De-duplicates any hard-coded "Log In" links in the header nav.
 */
 
 (function () {
@@ -60,11 +61,21 @@
       header.querySelector('div')?.appendChild(nav);
     }
 
+    // Remove any hard-coded login buttons in this nav (to prevent duplicates)
+    nav.querySelectorAll('a[href$="login.html"]').forEach(a => {
+      // keep only ones inside our mount container
+      if (!a.closest('#vh-auth')) a.remove();
+    });
+
+    // Ensure a single mount container
     let mount = document.getElementById('vh-auth');
     if (!mount) {
       mount = document.createElement('div');
       mount.id = 'vh-auth';
       nav.appendChild(mount);
+    } else {
+      // Clear it on re-mount to avoid duplicates
+      mount.innerHTML = '';
     }
 
     const sess = getSession();
@@ -105,7 +116,10 @@
     });
     logoutBtn.addEventListener('click', () => {
       VHAuth.logout();
-      location.href = 'index.html';
+      // After logout, re-mount will inject a single "Log In" link
+      mountHeaderAuth();
+      // Optional redirect:
+      if (!location.pathname.endsWith('login.html')) location.href = 'index.html';
     });
   }
 
