@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    .vh-card { background:#fff; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; }
+    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+  </style>
+  <script src="theme.js"></script>
 </head>
 <body class="bg-gray-100">
   <!-- Header -->
@@ -14,11 +24,12 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-bold">VoteHive Admin</span>
       </div>
-      <nav class="flex gap-4 text-sm">
+      <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="applications.html" class="hover:underline">Your Applications</a>
-        <button id="logoutBtn" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log Out</button>
+        <a href="applications.html" class="hover:underline">Applications</a>
+        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <button id="logoutBtn" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Log Out</button>
       </nav>
     </div>
   </header>
@@ -33,27 +44,31 @@
     <h1 class="text-3xl font-bold mb-6">Superadmin Dashboard</h1>
 
     <!-- Stats -->
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <div class="bg-white shadow rounded p-6">
+    <section class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+      <div class="vh-card border border-gray-100 shadow rounded p-6">
         <div class="text-sm text-gray-500">Total Users</div>
         <div id="statUsers" class="text-3xl font-extrabold text-green-700 mt-1">0</div>
       </div>
-      <div class="bg-white shadow rounded p-6">
+      <div class="vh-card border border-gray-100 shadow rounded p-6">
         <div class="text-sm text-gray-500">Total Polls</div>
         <div id="statPolls" class="text-3xl font-extrabold text-indigo-700 mt-1">0</div>
       </div>
-      <div class="bg-white shadow rounded p-6">
+      <div class="vh-card border border-gray-100 shadow rounded p-6">
         <div class="text-sm text-gray-500">Open Polls</div>
         <div id="statOpen" class="text-3xl font-extrabold text-yellow-700 mt-1">0</div>
       </div>
-      <div class="bg-white shadow rounded p-6">
+      <div class="vh-card border border-gray-100 shadow rounded p-6">
         <div class="text-sm text-gray-500">Pending Applications</div>
         <div id="statPending" class="text-3xl font-extrabold text-purple-700 mt-1">0</div>
+      </div>
+      <div class="vh-card border border-gray-100 shadow rounded p-6">
+        <div class="text-sm text-gray-500">Flags</div>
+        <div id="statFlags" class="text-3xl font-extrabold text-red-700 mt-1">0</div>
       </div>
     </section>
 
     <!-- Pending applications -->
-    <section class="bg-white shadow rounded p-6 mb-8">
+    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">Pending Applications</h2>
         <span class="text-sm text-gray-500" id="pendingHint"></span>
@@ -62,7 +77,7 @@
     </section>
 
     <!-- Users -->
-    <section class="bg-white shadow rounded p-6 mb-8">
+    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xl font-semibold">Users</h2>
         <span id="usersHint" class="text-sm text-gray-500"></span>
@@ -84,7 +99,7 @@
     </section>
 
     <!-- Existing polls -->
-    <section class="bg-white shadow rounded p-6">
+    <section class="vh-card border border-gray-100 shadow rounded p-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xl font-semibold">All Polls</h2>
         <div class="flex items-center gap-2">
@@ -110,6 +125,8 @@
     const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
     const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
     const setLog = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    const getFlags = () => { try { return JSON.parse(localStorage.getItem('pollFlags') || '{}'); } catch { return {}; } };
+    const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -120,16 +137,19 @@
       const users = getUsers();
       const polls = getPolls();
       const pending = getPending();
+      const flags  = getFlags();
 
       document.getElementById('statUsers').textContent = users.length;
       document.getElementById('statPolls').textContent = Object.keys(polls).length;
       document.getElementById('statPending').textContent = Object.keys(pending).length;
       document.getElementById('statOpen').textContent =
-        Object.values(polls).filter(p => new Date(p.endTime) > new Date()).length;
+        Object.values(polls).filter(p => !p.hidden && new Date(p.endTime) > new Date()).length;
+      document.getElementById('statFlags').textContent =
+        Object.values(flags).reduce((a,b)=>a+(b||0),0);
 
       renderPending(pending);
       renderUsers(users);
-      renderPolls(polls);
+      renderPolls(polls, flags);
     }
 
     // Pending
@@ -202,7 +222,7 @@
       if (polls[id]) id = id + '-' + Date.now();
 
       const endTime = new Date(Date.now() + days*24*60*60*1000).toISOString();
-      polls[id] = { title: app.title, category: app.category, options: app.options, endTime, createdBy: app.applicant || 'guest', featured: false };
+      polls[id] = { title: app.title, category: app.category, options: app.options, endTime, createdBy: app.applicant || 'guest', featured: false, hidden: false };
       setPolls(polls);
 
       const log = getLog();
@@ -250,8 +270,8 @@
       });
     }
 
-    // Polls table
-    function renderPolls(polls){
+    // Polls table (with flags + hide)
+    function renderPolls(polls, flags){
       const list = document.getElementById('pollList');
       const term = (document.getElementById('search').value || '').toLowerCase();
       const state = document.getElementById('filterState').value;
@@ -268,6 +288,7 @@
       entries.forEach(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
+        const fcount = flags[id] || 0;
         const row = document.createElement('div');
         row.className = 'py-4 flex items-start justify-between gap-4';
         row.innerHTML = `
@@ -276,6 +297,8 @@
               <span class="px-2 py-0.5 rounded-full text-xs ${closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${closed?'Closed':'Open'}</span>
               <span class="text-xs text-gray-500">${p.category||'General'}</span>
               ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
+              ${p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':''}
+              ${fcount?`<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Flags: ${fcount}</span>`:''}
             </div>
             <div class="font-semibold mt-1">${p.title}</div>
             <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
@@ -284,6 +307,7 @@
           <div class="flex flex-col gap-2">
             <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
             <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
+            <button data-id="${id}" class="hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
             <button data-id="${id}" class="closeNow bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
             <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
           </div>
@@ -291,8 +315,12 @@
         list.appendChild(row);
       });
 
+      // actions
       list.querySelectorAll('.feature').forEach(b=>b.addEventListener('click',()=>{
         const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].featured=!polls[id].featured; setPolls(polls); render();
+      }));
+      list.querySelectorAll('.hide').forEach(b=>b.addEventListener('click',()=>{
+        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].hidden=!polls[id].hidden; setPolls(polls); render();
       }));
       list.querySelectorAll('.closeNow').forEach(b=>b.addEventListener('click',()=>{
         const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].endTime=new Date(Date.now()-1000).toISOString(); setPolls(polls); render();
@@ -302,8 +330,8 @@
       }));
     }
 
-    document.getElementById('search').addEventListener('input', ()=>render());
-    document.getElementById('filterState').addEventListener('change', ()=>render());
+    document.getElementById('search').addEventListener('input', render);
+    document.getElementById('filterState').addEventListener('change', render);
 
     render();
   </script>

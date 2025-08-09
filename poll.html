@@ -6,6 +6,15 @@
   <title>VoteHive – Poll</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    .vh-card { background:#fff; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; }
+    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+  </style>
+  <script src="theme.js"></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
@@ -16,13 +25,13 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-bold">VoteHive</span>
       </div>
-      <nav class="flex gap-4 text-sm">
+      <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse Polls</a>
-        <a href="applications.html" class="hover:underline">Your Applications</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="applications.html" class="hover:underline">Applications</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
@@ -33,24 +42,36 @@
     <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
     <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
-    <form id="vote-form" class="space-y-3 mb-6"></form>
-    <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
+    <form id="vote-form" class="vh-card border border-gray-100 shadow rounded p-4 space-y-3 mb-6"></form>
+    <div class="flex gap-3">
+      <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
+      <button id="flag-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded">Flag for Review</button>
+    </div>
     <p id="vote-note" class="text-sm text-gray-600 mt-2 hidden"></p>
+    <p id="flag-note" class="text-sm text-green-600 mt-2 hidden">Thanks—your flag was recorded.</p>
 
-    <section id="results" class="mt-8 hidden">
+    <section id="results" class="vh-card border border-gray-100 shadow rounded p-4 mt-8 hidden">
       <h2 class="text-lg font-semibold mb-3">Results</h2>
       <div id="results-list" class="space-y-3"></div>
       <p id="total-votes" class="text-xs text-gray-500 mt-2"></p>
     </section>
 
     <!-- Share -->
-    <section class="mt-10">
-      <label class="block text-sm font-medium mb-1">📤 Share this poll</label>
+    <section class="vh-card border border-gray-100 shadow rounded p-4 mt-10">
+      <div class="flex items-center justify-between mb-3">
+        <label class="block text-sm font-medium">📤 Share this poll</label>
+        <button id="qr-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded text-sm">Show QR</button>
+      </div>
       <div class="flex gap-2">
         <input id="share-link" type="text" class="flex-1 border px-3 py-2 rounded" readonly>
         <button id="copy-btn" class="bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 text-sm">Copy</button>
       </div>
       <p id="copied-msg" class="text-green-600 text-sm mt-1 hidden">Link copied!</p>
+
+      <div id="qr-wrap" class="mt-4 hidden">
+        <img id="qr-img" alt="QR code" class="w-44 h-44 border rounded"/>
+        <p class="text-xs text-gray-500 mt-2">Scan to open this poll.</p>
+      </div>
 
       <div class="flex items-center gap-2 mt-4">
         <a id="share-wa" target="_blank" rel="noopener" class="inline-block bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600">Share on WhatsApp</a>
@@ -72,13 +93,21 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
 
   <script>
-    // Duplicate-vote guard per user
-    function getVotesByUser(){ try { return JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'); } catch { return {}; } }
-    function setVotesByUser(d){ localStorage.setItem('vh_votesByUser', JSON.stringify(d)); }
+    // User context
     const currentUser = localStorage.getItem('username') || 'guest';
 
-    const builtinPolls = {}; // (unused; real polls come from customPolls)
+    // Storage helpers
+    const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
+    const getAllVotes = () => JSON.parse(localStorage.getItem("pollVotes") || "{}");
+    const setAllVotes = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
+    const getVotesByUser = () => JSON.parse(localStorage.getItem('vh_votesByUser') || '{}');
+    const setVotesByUser = (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d));
+    const getFlags = () => JSON.parse(localStorage.getItem('pollFlags') || '{}');
+    const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
+    const getFlagsByUser = () => JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}');
+    const setFlagsByUser = (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d));
 
+    // DOM
     const titleEl = document.getElementById("poll-title");
     const categoryEl = document.getElementById("poll-category");
     const formEl = document.getElementById("vote-form");
@@ -92,21 +121,24 @@
     const copyBtn = document.getElementById("copy-btn");
     const copiedMsg = document.getElementById("copied-msg");
     const shareWA = document.getElementById("share-wa");
-    const shareX = document.getElementById("share-x");
+    const shareX  = document.getElementById("share-x");
     const toast = document.getElementById("toast");
+    const flagBtn = document.getElementById("flag-btn");
+    const flagNote = document.getElementById("flag-note");
+    const qrBtn = document.getElementById("qr-btn");
+    const qrWrap = document.getElementById("qr-wrap");
+    const qrImg = document.getElementById("qr-img");
 
-    const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
-    const getAllVotes = () => JSON.parse(localStorage.getItem("pollVotes") || "{}");
-    const setAllVotes = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
-
+    // Load poll
     const params = new URLSearchParams(location.search);
     const pollId = params.get("id") || "";
-    const poll = getCustomPolls()[pollId] || builtinPolls[pollId];
+    const poll = getCustomPolls()[pollId];
 
-    if (!poll) {
-      titleEl.textContent = "Poll not found.";
+    if (!poll || poll.hidden) {
+      titleEl.textContent = "Poll not found or unavailable.";
       formEl.innerHTML = "";
       submitBtn.style.display = "none";
+      document.getElementById('results').classList.add('hidden');
     } else {
       titleEl.textContent = poll.title || "Untitled poll";
       categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
@@ -115,6 +147,14 @@
       shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
       shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
 
+      // QR (external image service)
+      qrBtn.addEventListener('click', ()=>{
+        const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
+        qrImg.src = url;
+        qrWrap.classList.remove('hidden');
+      });
+
+      // Options
       formEl.innerHTML = "";
       (poll.options || []).forEach((opt, i) => {
         const id = `opt-${i}`;
@@ -125,6 +165,7 @@
         `);
       });
 
+      // Countdown
       const end = new Date(poll.endTime);
       function updateCountdown() {
         const diff = end - new Date();
@@ -144,23 +185,21 @@
       updateCountdown();
       setInterval(updateCountdown, 60000);
 
+      // Voting
       function currentVotes() {
         const all = getAllVotes();
         return all[pollId] || {};
       }
       function saveVotes(v) {
         const all = getAllVotes();
-        all[pollId] = v;
-        setAllVotes(all);
+        all[pollId] = v; setAllVotes(all);
       }
       function castVote(option) {
         const v = currentVotes();
         v[option] = (v[option] || 0) + 1;
         saveVotes(v);
       }
-      function totalVotes(v) {
-        return Object.values(v).reduce((a,b)=>a+b,0);
-      }
+      function totalVotes(v) { return Object.values(v).reduce((a,b)=>a+b,0); }
       function renderResults() {
         const v = currentVotes();
         const t = totalVotes(v);
@@ -184,7 +223,7 @@
       }
       renderResults();
 
-      // If already voted, lock form
+      // Already voted?
       const votesByUser = getVotesByUser();
       if (votesByUser[currentUser] && votesByUser[currentUser][pollId]) {
         submitBtn.disabled = true;
@@ -197,7 +236,6 @@
         e.preventDefault();
         if (new Date() > end) { updateCountdown(); return; }
 
-        // double-vote guard
         const votesByUser = getVotesByUser();
         const myVotes = votesByUser[currentUser] || {};
         if (myVotes[pollId]) {
@@ -211,7 +249,6 @@
         if (!chosen) { alert("Please select an option."); return; }
 
         castVote(chosen.value);
-        // record per user
         myVotes[pollId] = chosen.value;
         votesByUser[currentUser] = myVotes;
         setVotesByUser(votesByUser);
@@ -225,6 +262,28 @@
         formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
         noteEl.textContent = `You voted: ${chosen.value}`;
         noteEl.classList.remove('hidden');
+      });
+
+      // Flagging (per user, once per poll)
+      flagBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const flagsByUser = getFlagsByUser();
+        const my = flagsByUser[currentUser] || {};
+        if (my[pollId]) {
+          flagNote.textContent = "You’ve already flagged this poll.";
+          flagNote.classList.remove('hidden');
+          return;
+        }
+        const flags = getFlags();
+        flags[pollId] = (flags[pollId] || 0) + 1;
+        setFlags(flags);
+
+        my[pollId] = true;
+        flagsByUser[currentUser] = my;
+        setFlagsByUser(flagsByUser);
+
+        flagNote.textContent = "Thanks—your flag was recorded.";
+        flagNote.classList.remove('hidden');
       });
     }
 
