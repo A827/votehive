@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Superadmin – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <style>
+    .input { @apply w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500; }
+    .btn    { @apply inline-flex items-center justify-center px-4 py-2 rounded text-sm; }
+    .btn-p  { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+    .btn-s  { @apply bg-gray-100 text-gray-800 hover:bg-gray-200; }
+    .badge  { @apply px-2 py-1 rounded-full text-xs; }
+  </style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Login Gate -->
+  <section id="loginGate" class="max-w-md mx-auto px-4 py-16 hidden">
+    <h1 class="text-2xl font-bold mb-2">Superadmin Login</h1>
+    <p class="text-gray-600 mb-6">Enter your superadmin password to manage polls and settings.</p>
+    <div class="bg-white shadow rounded p-6 space-y-4">
+      <div>
+        <label class="block font-semibold mb-2">Password</label>
+        <input id="adminPass" type="password" class="input" placeholder="••••••••">
+      </div>
+      <div class="flex gap-2">
+        <button id="loginBtn" class="btn btn-p">Log In</button>
+        <a href="index.html" class="btn btn-s">Cancel</a>
+      </div>
+      <p id="loginError" class="text-sm text-red-600 hidden mt-2">Incorrect password.</p>
+    </div>
+    <p class="text-xs text-gray-500 mt-4">Demo-only gate. We’ll switch to Firebase Auth later.</p>
+  </section>
+
+  <!-- Admin App -->
+  <main id="adminApp" class="max-w-7xl mx-auto px-4 py-10 hidden">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">Superadmin</h1>
+        <p class="text-gray-600">Manage polls, feature them, close, or delete. Export/import backups.</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="exportBtn" class="btn btn-s">Export JSON</button>
+        <label class="btn btn-s cursor-pointer">
+          Import JSON <input id="importInput" type="file" accept="application/json" class="hidden">
+        </label>
+        <button id="logoutBtn" class="btn btn-s">Logout</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+      <div class="bg-white shadow rounded p-5">
+        <div class="text-sm text-gray-500">Total Polls</div>
+        <div id="statTotal" class="text-3xl font-extrabold mt-1">0</div>
+      </div>
+      <div class="bg-white shadow rounded p-5">
+        <div class="text-sm text-gray-500">Open Polls</div>
+        <div id="statOpen" class="text-3xl font-extrabold mt-1">0</div>
+      </div>
+      <div class="bg-white shadow rounded p-5">
+        <div class="text-sm text-gray-500">Featured</div>
+        <div id="statFeatured" class="text-3xl font-extrabold mt-1">0</div>
+      </div>
+    </section>
+
+    <!-- List + Editor -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+      <!-- Polls list -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-semibold">All Polls</h2>
+          <div class="flex items-center gap-2">
+            <input id="search" type="text" placeholder="Search title…" class="input w-64">
+            <select id="filterState" class="input w-40">
+              <option value="">All states</option>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+        <div id="pollsWrap" class="bg-white shadow rounded divide-y"></div>
+      </div>
+
+      <!-- Editor -->
+      <div class="lg:col-span-1">
+        <div class="bg-white shadow rounded p-5">
+          <h3 class="text-lg font-semibold mb-3">Edit Poll</h3>
+          <p id="editHint" class="text-sm text-gray-500 mb-4">Select a poll from the list to edit.</p>
+          <form id="editForm" class="space-y-3 hidden">
+            <input type="hidden" id="editId">
+            <div>
+              <label class="block text-sm font-medium mb-1">Title</label>
+              <input id="editTitle" class="input" placeholder="Poll title">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Category</label>
+              <input id="editCategory" class="input" placeholder="Category">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Options (comma-separated)</label>
+              <textarea id="editOptions" class="input" rows="3" placeholder="Option A, Option B, Option C"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">End Time</label>
+              <input id="editEnd" type="datetime-local" class="input">
+              <p class="text-xs text-gray-500 mt-1">Set a future date to keep it open, or past to close now.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="editFeatured" type="checkbox" class="h-4 w-4">
+              <label for="editFeatured" class="text-sm">Featured</label>
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button class="btn btn-p" id="saveBtn">Save</button>
+              <a id="openLink" class="btn btn-s" target="_blank" rel="noopener">Open</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ====== CONFIG (change this!) ======
+    const ADMIN_PASSWORD = "votehive-dev-2025"; // 🔒 Change for your demo
+
+    // ====== STORAGE HELPERS ======
+    const getPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
+    const setPolls = (p) => localStorage.setItem("customPolls", JSON.stringify(p));
+    const isAdmin = () => localStorage.getItem("vh_is_admin") === "1";
+    const setAdmin = (flag) => localStorage.setItem("vh_is_admin", flag ? "1" : "0");
+
+    // ====== DOM REFS ======
+    const loginGate   = document.getElementById("loginGate");
+    const adminApp    = document.getElementById("adminApp");
+    const loginBtn    = document.getElementById("loginBtn");
+    const adminPass   = document.getElementById("adminPass");
+    const loginError  = document.getElementById("loginError");
+    const logoutBtn   = document.getElementById("logoutBtn");
+    const exportBtn   = document.getElementById("exportBtn");
+    const importInput = document.getElementById("importInput");
+
+    const statTotal   = document.getElementById("statTotal");
+    const statOpen    = document.getElementById("statOpen");
+    const statFeat    = document.getElementById("statFeatured");
+    const pollsWrap   = document.getElementById("pollsWrap");
+    const searchEl    = document.getElementById("search");
+    const filterState = document.getElementById("filterState");
+
+    const editForm    = document.getElementById("editForm");
+    const editHint    = document.getElementById("editHint");
+    const editId      = document.getElementById("editId");
+    const editTitle   = document.getElementById("editTitle");
+    const editCategory= document.getElementById("editCategory");
+    const editOptions = document.getElementById("editOptions");
+    const editEnd     = document.getElementById("editEnd");
+    const editFeatured= document.getElementById("editFeatured");
+    const openLink    = document.getElementById("openLink");
+    const saveBtn     = document.getElementById("saveBtn");
+
+    // ====== LOGIN FLOW ======
+    function showLogin() {
+      loginGate.classList.remove("hidden");
+      adminApp.classList.add("hidden");
+    }
+    function showAdmin() {
+      loginGate.classList.add("hidden");
+      adminApp.classList.remove("hidden");
+      render();
+    }
+    function tryAutoEnter() {
+      if (isAdmin()) showAdmin(); else showLogin();
+    }
+    loginBtn?.addEventListener("click", () => {
+      loginError.classList.add("hidden");
+      if (adminPass.value === ADMIN_PASSWORD) {
+        setAdmin(true);
+        adminPass.value = "";
+        showAdmin();
+      } else {
+        loginError.classList.remove("hidden");
+      }
+    });
+    logoutBtn?.addEventListener("click", () => {
+      setAdmin(false);
+      showLogin();
+    });
+
+    // ====== RENDER ======
+    function render() {
+      const polls = getPolls();
+      const term = (searchEl.value || "").toLowerCase();
+      const state = filterState.value;
+
+      const entries = Object.entries(polls).filter(([id, p]) => {
+        if (!p) return false;
+        const titleOk = !term || (p.title || "").toLowerCase().includes(term);
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const stateOk = !state || (state === "open" && !closed) || (state === "closed" && closed);
+        return titleOk && stateOk;
+      });
+
+      // Stats
+      statTotal.textContent = Object.keys(polls).length;
+      statOpen.textContent = Object.values(polls).filter(p => Date.now() < new Date(p.endTime).getTime()).length;
+      statFeat.textContent = Object.values(polls).filter(p => p && p.featured).length;
+
+      // List
+      pollsWrap.innerHTML = "";
+      if (entries.length === 0) {
+        pollsWrap.innerHTML = '<div class="p-6 text-gray-600 text-sm">No polls found.</div>';
+      } else {
+        entries
+          .sort((a,b) => new Date(a[1].endTime) - new Date(b[1].endTime))
+          .forEach(([id, p]) => {
+            const end = new Date(p.endTime);
+            const closed = Date.now() > end.getTime();
+            const badgeState = closed ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700";
+            const feat = p.featured ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600";
+            const el = document.createElement("div");
+            el.className = "p-4";
+            el.innerHTML = `
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="badge ${badgeState}">${closed ? "Closed" : "Open"}</span>
+                    <span class="badge ${feat}">${p.featured ? "Featured" : "Standard"}</span>
+                    <span class="text-gray-500 text-xs">${p.category || "General"}</span>
+                  </div>
+                  <div class="font-semibold">${p.title || "Untitled poll"}</div>
+                  <div class="text-xs text-gray-500 mt-1">ID: ${id}</div>
+                  <div class="text-xs text-gray-500">Ends: ${isNaN(end) ? "N/A" : end.toLocaleString()}</div>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="btn btn-s">Open</a>
+                  <button data-id="${id}" class="btn btn-s act-edit">Edit</button>
+                  <button data-id="${id}" class="btn btn-s act-feature">${p.featured ? "Unfeature" : "Feature"}</button>
+                  <button data-id="${id}" class="btn btn-s act-close">Close Now</button>
+                  <button data-id="${id}" class="btn btn-s act-delete">Delete</button>
+                </div>
+              </div>
+            `;
+            pollsWrap.appendChild(el);
+          });
+
+        // bind actions
+        pollsWrap.querySelectorAll(".act-edit").forEach(btn => btn.addEventListener("click", () => loadEditor(btn.getAttribute("data-id"))));
+        pollsWrap.querySelectorAll(".act-feature").forEach(btn => btn.addEventListener("click", () => toggleFeature(btn.getAttribute("data-id"))));
+        pollsWrap.querySelectorAll(".act-close").forEach(btn => btn.addEventListener("click", () => closeNow(btn.getAttribute("data-id"))));
+        pollsWrap.querySelectorAll(".act-delete").forEach(btn => btn.addEventListener("click", () => deletePoll(btn.getAttribute("data-id"))));
+      }
+    }
+
+    // ====== ACTIONS ======
+    function loadEditor(id) {
+      const polls = getPolls();
+      const p = polls[id];
+      if (!p) return;
+      editId.value = id;
+      editTitle.value = p.title || "";
+      editCategory.value = p.category || "";
+      editOptions.value = (p.options || []).join(", ");
+      // to datetime-local format
+      const dt = new Date(p.endTime);
+      if (!isNaN(dt)) {
+        const iso = new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16);
+        editEnd.value = iso;
+      } else {
+        editEnd.value = "";
+      }
+      editFeatured.checked = !!p.featured;
+      openLink.href = `poll.html?id=${encodeURIComponent(id)}`;
+
+      editHint.classList.add("hidden");
+      editForm.classList.remove("hidden");
+    }
+
+    saveBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = editId.value;
+      const polls = getPolls();
+      const p = polls[id];
+      if (!p) return;
+
+      p.title = editTitle.value.trim() || p.title;
+      p.category = editCategory.value.trim() || p.category;
+      p.options = editOptions.value.split(",").map(s => s.trim()).filter(Boolean);
+      if (editEnd.value) {
+        const dt = new Date(editEnd.value);
+        p.endTime = new Date(dt.getTime() + dt.getTimezoneOffset()*60000).toISOString(); // back to UTC
+      }
+      p.featured = !!editFeatured.checked;
+
+      polls[id] = p;
+      setPolls(polls);
+      render();
+    });
+
+    function toggleFeature(id) {
+      const polls = getPolls();
+      if (!polls[id]) return;
+      polls[id].featured = !polls[id].featured;
+      setPolls(polls);
+      render();
+    }
+
+    function closeNow(id) {
+      const polls = getPolls();
+      if (!polls[id]) return;
+      polls[id].endTime = new Date(Date.now() - 1000).toISOString();
+      setPolls(polls);
+      render();
+    }
+
+    function deletePoll(id) {
+      if (!confirm("Delete this poll? This cannot be undone.")) return;
+      const polls = getPolls();
+      delete polls[id];
+      setPolls(polls);
+      render();
+    }
+
+    // ====== EXPORT / IMPORT ======
+    exportBtn?.addEventListener("click", () => {
+      const data = JSON.stringify(getPolls(), null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "votehive-polls-backup.json";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    importInput?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || typeof data !== "object") throw new Error("Invalid file");
+        setPolls(data);
+        render();
+        alert("Import complete.");
+      } catch (err) {
+        alert("Import failed: " + err.message);
+      } finally {
+        importInput.value = "";
+      }
+    });
+
+    // ====== FILTERS ======
+    searchEl?.addEventListener("input", render);
+    filterState?.addEventListener("change", render);
+
+    // Boot
+    tryAutoEnter();
+  </script>
+</body>
+</html>
