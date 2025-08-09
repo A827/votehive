@@ -14,6 +14,8 @@
     .vh-btn-light { background:#fff; color:#6b21a8; }
     html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
     .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
+    .stat { border-radius:12px; padding:14px; }
+    html.vh-dark .stat { background:#0b1222; border:1px solid #1f2937; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
@@ -40,12 +42,29 @@
       <!-- My rewards -->
       <section class="vh-card border border-gray-100 shadow rounded p-6">
         <h1 class="text-2xl font-bold mb-2">Your Rewards</h1>
-        <p class="text-sm text-gray-600 mb-4">Earn points by voting, sharing, and getting polls approved.</p>
+        <p class="text-sm text-gray-600 mb-4">Earn points by voting and sharing polls. (Local demo)</p>
+
         <div id="me" class="text-gray-700">
           <p class="mb-2"><span class="font-semibold">User:</span> <span id="meName">guest</span></p>
           <p class="mb-2"><span class="font-semibold">Points:</span> <span id="mePoints">0</span></p>
-          <p class="mb-2"><span class="font-semibold">Badge:</span> <span id="meBadge" class="badge bg-gray-200 text-gray-800">None</span></p>
+          <p class="mb-4"><span class="font-semibold">Badge:</span> <span id="meBadge" class="badge bg-gray-200 text-gray-800">None</span></p>
         </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="stat">
+            <div class="text-xs text-gray-500">Votes cast</div>
+            <div id="meVotes" class="text-2xl font-extrabold mt-1">0</div>
+          </div>
+          <div class="stat">
+            <div class="text-xs text-gray-500">Polls shared</div>
+            <div id="meShares" class="text-2xl font-extrabold mt-1">0</div>
+          </div>
+          <div class="stat">
+            <div class="text-xs text-gray-500">Apps approved</div>
+            <div id="meApprovals" class="text-2xl font-extrabold mt-1">0</div>
+          </div>
+        </div>
+
         <div class="mt-6">
           <h2 class="font-semibold mb-2">How to earn</h2>
           <ul class="list-disc ml-6 text-sm text-gray-600 space-y-1">
@@ -58,10 +77,19 @@
 
       <!-- Leaderboard -->
       <section class="vh-card border border-gray-100 shadow rounded p-6 lg:col-span-2">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 class="text-xl font-semibold">Leaderboard</h2>
-          <input id="q" type="text" placeholder="Search username…" class="border rounded px-3 py-2 w-64">
+          <div class="flex items-center gap-2">
+            <input id="q" type="text" placeholder="Search username…" class="border rounded px-3 py-2 w-64">
+            <select id="limit" class="border rounded px-3 py-2">
+              <option value="10">Top 10</option>
+              <option value="25">Top 25</option>
+              <option value="50" selected>Top 50</option>
+              <option value="100">Top 100</option>
+            </select>
+          </div>
         </div>
+
         <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead>
@@ -70,6 +98,9 @@
                 <th class="py-2 pr-4">User</th>
                 <th class="py-2 pr-4">Points</th>
                 <th class="py-2 pr-4">Badge</th>
+                <th class="py-2 pr-4">Votes</th>
+                <th class="py-2 pr-4">Shares</th>
+                <th class="py-2 pr-4">Approvals</th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
@@ -90,9 +121,13 @@
   </footer>
 
   <script>
+    // ---- data helpers ----
+    const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
     const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
     const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
-    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+    const getVotesByUser = () => { try { return JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'); } catch { return {}; } };
+    const getEarned = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
+    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
 
     function badgeFor(points){
       if (points >= 400) return {name:'Diamond', cls:'bg-indigo-100 text-indigo-800', icon:'🔷'};
@@ -102,48 +137,89 @@
       return {name:'None', cls:'bg-gray-200 text-gray-800', icon:'—'};
     }
 
+    function myStats(){
+      const votes = getVotesByUser()[me] || {};
+      const shareKeys = Object.keys(getEarned()).filter(k => k.startsWith(`share:${me}:`)).length;
+      const approvals = getLog().filter(x => x.applicant === me && x.status === 'approved').length;
+      return { votes: Object.keys(votes).length, shares: shareKeys, approvals };
+    }
+
+    // ---- render "me" ----
     function renderMe(){
-      const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
       const pts = getPoints()[me] || 0;
+      const b = badgeFor(pts);
       document.getElementById('meName').textContent = me;
       document.getElementById('mePoints').textContent = pts;
-      const b = badgeFor(pts);
       const el = document.getElementById('meBadge');
       el.textContent = `${b.icon} ${b.name}`;
       el.className = `badge ${b.cls}`;
+
+      const stats = myStats();
+      document.getElementById('meVotes').textContent = stats.votes;
+      document.getElementById('meShares').textContent = stats.shares;
+      document.getElementById('meApprovals').textContent = stats.approvals;
     }
 
+    // ---- leaderboard table ----
     function renderTable(){
       const q = (document.getElementById('q').value || '').toLowerCase();
+      const limit = parseInt(document.getElementById('limit').value, 10);
       const users = getUsers();
       const pts = getPoints();
+      const votesByUser = getVotesByUser();
+      const earned = getEarned();
+      const logs = getLog();
 
-      const list = users
-        .map(u => ({ username: u.username, points: pts[u.username] || 0 }))
-        .filter(u => !q || u.username.toLowerCase().includes(q))
-        .sort((a,b)=> b.points - a.points)
-        .slice(0, 50);
+      const shareCounts = {};
+      Object.keys(earned).forEach(k=>{
+        // k looks like "share:username:pollId"
+        const parts = k.split(':');
+        if (parts[0]==='share' && parts[1]) shareCounts[parts[1]] = (shareCounts[parts[1]]||0) + 1;
+      });
 
-      const rows = document.getElementById('rows');
-      rows.innerHTML = '';
-      list.forEach((u, i) => {
+      const approvalsByUser = {};
+      logs.forEach(x => {
+        if (x.status === 'approved' && x.applicant) approvalsByUser[x.applicant] = (approvalsByUser[x.applicant]||0) + 1;
+      });
+
+      const rows = users.map(u => {
+        const uname = u.username;
+        return {
+          username: uname,
+          points: pts[uname] || 0,
+          votes: Object.keys(votesByUser[uname] || {}).length,
+          shares: shareCounts[uname] || 0,
+          approvals: approvalsByUser[uname] || 0
+        };
+      })
+      .filter(u => !q || u.username.toLowerCase().includes(q))
+      .sort((a,b)=> b.points - a.points)
+      .slice(0, limit);
+
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      rows.forEach((u, i) => {
         const b = badgeFor(u.points);
-        rows.insertAdjacentHTML('beforeend', `
+        tbody.insertAdjacentHTML('beforeend', `
           <tr class="border-b">
             <td class="py-2 pr-4">${i+1}</td>
             <td class="py-2 pr-4">${u.username}</td>
             <td class="py-2 pr-4">${u.points}</td>
             <td class="py-2 pr-4"><span class="badge ${b.cls}">${b.icon} ${b.name}</span></td>
+            <td class="py-2 pr-4">${u.votes}</td>
+            <td class="py-2 pr-4">${u.shares}</td>
+            <td class="py-2 pr-4">${u.approvals}</td>
           </tr>
         `);
       });
 
-      if (list.length === 0) {
-        rows.innerHTML = '<tr><td class="py-6 text-center text-gray-600" colspan="4">No users yet.</td></tr>';
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td class="py-6 text-center text-gray-600" colspan="7">No users yet.</td></tr>';
       }
     }
 
     document.getElementById('q').addEventListener('input', renderTable);
+    document.getElementById('limit').addEventListener('change', renderTable);
     renderMe(); renderTable();
   </script>
 </body>
