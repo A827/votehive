@@ -61,6 +61,28 @@
       <div id="pendingList" class="divide-y"></div>
     </section>
 
+    <!-- Users -->
+    <section class="bg-white shadow rounded p-6 mb-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">Users</h2>
+        <span id="usersHint" class="text-sm text-gray-500"></span>
+      </div>
+      <div id="usersTable" class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-600 border-b">
+              <th class="py-2 pr-4">Username</th>
+              <th class="py-2 pr-4">Role</th>
+              <th class="py-2 pr-4">Created</th>
+              <th class="py-2 pr-4">Last Login</th>
+              <th class="py-2 pr-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Existing polls -->
     <section class="bg-white shadow rounded p-6">
       <div class="flex items-center justify-between mb-3">
@@ -81,6 +103,7 @@
   <script>
     // Helpers
     const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
+    const setUsers = (d) => localStorage.setItem('userList', JSON.stringify(d));
     const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
     const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
     const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
@@ -104,7 +127,13 @@
       document.getElementById('statOpen').textContent =
         Object.values(polls).filter(p => new Date(p.endTime) > new Date()).length;
 
-      // Pending list
+      renderPending(pending);
+      renderUsers(users);
+      renderPolls(polls);
+    }
+
+    // Pending
+    function renderPending(pending) {
       const el = document.getElementById('pendingList');
       const items = Object.entries(pending).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
       document.getElementById('pendingHint').textContent = items.length ? '' : 'No applications pending.';
@@ -152,7 +181,6 @@
           if (!confirm('Reject this application?')) return;
           const pend = getPending();
           const app = pend[pid]; if (!app) return;
-          // log decision
           const log = getLog();
           log.push({
             id: pid, status: 'rejected', title: app.title, category: app.category,
@@ -162,9 +190,6 @@
           delete pend[pid]; setPending(pend); render();
         });
       });
-
-      // Poll list
-      renderPolls();
     }
 
     function approveApplication(pid, days) {
@@ -180,7 +205,6 @@
       polls[id] = { title: app.title, category: app.category, options: app.options, endTime, createdBy: app.applicant || 'guest', featured: false };
       setPolls(polls);
 
-      // log decision
       const log = getLog();
       log.push({
         id: pid, status: 'approved', title: app.title, category: app.category,
@@ -192,9 +216,43 @@
       render(); alert('Approved and published!');
     }
 
-    function renderPolls() {
+    // Users
+    function renderUsers(users){
+      const body = document.getElementById('usersBody');
+      document.getElementById('usersHint').textContent = users.length ? '' : 'No users yet.';
+      body.innerHTML = '';
+      users
+        .sort((a,b)=> new Date(b.lastLoginAt) - new Date(a.lastLoginAt))
+        .forEach(u=>{
+          const tr = document.createElement('tr');
+          tr.className = 'border-b';
+          tr.innerHTML = `
+            <td class="py-2 pr-4">${u.username}</td>
+            <td class="py-2 pr-4">${u.role || 'user'}</td>
+            <td class="py-2 pr-4">${u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</td>
+            <td class="py-2 pr-4">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}</td>
+            <td class="py-2 pr-4">
+              <button class="removeUser bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm" data-username="${u.username}">Remove</button>
+            </td>
+          `;
+          body.appendChild(tr);
+        });
+
+      body.querySelectorAll('.removeUser').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const uname = btn.getAttribute('data-username');
+          if (!confirm(`Remove user "${uname}"?`)) return;
+          let users = getUsers();
+          users = users.filter(u => u.username !== uname);
+          setUsers(users);
+          render();
+        });
+      });
+    }
+
+    // Polls table
+    function renderPolls(polls){
       const list = document.getElementById('pollList');
-      const polls = getPolls();
       const term = (document.getElementById('search').value || '').toLowerCase();
       const state = document.getElementById('filterState').value;
 
@@ -202,8 +260,8 @@
         const titleOk = !term || (p.title||'').toLowerCase().includes(term);
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
-        const stateOk = !state || (state==='open' && !closed) || (state==='closed' && closed);
-        return titleOk && stateOk;
+        const stOk = !state || (state==='open' && !closed) || (state==='closed' && closed);
+        return titleOk && stOk;
       }).sort((a,b)=> new Date(a[1].endTime)-new Date(b[1].endTime));
 
       list.innerHTML = entries.length ? '' : '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
@@ -233,7 +291,6 @@
         list.appendChild(row);
       });
 
-      // actions
       list.querySelectorAll('.feature').forEach(b=>b.addEventListener('click',()=>{
         const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].featured=!polls[id].featured; setPolls(polls); render();
       }));
@@ -245,8 +302,8 @@
       }));
     }
 
-    document.getElementById('search').addEventListener('input', renderPolls);
-    document.getElementById('filterState').addEventListener('change', renderPolls);
+    document.getElementById('search').addEventListener('input', ()=>render());
+    document.getElementById('filterState').addEventListener('change', ()=>render());
 
     render();
   </script>

@@ -17,8 +17,10 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="trending.html" class="hover:underline">Trending Polls</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
         <a href="login.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
@@ -29,7 +31,7 @@
     <h1 class="text-4xl md:text-5xl font-bold mb-4">Where Ideas Compete</h1>
     <p class="text-lg mb-6 max-w-xl mx-auto">Create, vote, and discover the most influential ideas across industries.</p>
     <div class="flex flex-wrap justify-center gap-4">
-      <a href="create.html" class="bg-white text-indigo-700 px-6 py-3 rounded font-semibold text-sm hover:bg-gray-100">Create a Poll</a>
+      <a href="create.html" class="bg-white text-indigo-700 px-6 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
       <a href="browse.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
       <a href="my-polls.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">My Polls</a>
     </div>
@@ -41,58 +43,33 @@
       <div>
         <div class="text-indigo-600 text-3xl mb-2">✏️</div>
         <h3 class="font-semibold mb-1">Submit Your Ideas</h3>
-        <p class="text-sm text-gray-600">Share your questions and debates with the world.</p>
+        <p class="text-sm text-gray-600">Users apply to publish; admins approve.</p>
       </div>
       <div>
         <div class="text-indigo-600 text-3xl mb-2">🗳️</div>
         <h3 class="font-semibold mb-1">Get Real-Time Votes</h3>
-        <p class="text-sm text-gray-600">Engage the community and gather instant feedback.</p>
+        <p class="text-sm text-gray-600">Gather instant feedback on approved polls.</p>
       </div>
       <div>
         <div class="text-indigo-600 text-3xl mb-2">📊</div>
         <h3 class="font-semibold mb-1">Track Results</h3>
-        <p class="text-sm text-gray-600">Watch live trends and outcomes unfold.</p>
+        <p class="text-sm text-gray-600">Watch trends and outcomes unfold.</p>
       </div>
       <div>
         <div class="text-indigo-600 text-3xl mb-2">💡</div>
         <h3 class="font-semibold mb-1">Uncover Insights</h3>
-        <p class="text-sm text-gray-600">Understand public opinion and emerging trends.</p>
+        <p class="text-sm text-gray-600">Understand what people really think.</p>
       </div>
     </div>
   </section>
 
-  <!-- Featured Polls -->
+  <!-- Featured (dynamic) -->
   <section class="max-w-7xl mx-auto px-4 py-16">
-    <h2 class="text-2xl font-bold mb-8">Featured Polls</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">82k</span>
-          <span class="text-gray-500">Startups</span>
-        </div>
-        <h4 class="font-semibold mb-2">Is remote work the future of tech industry?</h4>
-        <p class="text-sm text-gray-600 mb-3">67% of respondents think remote work will dominate the tech industry.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">65k</span>
-          <span class="text-gray-500">Politics</span>
-        </div>
-        <h4 class="font-semibold mb-2">Should voting be mandatory?</h4>
-        <p class="text-sm text-gray-600 mb-3">A majority of users support making voting compulsory.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">51k</span>
-          <span class="text-gray-500">Brands</span>
-        </div>
-        <h4 class="font-semibold mb-2">Which coffee chain do you prefer?</h4>
-        <p class="text-sm text-gray-600 mb-3">Starbucks is favored by 55% of participants.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="text-2xl font-bold">Featured Polls</h2>
+      <a href="browse.html" class="text-indigo-600 text-sm hover:underline">See all →</a>
     </div>
+    <div id="featuredGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
   </section>
 
   <!-- Footer -->
@@ -100,10 +77,53 @@
     <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6 mt-2 md:mt-0">
+        <a href="applications.html" class="hover:underline">Your Applications</a>
         <a href="#" class="hover:underline">About</a>
         <a href="#" class="hover:underline">Contact</a>
       </div>
     </div>
   </footer>
+
+  <script>
+    (function renderFeatured(){
+      const wrap = document.getElementById('featuredGrid');
+      let polls = {};
+      try { polls = JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { polls = {}; }
+
+      const featured = Object.entries(polls)
+        .filter(([id,p]) => p && p.featured)
+        .sort((a,b)=> new Date(a[1].endTime)-new Date(b[1].endTime))
+        .slice(0,6);
+
+      function card(id,p){
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        return `
+          <div class="bg-white shadow rounded p-4 flex flex-col">
+            <div class="flex items-center gap-2 text-sm mb-2">
+              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-gray-500">${p.category || 'General'}</span>
+            </div>
+            <h4 class="font-semibold mb-2">${p.title}</h4>
+            <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
+          </div>
+        `;
+      }
+
+      if (featured.length === 0) {
+        // fallback static
+        wrap.innerHTML = `
+          <div class="bg-white shadow rounded p-4"><div class="flex items-center gap-2 text-sm mb-2"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">82k</span><span class="text-gray-500">Startups</span></div><h4 class="font-semibold mb-2">Is remote work the future of tech industry?</h4><p class="text-sm text-gray-600 mb-3">67% of respondents think remote work will dominate the tech industry.</p><span class="text-xs text-gray-500">Summary by AI</span></div>
+          <div class="bg-white shadow rounded p-4"><div class="flex items-center gap-2 text-sm mb-2"><span class="bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">65k</span><span class="text-gray-500">Politics</span></div><h4 class="font-semibold mb-2">Should voting be mandatory?</h4><p class="text-sm text-gray-600 mb-3">A majority of users support making voting compulsory.</p><span class="text-xs text-gray-500">Summary by AI</span></div>
+          <div class="bg-white shadow rounded p-4"><div class="flex items-center gap-2 text-sm mb-2"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">51k</span><span class="text-gray-500">Brands</span></div><h4 class="font-semibold mb-2">Which coffee chain do you prefer?</h4><p class="text-sm text-gray-600 mb-3">Starbucks is favored by 55% of participants.</p><span class="text-xs text-gray-500">Summary by AI</span></div>
+        `;
+        return;
+      }
+
+      wrap.innerHTML = featured.map(([id,p])=>card(id,p)).join('');
+    })();
+  </script>
 </body>
 </html>

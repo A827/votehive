@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Browse Polls – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
 </head>
 <body class="bg-white text-gray-800 font-sans">
@@ -17,156 +17,114 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="index.html" class="hover:underline">Home</a>
-        <a href="trending.html" class="hover:underline">Trending Polls</a>
-        <a href="browse.html" class="hover:underline underline-offset-4">Browse Polls</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
-        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <a href="login.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
   </header>
 
-  <!-- Page Title -->
+  <!-- Title -->
   <section class="text-center py-12 bg-gray-50">
     <h1 class="text-3xl font-bold mb-2">Browse Polls</h1>
-    <p class="text-gray-600">Explore active debates and cast your vote on trending topics.</p>
+    <p class="text-gray-600">Explore active debates and cast your vote.</p>
   </section>
 
-  <!-- Your Local Polls (dynamic) -->
-  <section class="max-w-7xl mx-auto px-4 pt-6">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-semibold">Your Latest Polls</h2>
-      <div class="flex items-center gap-3">
-        <input id="search" type="text" placeholder="Search your polls…" class="border border-gray-300 rounded px-3 py-2 w-64">
-        <select id="categoryFilter" class="border border-gray-300 rounded px-3 py-2">
-          <option value="">All categories</option>
-        </select>
-      </div>
+  <!-- Controls -->
+  <main class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex flex-wrap gap-3 items-center mb-6">
+      <input id="q" type="text" placeholder="Search by title…" class="border rounded px-3 py-2 w-72">
+      <select id="cat" class="border rounded px-3 py-2">
+        <option value="">All categories</option>
+      </select>
+      <select id="state" class="border rounded px-3 py-2">
+        <option value="">All states</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
     </div>
 
-    <div id="myPollsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-      <!-- Filled by JS -->
-    </div>
-  </section>
-
-  <!-- Featured Polls (static examples) -->
-  <section class="max-w-7xl mx-auto px-4 pb-12">
-    <h2 class="text-2xl font-bold mb-6">Featured Polls</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">31k</span>
-          <span class="text-gray-500">Finance</span>
-        </div>
-        <h4 class="font-semibold mb-2">Is cryptocurrency the future of global finance?</h4>
-        <p class="text-sm text-gray-600 mb-3">48% of participants believe crypto will be widely adopted by 2030.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
-
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-green-100 text-green-600 px-2 py-1 rounded-full font-medium">22k</span>
-          <span class="text-gray-500">Parenting</span>
-        </div>
-        <h4 class="font-semibold mb-2">Should screen time be limited for children under 12?</h4>
-        <p class="text-sm text-gray-600 mb-3">Most respondents support stricter digital limits for kids.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
-
-      <div class="bg-white shadow rounded p-4">
-        <div class="flex items-center gap-2 text-sm mb-2">
-          <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">40k</span>
-          <span class="text-gray-500">Design</span>
-        </div>
-        <h4 class="font-semibold mb-2">Is minimalism still the dominant design trend?</h4>
-        <p class="text-sm text-gray-600 mb-3">Opinions are split; 55% agree it’s losing relevance in 2025.</p>
-        <span class="text-xs text-gray-500">Summary by AI</span>
-      </div>
-    </div>
-  </section>
+    <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+  </main>
 
   <!-- Footer -->
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
-      <div class="flex gap-6 mt-2 md:mt-0">
+      <div class="flex gap-6">
+        <a href="applications.html" class="hover:underline">Your Applications</a>
         <a href="#" class="hover:underline">About</a>
         <a href="#" class="hover:underline">Contact</a>
       </div>
     </div>
   </footer>
 
-  <!-- Dynamic render script -->
   <script>
-    const grid = document.getElementById('myPollsGrid');
-    const searchEl = document.getElementById('search');
-    const categoryEl = document.getElementById('categoryFilter');
+    const qEl = document.getElementById('q');
+    const catEl = document.getElementById('cat');
+    const stateEl = document.getElementById('state');
+    const grid = document.getElementById('grid');
 
-    function loadPolls() {
-      try {
-        return JSON.parse(localStorage.getItem('customPolls') || '{}');
-      } catch {
-        return {};
+    function getPolls() {
+      try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; }
+    }
+
+    function populateCats(polls){
+      const cats = new Set();
+      Object.values(polls).forEach(p => p?.category && cats.add(p.category));
+      if (catEl.options.length === 1) {
+        [...cats].sort().forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c; opt.textContent = c; catEl.appendChild(opt);
+        });
       }
     }
 
-    function populateCategories(data) {
-      const cats = new Set();
-      Object.values(data).forEach(p => { if (p && p.category) cats.add(p.category); });
-      // keep first option (All categories)
-      while (categoryEl.options.length > 1) categoryEl.remove(1);
-      [...cats].sort().forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c; opt.textContent = c; categoryEl.appendChild(opt);
-      });
-    }
+    function render(){
+      const polls = getPolls();
+      populateCats(polls);
+      const term = (qEl.value || '').toLowerCase();
+      const cat  = catEl.value;
+      const st   = stateEl.value;
 
-    function render() {
-      const data = loadPolls();
-      populateCategories(data);
-
-      const term = (searchEl.value || '').toLowerCase();
-      const cat = categoryEl.value || '';
-
-      const entries = Object.entries(data)
-        .filter(([id, p]) => p && (!term || (p.title || '').toLowerCase().includes(term)))
-        .filter(([id, p]) => !cat || p.category === cat)
-        .sort((a, b) => new Date(a[1].endTime) - new Date(b[1].endTime))
-        .slice(0, 12);
+      const entries = Object.entries(polls).filter(([id,p])=>{
+        if (!p) return false;
+        const titleOk = !term || (p.title||'').toLowerCase().includes(term);
+        const catOk   = !cat || p.category === cat;
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const stOk = !st || (st==='open' && !closed) || (st==='closed' && closed);
+        return titleOk && catOk && stOk;
+      }).sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
 
       grid.innerHTML = '';
-
       if (entries.length === 0) {
-        grid.innerHTML = `
-          <div class="col-span-full text-center bg-gray-50 rounded p-8">
-            <p class="text-gray-600 mb-3">No local polls found.</p>
-            <a href="create.html" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded text-sm">Create a Poll</a>
-          </div>`;
+        grid.innerHTML = '<div class="col-span-full text-center bg-gray-50 rounded p-10 text-gray-600">No polls match your filters.</div>';
         return;
       }
 
-      entries.forEach(([id, p]) => {
+      entries.forEach(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
         const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
-        const card = `
+        grid.insertAdjacentHTML('beforeend', `
           <div class="bg-white shadow rounded p-4 flex flex-col">
             <div class="flex items-center gap-2 text-sm mb-2">
-              <span class="px-2 py-1 rounded-full ${badge}">${closed ? 'Closed' : 'Open'}</span>
+              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
               <span class="text-gray-500">${p.category || 'General'}</span>
             </div>
-            <h4 class="font-semibold mb-2">${p.title || 'Untitled poll'}</h4>
-            <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end) ? 'N/A' : end.toLocaleString()}</p>
+            <h4 class="font-semibold mb-2">${p.title}</h4>
+            <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
             <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
           </div>
-        `;
-        grid.insertAdjacentHTML('beforeend', card);
+        `);
       });
     }
 
-    searchEl.addEventListener('input', render);
-    categoryEl.addEventListener('change', render);
+    qEl.addEventListener('input', render);
+    catEl.addEventListener('change', render);
+    stateEl.addEventListener('change', render);
     render();
   </script>
 </body>

@@ -18,6 +18,7 @@
       <nav class="flex gap-4 text-sm">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="applications.html" class="hover:underline">Your Applications</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
@@ -29,7 +30,7 @@
   <!-- Title -->
   <section class="text-center py-12 bg-gray-50">
     <h1 class="text-3xl font-bold mb-2">Apply to Create a Poll</h1>
-    <p class="text-gray-600">Submit your poll for admin review. You’ll be notified here once approved.</p>
+    <p class="text-gray-600">Submit your poll for admin review. Track status on the Applications page.</p>
   </section>
 
   <!-- Form -->
@@ -86,7 +87,7 @@
     </form>
 
     <div id="toast" class="hidden mt-6 p-4 rounded bg-green-50 text-green-700 border border-green-200">
-      ✅ Application submitted! An admin will review it soon. You can continue browsing.
+      ✅ Application submitted! <a href="applications.html" class="underline font-medium">View your applications →</a>
     </div>
   </section>
 
@@ -95,6 +96,7 @@
     <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6 mt-2 md:mt-0">
+        <a href="applications.html" class="hover:underline">Your Applications</a>
         <a href="#" class="hover:underline">About</a>
         <a href="#" class="hover:underline">Contact</a>
       </div>
@@ -102,8 +104,7 @@
   </footer>
 
   <script>
-    const addBtn = document.getElementById('addOptionBtn');
-    addBtn.addEventListener('click', () => {
+    document.getElementById('addOptionBtn').addEventListener('click', () => {
       const container = document.getElementById('options');
       const i = container.querySelectorAll('input').length + 1;
       const el = document.createElement('input');
@@ -114,50 +115,30 @@
       container.appendChild(el);
     });
 
-    function getUsername() {
-      return localStorage.getItem('username') || 'guest';
-    }
-
-    function getPending() {
-      try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; }
-    }
-    function setPending(obj) {
-      localStorage.setItem('pendingPolls', JSON.stringify(obj));
-    }
+    const who = localStorage.getItem('username') || 'guest';
+    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
 
     document.getElementById('applyForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const title = document.getElementById('title').value.trim();
       const category = document.getElementById('category').value.trim();
       const context = document.getElementById('context').value.trim();
-      const options = Array.from(document.querySelectorAll('#options input'))
-        .map(i => i.value.trim()).filter(Boolean);
+      const options = Array.from(document.querySelectorAll('#options input')).map(i=>i.value.trim()).filter(Boolean);
 
-      if (!title || !category || options.length < 2) {
-        alert('Please complete the question, category, and add at least 2 options.');
-        return;
-      }
+      if (!title || !category || options.length < 2) { alert('Please complete the form.'); return; }
 
-      // Application ID (unique)
-      let id = 'app-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      let id = 'app-' + title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
       if (!id || id === 'app-') id = 'app-' + Date.now();
-
       const pending = getPending();
-      // Ensure uniqueness
       if (pending[id]) id = id + '-' + Date.now();
 
-      pending[id] = {
-        status: 'pending',
-        title, category, options, context,
-        applicant: getUsername(),
-        submittedAt: new Date().toISOString()
-      };
+      pending[id] = { status:'pending', title, category, options, context, applicant: who, submittedAt: new Date().toISOString() };
       setPending(pending);
 
       document.getElementById('applyForm').reset();
       document.getElementById('toast').classList.remove('hidden');
-      // Optional: redirect somewhere
-      // setTimeout(() => location.href = 'my-polls.html', 1000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   </script>
 </body>
