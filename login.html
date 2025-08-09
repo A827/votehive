@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Log In – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Auth Card -->
+  <main class="max-w-md mx-auto px-4 py-12">
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h1 id="formTitle" class="text-2xl font-bold">Log In</h1>
+        <button id="toggleMode" class="text-indigo-600 text-sm hover:underline">Create account</button>
+      </div>
+
+      <form id="authForm" class="space-y-4">
+        <div>
+          <label class="block font-medium mb-1">Username</label>
+          <input id="username" type="text" class="w-full border rounded px-3 py-2" placeholder="yourname" required>
+        </div>
+        <div id="emailWrap" class="hidden">
+          <label class="block font-medium mb-1">Email (optional)</label>
+          <input id="email" type="email" class="w-full border rounded px-3 py-2" placeholder="you@example.com">
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Password</label>
+          <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="••••••••" minlength="6" required>
+        </div>
+
+        <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded" type="submit" id="submitBtn">
+          Log In
+        </button>
+
+        <p id="errorMsg" class="text-sm text-red-600 hidden"></p>
+        <p class="text-xs text-gray-500 mt-2">Prototype only — credentials are stored locally in your browser.</p>
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Local Auth -->
+  <script src="auth-local.js"></script>
+  <script>
+    // Mode: "login" or "register"
+    let mode = "login";
+    const titleEl = document.getElementById("formTitle");
+    const toggleEl = document.getElementById("toggleMode");
+    const emailWrap = document.getElementById("emailWrap");
+    const errorEl = document.getElementById("errorMsg");
+    const submitBtn = document.getElementById("submitBtn");
+
+    function setMode(m) {
+      mode = m;
+      if (mode === "login") {
+        titleEl.textContent = "Log In";
+        toggleEl.textContent = "Create account";
+        emailWrap.classList.add("hidden");
+        submitBtn.textContent = "Log In";
+      } else {
+        titleEl.textContent = "Create Account";
+        toggleEl.textContent = "Have an account? Log in";
+        emailWrap.classList.remove("hidden");
+        submitBtn.textContent = "Create Account";
+      }
+      errorEl.classList.add("hidden");
+    }
+    toggleEl.addEventListener("click", (e) => { e.preventDefault(); setMode(mode === "login" ? "register" : "login"); });
+
+    document.getElementById("authForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const email    = (document.getElementById("email").value || "").trim();
+
+      try {
+        if (mode === "login") {
+          VHAuth.login(username, password);
+        } else {
+          VHAuth.register(username, password, email);
+        }
+        // Redirect back
+        const params = new URLSearchParams(location.search);
+        const ret = params.get("return");
+        location.href = ret || "index.html";
+      } catch (err) {
+        errorEl.textContent = err.message || "Something went wrong.";
+        errorEl.classList.remove("hidden");
+      }
+    });
+
+    // Start in login mode
+    setMode("login");
+  </script>
+</body>
+</html>
