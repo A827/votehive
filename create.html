@@ -19,8 +19,8 @@
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse Polls</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
-        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
   </header>
@@ -101,11 +101,59 @@
     </div>
   </footer>
 
-  <!-- Success Toast (hidden by default) -->
-  <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2
-                        bg-green-600 text-white px-4 py-2 rounded shadow"></div>
+  <!-- Success Toast -->
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
 
   <script>
+    // --- Gamification helpers ---
+    function getProfile() {
+      try { return JSON.parse(localStorage.getItem('vh_profile') || '{}'); } catch { return {}; }
+    }
+    function saveProfile(p) {
+      localStorage.setItem('vh_profile', JSON.stringify(p));
+    }
+    function ensureProfile() {
+      const p = getProfile();
+      return Object.assign({
+        points: 0, badges: [], streak: 0, lastActiveISO: null, createdCount: 0, votesCast: 0
+      }, p);
+    }
+    function award(action) {
+      const p = ensureProfile();
+      // streak handling
+      const today = new Date(); today.setHours(0,0,0,0);
+      const lastISO = p.lastActiveISO ? new Date(p.lastActiveISO) : null;
+      if (!lastISO) {
+        p.streak = 1;
+      } else {
+        lastISO.setHours(0,0,0,0);
+        const diffDays = Math.round((today - lastISO) / 86400000);
+        if (diffDays === 1) p.streak += 1;
+        else if (diffDays > 1) p.streak = 1; // reset if gap
+      }
+      p.lastActiveISO = new Date().toISOString();
+
+      // points per action
+      if (action === 'create') {
+        p.points += 10;
+        p.createdCount += 1;
+        // creation badges
+        if (p.createdCount === 1 && !p.badges.includes('First Poll')) p.badges.push('First Poll');
+        if (p.createdCount === 5 && !p.badges.includes('Five Polls')) p.badges.push('Five Polls');
+        if (p.createdCount === 10 && !p.badges.includes('Ten Polls')) p.badges.push('Ten Polls');
+      }
+      // daily streak bonus
+      p.points += 5; // small daily active bonus
+
+      // tier badges
+      if (p.points >= 50 && !p.badges.includes('Rising')) p.badges.push('Rising');
+      if (p.points >= 150 && !p.badges.includes('Influencer')) p.badges.push('Influencer');
+      if (p.points >= 500 && !p.badges.includes('Hive Master')) p.badges.push('Hive Master');
+
+      saveProfile(p);
+      return p;
+    }
+
     // Add option field
     document.getElementById('addOptionBtn').addEventListener('click', () => {
       const container = document.getElementById('options');
@@ -118,7 +166,7 @@
       container.appendChild(el);
     });
 
-    // Form submit: save to localStorage + redirect
+    // Form submit
     document.getElementById('pollForm').addEventListener('submit', (e) => {
       e.preventDefault();
 
@@ -129,35 +177,27 @@
       const options = Array.from(document.querySelectorAll('#options input'))
         .map(i => i.value.trim()).filter(Boolean);
 
-      if (options.length < 2) {
-        alert('Please enter at least 2 options.');
-        return;
-      }
-      if (!title || !category) {
-        alert('Please fill the question and category.');
-        return;
-      }
+      if (options.length < 2) return alert('Please enter at least 2 options.');
+      if (!title || !category) return alert('Please fill the question and category.');
 
-      const endTime = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      const endTime = new Date(Date.now() + durationDays*24*60*60*1000).toISOString();
 
-      // Generate ID from title (slug)
       let id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       if (!id) id = 'poll-' + Date.now();
 
-      const poll = { title, category, options, endTime };
-
       const stored = JSON.parse(localStorage.getItem('customPolls') || '{}');
-      // If ID already exists, uniquify
       if (stored[id]) id = id + '-' + Date.now();
-      stored[id] = poll;
+      stored[id] = { title, category, options, endTime };
       localStorage.setItem('customPolls', JSON.stringify(stored));
+
+      // Award points & badges
+      const profile = award('create');
 
       // Toast + quick links
       const toast = document.getElementById('toast');
-      toast.innerHTML = `✅ Poll created. <a class="underline ml-2" href="poll.html?id=${id}">View poll</a> · <a class="underline ml-1" href="my-polls.html">My Polls</a>`;
+      toast.innerHTML = `✅ Poll created (+10 pts, +5 streak bonus). <a class="underline ml-1" href="poll.html?id=${id}">View poll</a> · <a class="underline ml-1" href="rewards.html">Rewards</a>`;
       toast.classList.remove('hidden');
 
-      // Redirect shortly
       setTimeout(() => window.location.href = `poll.html?id=${id}`, 700);
     });
   </script>

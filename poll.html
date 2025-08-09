@@ -21,8 +21,8 @@
         <a href="trending.html" class="hover:underline">Trending Polls</a>
         <a href="browse.html" class="hover:underline">Browse Polls</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
-        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
   </header>
@@ -33,18 +33,15 @@
     <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
     <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
-    <!-- Voting form -->
     <form id="vote-form" class="space-y-3 mb-6"></form>
     <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
 
-    <!-- Results -->
     <section id="results" class="mt-8 hidden">
       <h2 class="text-lg font-semibold mb-3">Results</h2>
       <div id="results-list" class="space-y-3"></div>
       <p id="total-votes" class="text-xs text-gray-500 mt-2"></p>
     </section>
 
-    <!-- Share -->
     <section class="mt-10">
       <label class="block text-sm font-medium mb-1">📤 Share this poll</label>
       <div class="flex gap-2">
@@ -60,7 +57,6 @@
     </section>
   </main>
 
-  <!-- Footer -->
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
@@ -71,9 +67,49 @@
     </div>
   </footer>
 
-  <!-- Script -->
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
+
   <script>
-    // Built-in sample polls (fallbacks for demo)
+    // --- Gamification helpers ---
+    function getProfile() {
+      try { return JSON.parse(localStorage.getItem('vh_profile') || '{}'); } catch { return {}; }
+    }
+    function saveProfile(p) {
+      localStorage.setItem('vh_profile', JSON.stringify(p));
+    }
+    function ensureProfile() {
+      const p = getProfile();
+      return Object.assign({
+        points: 0, badges: [], streak: 0, lastActiveISO: null, createdCount: 0, votesCast: 0
+      }, p);
+    }
+    function awardVote() {
+      const p = ensureProfile();
+      const today = new Date(); today.setHours(0,0,0,0);
+      const lastISO = p.lastActiveISO ? new Date(p.lastActiveISO) : null;
+      if (!lastISO) p.streak = 1;
+      else {
+        lastISO.setHours(0,0,0,0);
+        const diffDays = Math.round((today - lastISO)/86400000);
+        if (diffDays === 1) p.streak += 1;
+        else if (diffDays > 1) p.streak = 1;
+      }
+      p.lastActiveISO = new Date().toISOString();
+
+      p.points += 2;        // voting points
+      p.points += 5;        // daily active bonus
+      p.votesCast += 1;
+
+      if (p.votesCast === 50 && !p.badges.includes('50 Votes Cast')) p.badges.push('50 Votes Cast');
+      if (p.points >= 50 && !p.badges.includes('Rising')) p.badges.push('Rising');
+      if (p.points >= 150 && !p.badges.includes('Influencer')) p.badges.push('Influencer');
+      if (p.points >= 500 && !p.badges.includes('Hive Master')) p.badges.push('Hive Master');
+
+      saveProfile(p);
+      return p;
+    }
+
+    // --- Existing poll page logic ---
     const builtinPolls = {
       "startup-vs-enterprise": {
         title: "Which is better: Startup or Enterprise job?",
@@ -107,45 +143,41 @@
       }
     };
 
-    // DOM refs
-    const titleEl       = document.getElementById("poll-title");
-    const categoryEl    = document.getElementById("poll-category");
-    const formEl        = document.getElementById("vote-form");
-    const submitBtn     = document.getElementById("submit-vote");
-    const countdownEl   = document.getElementById("countdown");
-    const resultsWrap   = document.getElementById("results");
-    const resultsList   = document.getElementById("results-list");
-    const totalVotesEl  = document.getElementById("total-votes");
-    const shareInput    = document.getElementById("share-link");
-    const copyBtn       = document.getElementById("copy-btn");
-    const copiedMsg     = document.getElementById("copied-msg");
-    const shareWA       = document.getElementById("share-wa");
-    const shareX        = document.getElementById("share-x");
+    const titleEl = document.getElementById("poll-title");
+    const categoryEl = document.getElementById("poll-category");
+    const formEl = document.getElementById("vote-form");
+    const submitBtn = document.getElementById("submit-vote");
+    const countdownEl = document.getElementById("countdown");
+    const resultsWrap = document.getElementById("results");
+    const resultsList = document.getElementById("results-list");
+    const totalVotesEl = document.getElementById("total-votes");
+    const shareInput = document.getElementById("share-link");
+    const copyBtn = document.getElementById("copy-btn");
+    const copiedMsg = document.getElementById("copied-msg");
+    const shareWA = document.getElementById("share-wa");
+    const shareX = document.getElementById("share-x");
+    const toast = document.getElementById("toast");
 
-    // Helpers: storage
     const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
-    const getAllVotes    = () => JSON.parse(localStorage.getItem("pollVotes")   || "{}");
-    const setAllVotes    = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
+    const getAllVotes = () => JSON.parse(localStorage.getItem("pollVotes") || "{}");
+    const setAllVotes = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
 
-    // Resolve poll by id
     const params = new URLSearchParams(location.search);
     const pollId = params.get("id") || "";
-    const poll   = getCustomPolls()[pollId] || builtinPolls[pollId];
+    const poll = getCustomPolls()[pollId] || builtinPolls[pollId];
 
     if (!poll) {
       titleEl.textContent = "Poll not found.";
       formEl.innerHTML = "";
       submitBtn.style.display = "none";
     } else {
-      // Meta
       titleEl.textContent = poll.title || "Untitled poll";
       categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
       const shareUrl = `${location.origin}${location.pathname}?id=${encodeURIComponent(pollId)}`;
       shareInput.value = shareUrl;
       shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
-      shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
+      shareX.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
 
-      // Build options
       formEl.innerHTML = "";
       (poll.options || []).forEach((opt, i) => {
         const id = `opt-${i}`;
@@ -156,30 +188,25 @@
         `);
       });
 
-      // Countdown
       const end = new Date(poll.endTime);
       function updateCountdown() {
         const diff = end - new Date();
-        if (isNaN(diff)) {
-          countdownEl.textContent = "";
-          return;
-        }
+        if (isNaN(diff)) { countdownEl.textContent = ""; return; }
         if (diff <= 0) {
           countdownEl.textContent = "⏱️ Poll Closed";
-          if (submitBtn) submitBtn.disabled = true;
-          if (formEl) formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-          renderResults(); // show results even when closed
+          submitBtn.disabled = true;
+          formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
+          renderResults();
           return;
         }
-        const d = Math.floor(diff / 86400000);
-        const h = Math.floor((diff / 3600000) % 24);
-        const m = Math.floor((diff / 60000) % 60);
+        const d = Math.floor(diff/86400000);
+        const h = Math.floor((diff/3600000)%24);
+        const m = Math.floor((diff/60000)%60);
         countdownEl.textContent = `⏳ Closes in ${d}d ${h}h ${m}m`;
       }
       updateCountdown();
       setInterval(updateCountdown, 60000);
 
-      // Voting
       function currentVotes() {
         const all = getAllVotes();
         return all[pollId] || {};
@@ -195,23 +222,22 @@
         saveVotes(v);
       }
       function totalVotes(v) {
-        return Object.values(v).reduce((a, b) => a + b, 0);
+        return Object.values(v).reduce((a,b)=>a+b,0);
       }
-
       function renderResults() {
         const v = currentVotes();
         const t = totalVotes(v);
         resultsList.innerHTML = "";
         (poll.options || []).forEach(opt => {
           const count = v[opt] || 0;
-          const pct = t ? Math.round((count / t) * 100) : 0;
+          const pct = t ? Math.round((count/t)*100) : 0;
           resultsList.insertAdjacentHTML("beforeend", `
             <div>
               <div class="flex justify-between text-sm mb-1">
                 <span>${opt}</span><span>${pct}% (${count})</span>
               </div>
               <div class="w-full h-2 bg-gray-200 rounded">
-                <div class="h-2 bg-indigo-600 rounded" style="width:${pct}%;"></div>
+                <div class="h-2 bg-indigo-600 rounded" style="width:${pct}%"></div>
               </div>
             </div>
           `);
@@ -219,29 +245,32 @@
         totalVotesEl.textContent = `Total votes: ${t}`;
         resultsWrap.classList.remove("hidden");
       }
-
-      if (submitBtn) {
-        submitBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          if (new Date() > end) { updateCountdown(); return; }
-          const chosen = document.querySelector('input[name="vote"]:checked');
-          if (!chosen) { alert("Please select an option."); return; }
-          castVote(chosen.value);
-          renderResults();
-        });
-      }
-
-      // Show existing results if any
       renderResults();
+
+      submitBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (new Date() > end) { updateCountdown(); return; }
+        const chosen = document.querySelector('input[name="vote"]:checked');
+        if (!chosen) { alert("Please select an option."); return; }
+        castVote(chosen.value);
+        renderResults();
+
+        // Award on vote
+        const p = awardVote();
+        toast.textContent = `Thanks for voting! (+2 pts, +5 daily bonus). Total: ${p.points} pts`;
+        toast.classList.remove('hidden');
+        setTimeout(()=>toast.classList.add('hidden'), 1500);
+      });
     }
 
-    // Copy link
-    copyBtn.addEventListener("click", (e) => {
+    // Copy share
+    document.getElementById("copy-btn").addEventListener("click", (e) => {
       e.preventDefault();
-      shareInput.select();
-      document.execCommand("copy");
-      copiedMsg.classList.remove("hidden");
-      setTimeout(() => copiedMsg.classList.add("hidden"), 1500);
+      const input = document.getElementById("share-link");
+      input.select(); document.execCommand("copy");
+      const msg = document.getElementById("copied-msg");
+      msg.classList.remove("hidden");
+      setTimeout(()=>msg.classList.add("hidden"), 1500);
     });
   </script>
 </body>

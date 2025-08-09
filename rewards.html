@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rewards – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="trending.html" class="hover:underline">Trending Polls</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="create.html" class="hover:underline">Create Poll</a>
+        <a href="rewards.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Rewards</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Your Rewards</h1>
+    <p class="text-gray-600 mb-8">Earn points by creating polls, voting, and returning daily. Unlock badges as you grow!</p>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Points -->
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-xl font-semibold mb-3">Total Points</h2>
+        <div class="text-4xl font-extrabold text-indigo-700" id="points">0</div>
+        <p class="text-xs text-gray-500 mt-2">Create poll: +10 · Vote: +2 · Daily streak: +5</p>
+      </div>
+
+      <!-- Streak -->
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-xl font-semibold mb-3">Daily Streak</h2>
+        <div class="flex items-baseline gap-3">
+          <div class="text-4xl font-extrabold text-purple-700" id="streak">0</div>
+          <span class="text-gray-600">days</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Do at least one action (create or vote) each day to extend your streak.</p>
+      </div>
+
+      <!-- Progress to next tier -->
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-xl font-semibold mb-3">Next Tier Progress</h2>
+        <p class="text-sm text-gray-600 mb-2" id="tierLabel">Beginner → Rising</p>
+        <div class="w-full h-2 bg-gray-200 rounded">
+          <div id="tierBar" class="h-2 bg-indigo-600 rounded" style="width:0%"></div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2" id="tierDetail"></p>
+      </div>
+    </section>
+
+    <!-- Badges -->
+    <section class="bg-white shadow rounded p-6 mb-8">
+      <h2 class="text-xl font-semibold mb-4">Badges</h2>
+      <div id="badges" class="flex flex-wrap gap-3"></div>
+      <p class="text-xs text-gray-500 mt-4">Examples: First Poll, Five Polls, Ten Polls, 50 Votes Cast, and tier badges.</p>
+    </section>
+
+    <!-- Activity -->
+    <section class="bg-white shadow rounded p-6">
+      <h2 class="text-xl font-semibold mb-4">Activity Summary</h2>
+      <ul class="text-sm text-gray-700 space-y-1" id="summary">
+        <!-- filled by JS -->
+      </ul>
+    </section>
+  </main>
+
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --- Shared profile helpers (same logic used on create/poll pages) ---
+    function getProfile() {
+      try { return JSON.parse(localStorage.getItem('vh_profile') || '{}'); } catch { return {}; }
+    }
+    function saveProfile(p) {
+      localStorage.setItem('vh_profile', JSON.stringify(p));
+    }
+    function ensureProfile() {
+      const p = getProfile();
+      return Object.assign({
+        points: 0,
+        badges: [],
+        streak: 0,
+        lastActiveISO: null,
+        createdCount: 0,
+        votesCast: 0
+      }, p);
+    }
+    const TIERS = [
+      { name: 'Beginner', min: 0 },
+      { name: 'Rising',   min: 50 },
+      { name: 'Influencer', min: 150 },
+      { name: 'Hive Master', min: 500 }
+    ];
+    function currentTier(points) {
+      let tier = TIERS[0];
+      for (const t of TIERS) if (points >= t.min) tier = t;
+      return tier;
+    }
+    function nextTier(points) {
+      for (const t of TIERS) if (points < t.min) return t;
+      return null;
+    }
+
+    // --- Render UI ---
+    function renderRewards() {
+      const p = ensureProfile();
+      document.getElementById('points').textContent = p.points || 0;
+      document.getElementById('streak').textContent = p.streak || 0;
+
+      const ct = currentTier(p.points);
+      const nt = nextTier(p.points);
+      const tierLabel = document.getElementById('tierLabel');
+      const tierBar = document.getElementById('tierBar');
+      const tierDetail = document.getElementById('tierDetail');
+      if (nt) {
+        tierLabel.textContent = `${ct.name} → ${nt.name}`;
+        const range = nt.min - ct.min;
+        const prog = Math.max(0, Math.min(1, (p.points - ct.min) / range));
+        tierBar.style.width = Math.round(prog * 100) + '%';
+        tierDetail.textContent = `${p.points - ct.min} / ${range} points toward ${nt.name}`;
+      } else {
+        tierLabel.textContent = `${ct.name} (max tier)`;
+        tierBar.style.width = '100%';
+        tierDetail.textContent = `You’ve reached the top tier. Keep earning badges!`;
+      }
+
+      const badgesWrap = document.getElementById('badges');
+      badgesWrap.innerHTML = '';
+      (p.badges || []).forEach(b => {
+        const el = document.createElement('span');
+        el.className = 'px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm';
+        el.textContent = b;
+        badgesWrap.appendChild(el);
+      });
+      if (!p.badges || p.badges.length === 0) {
+        badgesWrap.innerHTML = '<span class="text-gray-500 text-sm">No badges yet — start creating and voting!</span>';
+      }
+
+      const summary = document.getElementById('summary');
+      summary.innerHTML = `
+        <li>Polls created: <strong>${p.createdCount || 0}</strong></li>
+        <li>Votes cast: <strong>${p.votesCast || 0}</strong></li>
+        <li>Last active: <strong>${p.lastActiveISO ? new Date(p.lastActiveISO).toLocaleString() : '—'}</strong></li>
+      `;
+    }
+
+    renderRewards();
+  </script>
+</body>
+</html>
