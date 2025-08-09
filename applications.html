@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Your Applications – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-
   <!-- Header -->
   <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
     <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
@@ -17,55 +21,24 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-bold">VoteHive</span>
       </div>
-      <nav class="flex gap-4 text-sm">
+      <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="hover:underline">Apply to Create</a>
-        <a href="login.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
 
-  <!-- Title -->
-  <section class="text-center py-10 bg-gray-50">
-    <h1 class="text-3xl font-bold">Your Applications</h1>
-    <p class="text-gray-600 mt-1">Track polls you’ve submitted for review.</p>
-  </section>
+  <main class="max-w-5xl mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Your Applications</h1>
+    <p class="text-gray-600 mb-6">Track the status of your poll applications.</p>
 
-  <!-- Content -->
-  <main class="max-w-6xl mx-auto px-4 py-10">
-    <!-- Summary -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-      <div class="bg-white shadow rounded p-5">
-        <div class="text-sm text-gray-500">Pending</div>
-        <div id="countPending" class="text-3xl font-extrabold text-yellow-700 mt-1">0</div>
-      </div>
-      <div class="bg-white shadow rounded p-5">
-        <div class="text-sm text-gray-500">Approved</div>
-        <div id="countApproved" class="text-3xl font-extrabold text-green-700 mt-1">0</div>
-      </div>
-      <div class="bg-white shadow rounded p-5">
-        <div class="text-sm text-gray-500">Rejected</div>
-        <div id="countRejected" class="text-3xl font-extrabold text-red-700 mt-1">0</div>
-      </div>
-    </section>
-
-    <!-- Tabs -->
-    <div class="mb-4 flex gap-2">
-      <button data-tab="pending"  class="tab px-4 py-2 rounded bg-indigo-600 text-white text-sm">Pending</button>
-      <button data-tab="approved" class="tab px-4 py-2 rounded bg-gray-100 text-gray-800 text-sm">Approved</button>
-      <button data-tab="rejected" class="tab px-4 py-2 rounded bg-gray-100 text-gray-800 text-sm">Rejected</button>
-    </div>
-
-    <!-- Lists -->
-    <section id="listPending"  class="bg-white shadow rounded p-4 divide-y"></section>
-    <section id="listApproved" class="bg-white shadow rounded p-4 divide-y hidden"></section>
-    <section id="listRejected" class="bg-white shadow rounded p-4 divide-y hidden"></section>
+    <div id="empty" class="hidden text-center bg-gray-50 rounded p-10 text-gray-600">No applications yet.</div>
+    <div id="list" class="space-y-4"></div>
   </main>
 
-  <!-- Footer -->
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
@@ -77,153 +50,59 @@
   </footer>
 
   <script>
-    const user = localStorage.getItem('username') || 'guest';
+    const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
 
-    function getPending() {
-      try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; }
-    }
-    function setPending(d) { localStorage.setItem('pendingPolls', JSON.stringify(d)); }
+    function getPending(){ try{return JSON.parse(localStorage.getItem('pendingPolls')||'{}');}catch{return {};} }
+    function getLog(){ try{return JSON.parse(localStorage.getItem('applicationLog')||'[]');}catch{return [];} }
 
-    function getAppLog() {
-      try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; }
-    }
-    function setAppLog(d) { localStorage.setItem('applicationLog', JSON.stringify(d)); }
+    function render(){
+      const container = document.getElementById('list');
+      container.innerHTML = '';
+      const pending = Object.entries(getPending())
+        .filter(([id,p]) => (p.applicant||'guest') === me)
+        .sort((a,b)=> new Date(b[1].submittedAt)-new Date(a[1].submittedAt));
 
-    function switchTab(which) {
-      document.querySelectorAll('.tab').forEach(b=>{
-        const active = b.getAttribute('data-tab')===which;
-        b.className = active ? 'tab px-4 py-2 rounded bg-indigo-600 text-white text-sm' : 'tab px-4 py-2 rounded bg-gray-100 text-gray-800 text-sm';
-      });
-      document.getElementById('listPending').classList.toggle('hidden', which!=='pending');
-      document.getElementById('listApproved').classList.toggle('hidden', which!=='approved');
-      document.getElementById('listRejected').classList.toggle('hidden', which!=='rejected');
-    }
+      const history = getLog().filter(x => (x.applicant||'guest') === me).reverse();
 
-    function render() {
-      const pend = getPending();
-      const log  = getAppLog();
+      if (pending.length === 0 && history.length === 0){
+        document.getElementById('empty').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('empty').classList.add('hidden');
 
-      // Pending (only mine)
-      const minePending = Object.entries(pend).filter(([id,p]) => (p.applicant||'guest')===user);
-      document.getElementById('countPending').textContent = minePending.length;
-
-      const lp = document.getElementById('listPending');
-      lp.innerHTML = minePending.length ? '' : '<div class="py-6 text-sm text-gray-600">No pending applications.</div>';
-      minePending.sort((a,b)=> new Date(b[1].submittedAt)-new Date(a[1].submittedAt))
-        .forEach(([id,p])=>{
-          const row = document.createElement('div');
-          row.className = 'py-4';
-          row.innerHTML = `
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="text-sm text-gray-500">Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
-                <div class="font-semibold mt-1">${p.title}</div>
-                <div class="text-sm text-gray-600">Category: ${p.category || 'General'}</div>
-                <div class="text-sm text-gray-600">Options: ${(p.options||[]).join(', ')}</div>
-                ${p.context ? `<div class="text-xs text-gray-500 mt-2">${p.context}</div>` : ''}
-              </div>
-              <div class="w-72 shrink-0 space-y-2">
-                <button class="edit bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm w-full" data-id="${id}">Edit</button>
-                <button class="withdraw bg-red-50 text-red-700 px-3 py-1 rounded text-sm w-full" data-id="${id}">Withdraw</button>
-              </div>
+      if (pending.length){
+        container.insertAdjacentHTML('beforeend', '<h2 class="text-xl font-semibold mt-6 mb-2">Pending</h2>');
+        pending.forEach(([id,p])=>{
+          container.insertAdjacentHTML('beforeend', `
+            <div class="vh-card border rounded p-4">
+              <div class="text-sm text-gray-500 mb-1">Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
+              <div class="font-semibold">${p.title}</div>
+              <div class="text-sm text-gray-600">Category: ${p.category||'General'} • Requested: ${p.requestedDays||7} days</div>
+              <div class="text-sm text-gray-600">Options: ${(p.options||[]).join(', ')}</div>
+              ${p.context?`<p class="text-sm text-gray-500 mt-2">${p.context}</p>`:''}
             </div>
-            <div class="editArea hidden mt-3">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <input class="eTitle border rounded px-2 py-1" placeholder="Title" value="${p.title}">
-                <input class="eCategory border rounded px-2 py-1" placeholder="Category" value="${p.category||''}">
-                <textarea class="eOptions border rounded px-2 py-1 md:col-span-2" rows="2" placeholder="Option A, Option B">${(p.options||[]).join(', ')}</textarea>
-                <textarea class="eContext border rounded px-2 py-1 md:col-span-2" rows="2" placeholder="Context (optional)">${p.context||''}</textarea>
+          `);
+        });
+      }
+
+      if (history.length){
+        container.insertAdjacentHTML('beforeend', '<h2 class="text-xl font-semibold mt-8 mb-2">History</h2>');
+        history.forEach(item=>{
+          const link = item.pollId ? `<a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(item.pollId)}">Open poll</a>` : '';
+          container.insertAdjacentHTML('beforeend', `
+            <div class="vh-card border rounded p-4">
+              <div class="flex justify-between">
+                <div class="font-semibold">${item.title}</div>
+                <span class="px-2 py-0.5 rounded-full text-xs ${item.status==='approved'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${item.status}</span>
               </div>
-              <div class="mt-2 flex gap-2">
-                <button class="save bg-indigo-600 text-white px-3 py-1 rounded text-sm" data-id="${id}">Save</button>
-                <button class="cancel bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Cancel</button>
-              </div>
+              <div class="text-sm text-gray-600">Category: ${item.category||'General'}</div>
+              <div class="text-sm text-gray-500">Decided: ${new Date(item.decidedAt).toLocaleString()}</div>
+              ${link?`<div class="mt-2">${link}</div>`:''}
             </div>
-          `;
-          lp.appendChild(row);
+          `);
         });
-
-      // Approved / Rejected (from log, only mine)
-      const mineLog = log.filter(e => (e.applicant||'guest')===user);
-      const approved = mineLog.filter(e=>e.status==='approved');
-      const rejected = mineLog.filter(e=>e.status==='rejected');
-
-      document.getElementById('countApproved').textContent = approved.length;
-      document.getElementById('countRejected').textContent = rejected.length;
-
-      const la = document.getElementById('listApproved');
-      la.innerHTML = approved.length ? '' : '<div class="py-6 text-sm text-gray-600">No approved applications yet.</div>';
-      approved.sort((a,b)=> new Date(b.decidedAt)-new Date(a.decidedAt))
-        .forEach(e=>{
-          const row = document.createElement('div');
-          row.className = 'py-4 flex items-start justify-between gap-4';
-          row.innerHTML = `
-            <div>
-              <div class="text-sm text-gray-500">Approved: ${new Date(e.decidedAt).toLocaleString()}</div>
-              <div class="font-semibold mt-1">${e.title}</div>
-              <div class="text-sm text-gray-600">Category: ${e.category||'General'}</div>
-            </div>
-            <a href="poll.html?id=${encodeURIComponent(e.pollId)}" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Open Poll</a>
-          `;
-          la.appendChild(row);
-        });
-
-      const lr = document.getElementById('listRejected');
-      lr.innerHTML = rejected.length ? '' : '<div class="py-6 text-sm text-gray-600">No rejected applications.</div>';
-      rejected.sort((a,b)=> new Date(b.decidedAt)-new Date(a.decidedAt))
-        .forEach(e=>{
-          const row = document.createElement('div');
-          row.className = 'py-4';
-          row.innerHTML = `
-            <div class="text-sm text-gray-500">Rejected: ${new Date(e.decidedAt).toLocaleString()}</div>
-            <div class="font-semibold mt-1">${e.title}</div>
-            <div class="text-sm text-gray-600">Category: ${e.category||'General'}</div>
-          `;
-          lr.appendChild(row);
-        });
-
-      // Bind edit/withdraw
-      document.querySelectorAll('.edit').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          btn.closest('.py-4').querySelector('.editArea').classList.remove('hidden');
-        });
-      });
-      document.querySelectorAll('.cancel').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          btn.closest('.editArea').classList.add('hidden');
-        });
-      });
-      document.querySelectorAll('.save').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('data-id');
-          const root = btn.closest('.py-4');
-          const title = root.querySelector('.eTitle').value.trim();
-          const category = root.querySelector('.eCategory').value.trim();
-          const options = root.querySelector('.eOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
-          const context = root.querySelector('.eContext').value.trim();
-          if (!title || !category || options.length<2) { alert('Please fill title, category, and at least 2 options.'); return; }
-          const p = getPending(); if (!p[id]) return;
-          p[id].title = title; p[id].category = category; p[id].options = options; p[id].context = context;
-          setPending(p);
-          render();
-        });
-      });
-      document.querySelectorAll('.withdraw').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('data-id');
-          if (!confirm('Withdraw this application?')) return;
-          const p = getPending(); delete p[id]; setPending(p); render();
-        });
-      });
+      }
     }
-
-    // Tabs
-    document.querySelectorAll('.tab').forEach(btn=>{
-      btn.addEventListener('click', ()=> switchTab(btn.getAttribute('data-tab')));
-    });
-
-    // Boot
-    switchTab('pending');
     render();
   </script>
 </body>

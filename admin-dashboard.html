@@ -6,20 +6,15 @@
   <title>Admin Dashboard – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
-    .vh-card { background:#fff; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
-    .vh-input { background:#fff; }
-    html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
-  </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-input { background:#fff; } html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
+  </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
   <!-- Header -->
   <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
     <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
@@ -31,62 +26,21 @@
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
         <a href="applications.html" class="hover:underline">Applications</a>
-        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
-        <button id="logoutBtn" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Log Out</button>
+        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
 
-  <!-- Guard -->
+  <!-- Guard: superadmin only -->
   <script>
-    if (localStorage.getItem('session')) {
-      try { if (JSON.parse(localStorage.getItem('session')).role !== 'superadmin') location.href = 'login.html'; } catch { location.href='login.html'; }
-    } else { location.href = 'login.html'; }
+    try {
+      const s = JSON.parse(localStorage.getItem('session')||'null');
+      if (!s || s.role !== 'superadmin') location.href = 'login.html';
+    } catch { location.href = 'login.html'; }
   </script>
 
-  <!-- Content -->
   <main class="max-w-7xl mx-auto px-4 py-10">
     <h1 class="text-3xl font-bold mb-6">Superadmin Dashboard</h1>
-
-    <!-- Stats -->
-    <section class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-      <div class="vh-card border border-gray-100 shadow rounded p-6">
-        <div class="text-sm text-gray-500">Total Users</div>
-        <div id="statUsers" class="text-3xl font-extrabold text-green-700 mt-1">0</div>
-      </div>
-      <div class="vh-card border border-gray-100 shadow rounded p-6">
-        <div class="text-sm text-gray-500">Total Polls</div>
-        <div id="statPolls" class="text-3xl font-extrabold text-indigo-700 mt-1">0</div>
-      </div>
-      <div class="vh-card border border-gray-100 shadow rounded p-6">
-        <div class="text-sm text-gray-500">Open Polls</div>
-        <div id="statOpen" class="text-3xl font-extrabold text-yellow-700 mt-1">0</div>
-      </div>
-      <div class="vh-card border border-gray-100 shadow rounded p-6">
-        <div class="text-sm text-gray-500">Pending Applications</div>
-        <div id="statPending" class="text-3xl font-extrabold text-purple-700 mt-1">0</div>
-      </div>
-      <div class="vh-card border border-gray-100 shadow rounded p-6">
-        <div class="text-sm text-gray-500">Flags</div>
-        <div id="statFlags" class="text-3xl font-extrabold text-red-700 mt-1">0</div>
-      </div>
-    </section>
-
-    <!-- Backup & Restore -->
-    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Backup & Restore</h2>
-      </div>
-      <p class="text-sm text-gray-600 mt-1 mb-4">Export all VoteHive data to JSON, or import a JSON backup to restore.</p>
-      <div class="flex flex-wrap gap-3 items-center">
-        <button id="exportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Export JSON</button>
-        <label class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm cursor-pointer">
-          Import JSON
-          <input id="importInput" type="file" accept="application/json" class="hidden">
-        </label>
-        <span id="importHint" class="text-xs text-gray-500"></span>
-      </div>
-    </section>
 
     <!-- Pending applications -->
     <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
@@ -97,40 +51,11 @@
       <div id="pendingList" class="divide-y"></div>
     </section>
 
-    <!-- Users -->
-    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-semibold">Users</h2>
-        <span id="usersHint" class="text-sm text-gray-500"></span>
-      </div>
-      <div id="usersTable" class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left text-gray-600 border-b">
-              <th class="py-2 pr-4">Username</th>
-              <th class="py-2 pr-4">Role</th>
-              <th class="py-2 pr-4">Created</th>
-              <th class="py-2 pr-4">Last Login</th>
-              <th class="py-2 pr-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="usersBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Existing polls -->
+    <!-- Existing polls quick view -->
     <section class="vh-card border border-gray-100 shadow rounded p-6">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-semibold">All Polls</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <input id="search" type="text" placeholder="Search title…" class="vh-input border rounded px-3 py-2 w-64">
-          <select id="filterState" class="vh-input border rounded px-3 py-2">
-            <option value="">All states</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-          </select>
-        </div>
+        <h2 class="text-xl font-semibold">Published Polls</h2>
+        <input id="search" type="text" placeholder="Search title…" class="vh-input border rounded px-3 py-2 w-72">
       </div>
       <div id="pollList" class="divide-y"></div>
     </section>
@@ -147,166 +72,91 @@
   </footer>
 
   <script>
-    // Helpers
-    const getUsers  = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
-    const setUsers  = (d) => localStorage.setItem('userList', JSON.stringify(d));
-    const getPolls  = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
-    const setPolls  = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
-    const getPending= () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
-    const setPending= (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
-    const getLog    = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
-    const setLog    = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
-    const getFlags  = () => { try { return JSON.parse(localStorage.getItem('pollFlags') || '{}'); } catch { return {}; } };
-    const setFlags  = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
-    const getVotes  = () => { try { return JSON.parse(localStorage.getItem('pollVotes') || '{}'); } catch { return {}; } };
-    const setVotes  = (d) => localStorage.setItem('pollVotes', JSON.stringify(d));
-    const getVxUser = () => { try { return JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'); } catch { return {}; } };
-    const setVxUser = (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d));
-    const getFxUser = () => { try { return JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}'); } catch { return {}; } };
-    const setFxUser = (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d));
-    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
-    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
-    function addPoints(username, amount){ const pts=getPoints(); pts[username]=(pts[username]||0)+amount; setPoints(pts); }
+    // Storage helpers
+    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
+    const getPolls   = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
+    const setPolls   = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
+    const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    const setLog     = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
 
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('session'); location.href = 'index.html';
-    });
-
-    // Backup / Restore
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const payload = {
-        __meta: { app: 'VoteHive', version: 2, exportedAt: new Date().toISOString() },
-        customPolls: getPolls(),
-        pendingPolls: getPending(),
-        pollVotes: getVotes(),
-        userList: getUsers(),
-        applicationLog: getLog(),
-        pollFlags: getFlags(),
-        vh_votesByUser: getVxUser(),
-        vh_flagsByUser: getFxUser(),
-        userPoints: getPoints()
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `votehive-backup-${Date.now()}.json`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('importInput').addEventListener('change', (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          if (data.customPolls) setPolls(data.customPolls);
-          if (data.pendingPolls) setPending(data.pendingPolls);
-          if (data.pollVotes) setVotes(data.pollVotes);
-          if (data.userList) setUsers(data.userList);
-          if (data.applicationLog) setLog(data.applicationLog);
-          if (data.pollFlags) setFlags(data.pollFlags);
-          if (data.vh_votesByUser) setVxUser(data.vh_votesByUser);
-          if (data.vh_flagsByUser) setFxUser(data.vh_flagsByUser);
-          if (data.userPoints) setPoints(data.userPoints);
-          document.getElementById('importHint').textContent = 'Import complete. Reloading…';
-          setTimeout(()=>location.reload(), 600);
-        } catch (err) {
-          document.getElementById('importHint').textContent = 'Import failed: ' + err.message;
-        }
-      };
-      reader.readAsText(file);
-    });
-
-    function render() {
-      const users = getUsers();
-      const polls = getPolls();
-      const pending = getPending();
-      const flags  = getFlags();
-
-      document.getElementById('statUsers').textContent = users.length;
-      document.getElementById('statPolls').textContent = Object.keys(polls).length;
-      document.getElementById('statPending').textContent = Object.keys(pending).length;
-      document.getElementById('statOpen').textContent =
-        Object.values(polls).filter(p => !p.hidden && new Date(p.endTime) > new Date()).length;
-      document.getElementById('statFlags').textContent =
-        Object.values(flags).reduce((a,b)=>a+(b||0),0);
-
-      renderPending(pending);
-      renderUsers(users);
-      renderPolls(polls, flags);
-    }
-
-    // Pending (approve grants +10 to applicant)
-    function renderPending(pending) {
+    function renderPending(){
       const el = document.getElementById('pendingList');
-      const items = Object.entries(pending).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
-      document.getElementById('pendingHint').textContent = items.length ? '' : 'No applications pending.';
+      const pending = Object.entries(getPending()).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
+      document.getElementById('pendingHint').textContent = pending.length ? '' : 'No applications pending.';
       el.innerHTML = '';
-      items.forEach(([pid, p]) => {
-        const row = document.createElement('div');
-        row.className = 'py-4 flex gap-4 justify-between items-start';
-        row.innerHTML = `
-          <div class="flex-1">
-            <div class="text-sm text-gray-500">Applicant: <strong>${p.applicant || 'guest'}</strong> • Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
-            <div class="font-semibold mt-1">${p.title}</div>
-            <div class="text-sm text-gray-600 mt-1">Category: ${p.category || 'General'}</div>
-            <div class="text-sm text-gray-600 mt-1">Options: ${(p.options||[]).join(', ')}</div>
-            ${p.context ? `<div class="text-sm text-gray-500 mt-2">${p.context}</div>` : ''}
-          </div>
-          <div class="w-64 shrink-0 space-y-2">
-            <label class="block text-sm font-medium">Duration</label>
-            <select data-pid="${pid}" class="dur border rounded px-2 py-1 w-full">
-              <option value="1">1 day</option>
-              <option value="3">3 days</option>
-              <option value="7" selected>7 days</option>
-              <option value="30">30 days</option>
-            </select>
-            <div class="flex gap-2">
-              <button data-pid="${pid}" class="approve bg-indigo-600 text-white px-3 py-1 rounded text-sm">Approve</button>
-              <button data-pid="${pid}" class="reject bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Reject</button>
+
+      pending.forEach(([pid, p])=>{
+        const card = document.createElement('div');
+        card.className = 'py-4';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+              <div class="text-sm text-gray-500">Applicant: <strong>${p.applicant || 'guest'}</strong> • Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
+              <div class="font-semibold mt-1">${p.title}</div>
+              <div class="text-sm text-gray-600 mt-1">Category: ${p.category || 'General'} • Requested: ${p.requestedDays || 7} days</div>
+              <div class="text-sm text-gray-600 mt-1">Options: ${(p.options||[]).join(', ')}</div>
+              ${p.context ? `<div class="text-sm text-gray-500 mt-2">${p.context}</div>` : ''}
+            </div>
+            <div class="w-64 shrink-0 space-y-2">
+              <label class="block text-sm font-medium">Approve with duration</label>
+              <select data-pid="${pid}" class="dur vh-input border rounded px-2 py-1 w-full">
+                <option value="1">1 day</option>
+                <option value="3">3 days</option>
+                <option value="7" selected>7 days</option>
+                <option value="30">30 days</option>
+              </select>
+              <div class="flex gap-2">
+                <button data-pid="${pid}" class="approve bg-indigo-600 text-white px-3 py-1 rounded text-sm">Approve</button>
+                <button data-pid="${pid}" class="reject bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Reject</button>
+              </div>
             </div>
           </div>
         `;
-        el.appendChild(row);
+        el.appendChild(card);
       });
 
-      // Bind decisions
-      el.querySelectorAll('.approve').forEach(btn => {
-        btn.addEventListener('click', () => {
+      // Bind actions
+      el.querySelectorAll('.approve').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
           const pid = btn.getAttribute('data-pid');
-          const durSel = el.querySelector(`.dur[data-pid="${pid}"]`);
-          const days = parseInt(durSel?.value || '7', 10);
-          approveApplication(pid, days);
+          const sel = el.querySelector(`.dur[data-pid="${pid}"]`);
+          const days = parseInt(sel?.value || (getPending()[pid]?.requestedDays || 7), 10);
+          approve(pid, days);
         });
       });
-      el.querySelectorAll('.reject').forEach(btn => {
-        btn.addEventListener('click', () => {
+      el.querySelectorAll('.reject').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
           const pid = btn.getAttribute('data-pid');
           if (!confirm('Reject this application?')) return;
-          const pend = getPending();
-          const app = pend[pid]; if (!app) return;
+          const pend = getPending(); const app = pend[pid]; if (!app) return;
           const log = getLog();
-          log.push({
-            id: pid, status: 'rejected', title: app.title, category: app.category,
-            applicant: app.applicant || 'guest', decidedAt: new Date().toISOString()
-          });
+          log.push({ id: pid, status: 'rejected', title: app.title, category: app.category, applicant: app.applicant || 'guest', decidedAt: new Date().toISOString() });
           setLog(log);
-          delete pend[pid]; setPending(pend); render();
+          delete pend[pid]; setPending(pend); renderAll();
         });
       });
     }
 
-    function approveApplication(pid, days) {
-      const pend = getPending();
-      const app = pend[pid]; if (!app) return;
+    function approve(pid, days){
+      const pend = getPending(); const app = pend[pid]; if (!app) return;
 
+      // Generate unique poll ID
       let id = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
       if (!id) id = 'poll-' + Date.now();
       const polls = getPolls();
       if (polls[id]) id = id + '-' + Date.now();
 
       const endTime = new Date(Date.now() + days*24*60*60*1000).toISOString();
-      polls[id] = { title: app.title, category: app.category, options: app.options, endTime, createdBy: app.applicant || 'guest', featured: false, hidden: false };
+      polls[id] = {
+        title: app.title,
+        category: app.category,
+        options: app.options,
+        endTime,
+        createdBy: app.applicant || 'guest',
+        featured: false,
+        hidden: false
+      };
       setPolls(polls);
 
       const log = getLog();
@@ -316,66 +166,23 @@
       });
       setLog(log);
 
-      // 🎯 Gamification: applicant earns +10 on approval
-      if (app.applicant) { addPoints(app.applicant, 10); }
-
       delete pend[pid]; setPending(pend);
-      render(); alert('Approved and published! (+10 points to applicant)');
+      renderAll();
+      alert('Approved and published! ✅');
     }
 
-    // Users
-    function renderUsers(users){
-      const body = document.getElementById('usersBody');
-      document.getElementById('usersHint').textContent = users.length ? '' : 'No users yet.';
-      body.innerHTML = '';
-      users
-        .sort((a,b)=> new Date(b.lastLoginAt) - new Date(a.lastLoginAt))
-        .forEach(u=>{
-          const tr = document.createElement('tr');
-          tr.className = 'border-b';
-          tr.innerHTML = `
-            <td class="py-2 pr-4">${u.username}</td>
-            <td class="py-2 pr-4">${u.role || 'user'}</td>
-            <td class="py-2 pr-4">${u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</td>
-            <td class="py-2 pr-4">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}</td>
-            <td class="py-2 pr-4">
-              <button class="removeUser bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm" data-username="${u.username}">Remove</button>
-            </td>
-          `;
-          body.appendChild(tr);
-        });
-
-      body.querySelectorAll('.removeUser').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const uname = btn.getAttribute('data-username');
-          if (!confirm(`Remove user "${uname}"?`)) return;
-          let users = getUsers();
-          users = users.filter(u => u.username !== uname);
-          setUsers(users);
-          render();
-        });
-      });
-    }
-
-    // Polls table (edit/extend + flags + hide)
-    function renderPolls(polls, flags){
+    function renderPolls(){
       const list = document.getElementById('pollList');
-      const term = (document.getElementById('search').value || '').toLowerCase();
-      const state = document.getElementById('filterState').value;
+      const q = (document.getElementById('search').value || '').toLowerCase();
+      const polls = Object.entries(getPolls()).filter(([id,p])=>{
+        if (!p) return false;
+        return !q || (p.title||'').toLowerCase().includes(q);
+      }).sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
 
-      const entries = Object.entries(polls).filter(([id,p])=>{
-        const titleOk = !term || (p.title||'').toLowerCase().includes(term);
+      list.innerHTML = polls.length ? '' : '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
+      polls.forEach(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
-        const stOk = !state || (state==='open' && !closed) || (state==='closed' && closed);
-        return titleOk && stOk;
-      }).sort((a,b)=> new Date(a[1].endTime)-new Date(b[1].endTime));
-
-      list.innerHTML = entries.length ? '' : '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
-      entries.forEach(([id,p])=>{
-        const end = new Date(p.endTime);
-        const closed = Date.now() > end.getTime();
-        const fcount = flags[id] || 0;
         const row = document.createElement('div');
         row.className = 'py-4';
         row.innerHTML = `
@@ -386,7 +193,6 @@
                 <span class="text-xs text-gray-500">${p.category||'General'}</span>
                 ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
                 ${p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':''}
-                ${fcount?`<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Flags: ${fcount}</span>`:''}
               </div>
               <div class="font-semibold mt-1">${p.title}</div>
               <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
@@ -394,7 +200,6 @@
             </div>
             <div class="flex flex-col gap-2">
               <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
-              <button data-id="${id}" class="edit bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Edit</button>
               <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
               <button data-id="${id}" class="hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
               <div class="flex gap-2">
@@ -404,74 +209,32 @@
               <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
             </div>
           </div>
-
-          <div class="editArea hidden mt-3 border rounded p-3">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input class="eTitle vh-input border rounded px-2 py-2" placeholder="Title" value="${p.title}">
-              <input class="eCategory vh-input border rounded px-2 py-2" placeholder="Category" value="${p.category||''}">
-              <textarea class="eOptions vh-input border rounded px-2 py-2 md:col-span-2" rows="2" placeholder="Option A, Option B">${(p.options||[]).join(', ')}</textarea>
-              <input class="eEnd vh-input border rounded px-2 py-2 md:col-span-2" type="datetime-local" value="${toLocalDateTimeValue(end)}">
-            </div>
-            <div class="mt-2 flex gap-2">
-              <button class="save bg-indigo-600 text-white px-3 py-1 rounded text-sm" data-id="${id}">Save</button>
-              <button class="cancel bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Cancel</button>
-            </div>
-          </div>
         `;
         list.appendChild(row);
       });
 
       // actions
       list.querySelectorAll('.feature').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].featured=!polls[id].featured; setPolls(polls); render();
+        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].featured=!polls[id].featured; setPolls(polls); renderPolls();
       }));
       list.querySelectorAll('.hide').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].hidden=!polls[id].hidden; setPolls(polls); render();
+        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].hidden=!polls[id].hidden; setPolls(polls); renderPolls();
       }));
       list.querySelectorAll('.closeNow').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].endTime=new Date(Date.now()-1000).toISOString(); setPolls(polls); render();
+        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].endTime=new Date(Date.now()-1000).toISOString(); setPolls(polls); renderPolls();
       }));
       list.querySelectorAll('.extend').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); const cur=new Date(polls[id].endTime||Date.now()); polls[id].endTime=new Date(cur.getTime()+7*24*60*60*1000).toISOString(); setPolls(polls); render();
+        const id=b.getAttribute('data-id'); const polls=getPolls(); const cur=new Date(polls[id].endTime||Date.now()); polls[id].endTime=new Date(cur.getTime()+7*24*60*60*1000).toISOString(); setPolls(polls); renderPolls();
       }));
       list.querySelectorAll('.delete').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return; const polls=getPolls(); delete polls[id]; setPolls(polls); render();
-      }));
-      list.querySelectorAll('.edit').forEach(b=>b.addEventListener('click',()=>{
-        const container = b.closest('.py-4'); container.querySelector('.editArea').classList.remove('hidden');
-      }));
-      list.querySelectorAll('.cancel').forEach(b=>b.addEventListener('click',()=>{
-        const container = b.closest('.py-4'); container.querySelector('.editArea').classList.add('hidden');
-      }));
-      list.querySelectorAll('.save').forEach(b=>b.addEventListener('click',()=>{
-        const id = b.getAttribute('data-id');
-        const container = b.closest('.py-4');
-        const title = container.querySelector('.eTitle').value.trim();
-        const category = container.querySelector('.eCategory').value.trim();
-        const options = container.querySelector('.eOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
-        const endVal = container.querySelector('.eEnd').value;
-        if (!title || !category || options.length<2) { alert('Please fill title, category, and at least 2 options.'); return; }
-        const polls = getPolls();
-        if (!polls[id]) return;
-        polls[id].title = title;
-        polls[id].category = category;
-        polls[id].options = options;
-        if (endVal) polls[id].endTime = new Date(endVal).toISOString();
-        setPolls(polls);
-        render();
+        const id=b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return; const polls=getPolls(); delete polls[id]; setPolls(polls); renderPolls();
       }));
     }
 
-    function toLocalDateTimeValue(d){
-      if (!(d instanceof Date) || isNaN(d)) return '';
-      const pad = n => String(n).padStart(2,'0');
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
+    document.getElementById('search').addEventListener('input', renderPolls);
 
-    document.getElementById('search').addEventListener('input', render);
-    document.getElementById('filterState').addEventListener('change', render);
-
-    render();
+    function renderAll(){ renderPending(); renderPolls(); }
+    renderAll();
   </script>
 </body>
 </html>
