@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive Admin</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <button id="logoutBtn" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log Out</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Dashboard Content -->
+  <main class="max-w-7xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold mb-6">Superadmin Dashboard</h1>
+    <p class="text-gray-700 mb-8">Welcome, Superadmin! Manage all polls and users from here.</p>
+
+    <!-- Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-lg font-semibold mb-2">Total Polls</h2>
+        <p id="totalPolls" class="text-3xl font-bold text-indigo-700">0</p>
+      </div>
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-lg font-semibold mb-2">Total Users</h2>
+        <p id="totalUsers" class="text-3xl font-bold text-green-700">0</p>
+      </div>
+      <div class="bg-white shadow rounded p-6">
+        <h2 class="text-lg font-semibold mb-2">Open Polls</h2>
+        <p id="openPolls" class="text-3xl font-bold text-yellow-700">0</p>
+      </div>
+    </div>
+
+    <!-- Poll List -->
+    <section class="mt-10">
+      <h2 class="text-2xl font-bold mb-4">All Polls</h2>
+      <div id="pollList" class="bg-white rounded shadow p-4 divide-y"></div>
+    </section>
+  </main>
+
+  <script>
+    // Access control
+    const role = localStorage.getItem("role");
+    if (role !== "superadmin") {
+      window.location.href = "login.html";
+    }
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("role");
+      localStorage.removeItem("username");
+      window.location.href = "index.html";
+    });
+
+    // Load dummy data from localStorage
+    function loadDashboard() {
+      const polls = JSON.parse(localStorage.getItem("customPolls") || "{}");
+      const users = JSON.parse(localStorage.getItem("userList") || "[]");
+
+      document.getElementById("totalPolls").textContent = Object.keys(polls).length;
+      document.getElementById("totalUsers").textContent = users.length;
+
+      const openPollsCount = Object.values(polls).filter(p => new Date(p.endTime) > new Date()).length;
+      document.getElementById("openPolls").textContent = openPollsCount;
+
+      const pollList = document.getElementById("pollList");
+      pollList.innerHTML = "";
+      Object.entries(polls).forEach(([id, poll]) => {
+        const item = document.createElement("div");
+        item.className = "py-3 flex justify-between items-center";
+        item.innerHTML = `
+          <div>
+            <p class="font-semibold">${poll.title}</p>
+            <p class="text-sm text-gray-500">${poll.category || "General"} – Ends: ${new Date(poll.endTime).toLocaleString()}</p>
+          </div>
+          <button data-id="${id}" class="deletePoll text-red-600 hover:underline text-sm">Delete</button>
+        `;
+        pollList.appendChild(item);
+      });
+
+      // Delete poll buttons
+      document.querySelectorAll(".deletePoll").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          delete polls[id];
+          localStorage.setItem("customPolls", JSON.stringify(polls));
+          loadDashboard();
+        });
+      });
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
