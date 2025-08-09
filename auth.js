@@ -5,10 +5,7 @@
 */
 
 (function () {
-  const LS = {
-    session: 'session',
-    users: 'userList'
-  };
+  const LS = { session: 'session', users: 'userList' };
 
   function getSession() {
     try { return JSON.parse(localStorage.getItem(LS.session) || 'null'); } catch { return null; }
@@ -34,7 +31,7 @@
     setUsers(users);
   }
 
-  // Public API for login/logout so login.html can call it
+  // Public API
   window.VHAuth = {
     isLoggedIn() { return !!getSession(); },
     current() { return getSession(); },
@@ -52,19 +49,10 @@
   };
 
   // ---- Header UI injection ----
-  function createMenuItem(href, label) {
-    const a = document.createElement('a');
-    a.href = href; a.textContent = label;
-    a.className = 'block px-4 py-2 text-sm hover:bg-gray-100';
-    return a;
-  }
-
   function mountHeaderAuth() {
-    // Find the first header nav; fallback to header root
     const header = document.querySelector('header');
     if (!header) return;
 
-    // Create container on the right side of the header nav area
     let nav = header.querySelector('nav');
     if (!nav) {
       nav = document.createElement('nav');
@@ -87,7 +75,6 @@
       return;
     }
 
-    // Logged-in UI (pill + dropdown)
     const { username, role } = sess;
     mount.innerHTML = `
       <div class="relative">
@@ -96,12 +83,12 @@
           <span class="font-medium">${username}</span>
           <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.19l3.71-3.96a.75.75 0 111.08 1.04l-4.25 4.53a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
         </button>
-        <div id="vh-menu" class="hidden absolute right-0 mt-2 w-44 bg-white border rounded shadow z-50">
-          <a href="my-polls.html" class="block px-4 py-2 text-sm hover:bg-gray-100">My Polls</a>
-          <a href="applications.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Applications</a>
-          <a href="rewards.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Rewards</a>
-          ${role === 'superadmin' ? '<a href="admin-dashboard.html" class="block px-4 py-2 text-sm hover:bg-gray-100">Admin</a>' : ''}
-          <button id="vh-logout" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Log Out</button>
+        <div id="vh-menu" class="hidden absolute right-0 mt-2 w-44 bg-white text-gray-800 border rounded shadow z-50">
+          <a href="my-polls.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">My Polls</a>
+          <a href="applications.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Applications</a>
+          <a href="rewards.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Rewards</a>
+          ${role === 'superadmin' ? '<a href="admin-dashboard.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Admin</a>' : ''}
+          <button id="vh-logout" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Log Out</button>
         </div>
       </div>
     `;
@@ -122,7 +109,6 @@
     });
   }
 
-  // Mount now and on auth changes
   document.addEventListener('DOMContentLoaded', mountHeaderAuth);
   window.addEventListener('vh-auth-change', mountHeaderAuth);
 })();
