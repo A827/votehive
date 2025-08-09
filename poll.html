@@ -13,6 +13,7 @@
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
     .vh-btn-light { background:#fff; color:#6b21a8; }
     html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .disabled { opacity:0.6; pointer-events:none; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
@@ -42,8 +43,11 @@
     <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
     <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
+    <!-- Alerts -->
+    <div id="guard-msg" class="hidden mb-4 text-sm p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200"></div>
+
     <form id="vote-form" class="vh-card border border-gray-100 shadow rounded p-4 space-y-3 mb-6"></form>
-    <div class="flex gap-3">
+    <div class="flex flex-wrap gap-3">
       <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
       <button id="flag-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded">Flag for Review</button>
     </div>
@@ -93,14 +97,29 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
 
   <script>
-    // --- Shared helpers (points, votes, flags) ---
+    // ======== Basic helpers ========
     const currentUser = (window.VHAuth?.current?.() || {username:'guest'}).username;
+    const pageLoadedAt = Date.now();
+
+    // persistent device id
+    function getDeviceId(){
+      let id = localStorage.getItem('vh_device');
+      if (!id) { id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('vh_device', id); }
+      return id;
+    }
+    const deviceId = getDeviceId();
 
     const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
     const getAllVotes = () => JSON.parse(localStorage.getItem("pollVotes") || "{}");
     const setAllVotes = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
+
     const getVotesByUser = () => JSON.parse(localStorage.getItem('vh_votesByUser') || '{}');
     const setVotesByUser = (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d));
+
+    // device-level ledger: pollId -> { deviceId: true }
+    const getDeviceLedger = () => JSON.parse(localStorage.getItem('vh_pollDeviceVotes') || '{}');
+    const setDeviceLedger = (d) => localStorage.setItem('vh_pollDeviceVotes', JSON.stringify(d));
+
     const getFlags = () => JSON.parse(localStorage.getItem('pollFlags') || '{}');
     const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
     const getFlagsByUser = () => JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}');
@@ -108,10 +127,7 @@
 
     const getPoints = () => JSON.parse(localStorage.getItem('userPoints') || '{}');
     const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
-    function addPoints(username, amount){
-      const pts = getPoints(); pts[username] = (pts[username] || 0) + amount; setPoints(pts);
-    }
-    // prevent earning the same action multiple times per poll
+    function addPoints(username, amount){ const pts = getPoints(); pts[username] = (pts[username] || 0) + amount; setPoints(pts); }
     const getEarned = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
     const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
     function markEarned(key){ const e=getEarned(); e[key]=true; setEarned(e); }
@@ -138,11 +154,18 @@
     const qrBtn = document.getElementById("qr-btn");
     const qrWrap = document.getElementById("qr-wrap");
     const qrImg = document.getElementById("qr-img");
+    const guardMsg = document.getElementById("guard-msg");
 
     // Load poll
     const params = new URLSearchParams(location.search);
     const pollId = params.get("id") || "";
     const poll = getCustomPolls()[pollId];
+
+    function showGuard(msg){
+      guardMsg.textContent = msg;
+      guardMsg.classList.remove('hidden');
+    }
+    function hideGuard(){ guardMsg.classList.add('hidden'); }
 
     if (!poll || poll.hidden) {
       titleEl.textContent = "Poll not found or unavailable.";
@@ -152,15 +175,15 @@
     } else {
       titleEl.textContent = poll.title || "Untitled poll";
       categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
+
+      // Share
       const shareUrl = `${location.origin}${location.pathname}?id=${encodeURIComponent(pollId)}`;
       shareInput.value = shareUrl;
       shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
       shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
-
       qrBtn.addEventListener('click', ()=>{
         const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
-        qrImg.src = url;
-        qrWrap.classList.remove('hidden');
+        qrImg.src = url; qrWrap.classList.remove('hidden');
       });
 
       // Options
@@ -194,7 +217,7 @@
       updateCountdown();
       setInterval(updateCountdown, 60000);
 
-      // Voting / Results
+      // Results
       function currentVotes() {
         const all = getAllVotes();
         return all[pollId] || {};
@@ -232,37 +255,96 @@
       }
       renderResults();
 
-      // Already voted?
+      // ======== Voting guard: one vote per user AND per device ========
       const votesByUser = getVotesByUser();
-      if (votesByUser[currentUser] && votesByUser[currentUser][pollId]) {
+      const myVotes = votesByUser[currentUser] || {};
+      const deviceLedger = getDeviceLedger();
+      const deviceMap = deviceLedger[pollId] || {};
+
+      // Pre-lock UI if already voted by user OR device
+      const userVoted = !!myVotes[pollId];
+      const deviceVoted = !!deviceMap[deviceId];
+
+      if (userVoted) {
         submitBtn.disabled = true;
         formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        noteEl.textContent = `You already voted: ${votesByUser[currentUser][pollId]} (+2 points earned)`;
+        noteEl.textContent = `You already voted: ${myVotes[pollId]} (+2 points earned)`;
         noteEl.classList.remove('hidden');
+      } else if (deviceVoted) {
+        submitBtn.disabled = true;
+        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
+        showGuard('A vote for this poll has already been cast from this device. Log in from another device to vote.');
+      }
+
+      // Anti-spam cooldown
+      let lastSubmitAt = 0;
+      const COOLDOWN_MS = 5000;
+
+      function tooFastSubmit(){
+        const sinceLoad = Date.now() - pageLoadedAt;
+        return sinceLoad < 2000; // form submitted <2s after load → likely automation
+      }
+
+      function askSimpleCaptcha(){
+        const a = Math.floor(2 + Math.random()*7);
+        const b = Math.floor(2 + Math.random()*7);
+        return prompt(`Quick check: what is ${a} + ${b}?`, '') == (a+b);
       }
 
       submitBtn.addEventListener("click", (e) => {
         e.preventDefault();
+        hideGuard();
+
         if (new Date() > end) { updateCountdown(); return; }
 
-        const votesByUser = getVotesByUser();
-        const myVotes = votesByUser[currentUser] || {};
-        if (myVotes[pollId]) {
-          noteEl.textContent = `You already voted: ${myVotes[pollId]}`;
-          noteEl.classList.remove('hidden');
-          submitBtn.disabled = true;
+        // cooldown
+        const now = Date.now();
+        if (now - lastSubmitAt < COOLDOWN_MS) {
+          showGuard('Please wait a moment before submitting again.');
           return;
         }
 
-        const chosen = document.querySelector('input[name="vote"]:checked');
-        if (!chosen) { alert("Please select an option."); return; }
+        // device or user already used
+        const votesByUser = getVotesByUser();
+        const myVotes = votesByUser[currentUser] || {};
+        const deviceLedger = getDeviceLedger();
+        const deviceMap = deviceLedger[pollId] || {};
 
+        if (myVotes[pollId]) {
+          showGuard('You have already voted on this poll.');
+          return;
+        }
+        if (deviceMap[deviceId]) {
+          showGuard('This device has already voted on this poll.');
+          return;
+        }
+
+        // fast submit check
+        if (tooFastSubmit()) {
+          if (!askSimpleCaptcha()) {
+            showGuard('Captcha failed. Please try again.');
+            return;
+          }
+        }
+
+        const chosen = document.querySelector('input[name="vote"]:checked');
+        if (!chosen) { showGuard('Please select an option.'); return; }
+
+        // Record vote
         castVote(chosen.value);
+
+        // User ledger
         myVotes[pollId] = chosen.value;
         votesByUser[currentUser] = myVotes;
         setVotesByUser(votesByUser);
 
-        // Award points once per poll for voting
+        // Device ledger
+        const ledger = getDeviceLedger();
+        ledger[pollId] = ledger[pollId] || {};
+        ledger[pollId][deviceId] = true;
+        setDeviceLedger(ledger);
+
+        // Points once per poll
         const voteKey = `vote:${currentUser}:${pollId}`;
         if (!hasEarned(voteKey)) { addPoints(currentUser, 2); markEarned(voteKey); }
 
@@ -271,10 +353,13 @@
         toast.classList.remove('hidden');
         setTimeout(()=>toast.classList.add('hidden'), 1200);
 
+        // Lock UI
         submitBtn.disabled = true;
         formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
         noteEl.textContent = `You voted: ${chosen.value}`;
         noteEl.classList.remove('hidden');
+
+        lastSubmitAt = now;
       });
 
       // Flagging (per user, once per poll)
@@ -300,13 +385,12 @@
       });
 
       // Copy link → +1 point (once per poll)
-      document.getElementById("copy-btn").addEventListener("click", (e) => {
+      copyBtn.addEventListener("click", (e) => {
         e.preventDefault();
         const input = document.getElementById("share-link");
         input.select(); document.execCommand("copy");
-        const msg = document.getElementById("copied-msg");
-        msg.classList.remove("hidden");
-        setTimeout(()=>msg.classList.add("hidden"), 1500);
+        copiedMsg.classList.remove("hidden");
+        setTimeout(()=>copiedMsg.classList.add("hidden"), 1500);
 
         const key = `share:${currentUser}:${pollId}`;
         if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
