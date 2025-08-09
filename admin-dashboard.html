@@ -6,13 +6,13 @@
   <title>Admin Dashboard – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
     .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
     .vh-input { background:#fff; } html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
   </style>
+  <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-gray-50">
   <!-- Header -->
@@ -72,14 +72,30 @@
   </footer>
 
   <script>
-    // Storage helpers
+    // ---- storage helpers ----
     const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
     const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
     const getPolls   = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
     const setPolls   = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
     const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
     const setLog     = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    const getPoints  = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
+    const setPoints  = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+    const getEarned  = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
+    const setEarned  = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
 
+    function awardOnce(key, username, amount){
+      const earned = getEarned();
+      if (earned[key]) return false;
+      const pts = getPoints();
+      pts[username] = (pts[username]||0) + amount;
+      setPoints(pts);
+      earned[key] = true;
+      setEarned(earned);
+      return true;
+    }
+
+    // ---- pending render/actions ----
     function renderPending(){
       const el = document.getElementById('pendingList');
       const pending = Object.entries(getPending()).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
@@ -141,7 +157,7 @@
     function approve(pid, days){
       const pend = getPending(); const app = pend[pid]; if (!app) return;
 
-      // Generate unique poll ID
+      // unique poll id from title
       let id = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
       if (!id) id = 'poll-' + Date.now();
       const polls = getPolls();
@@ -159,6 +175,7 @@
       };
       setPolls(polls);
 
+      // log decision
       const log = getLog();
       log.push({
         id: pid, status: 'approved', title: app.title, category: app.category,
@@ -166,11 +183,18 @@
       });
       setLog(log);
 
+      // award +10 points to applicant (once per approved poll)
+      const applicant = app.applicant || 'guest';
+      const awardKey = `approval:${applicant}:${id}`;
+      awardOnce(awardKey, applicant, 10);
+
+      // clean pending + refresh
       delete pend[pid]; setPending(pend);
       renderAll();
-      alert('Approved and published! ✅');
+      alert('Approved and published! ✅ (+10 points to applicant)');
     }
 
+    // ---- polls list ----
     function renderPolls(){
       const list = document.getElementById('pollList');
       const q = (document.getElementById('search').value || '').toLowerCase();
