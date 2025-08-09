@@ -13,6 +13,8 @@
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
     .vh-btn-light { background:#fff; color:#6b21a8; }
     html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .vh-input { background:#fff; }
+    html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
   </style>
   <script src="theme.js"></script>
 </head>
@@ -67,6 +69,22 @@
       </div>
     </section>
 
+    <!-- Backup & Restore -->
+    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Backup & Restore</h2>
+      </div>
+      <p class="text-sm text-gray-600 mt-1 mb-4">Export all VoteHive data to JSON, or import a JSON backup to restore.</p>
+      <div class="flex flex-wrap gap-3 items-center">
+        <button id="exportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Export JSON</button>
+        <label class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm cursor-pointer">
+          Import JSON
+          <input id="importInput" type="file" accept="application/json" class="hidden">
+        </label>
+        <span id="importHint" class="text-xs text-gray-500"></span>
+      </div>
+    </section>
+
     <!-- Pending applications -->
     <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
       <div class="flex items-center justify-between mb-4">
@@ -102,9 +120,9 @@
     <section class="vh-card border border-gray-100 shadow rounded p-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xl font-semibold">All Polls</h2>
-        <div class="flex items-center gap-2">
-          <input id="search" type="text" placeholder="Search title…" class="border rounded px-3 py-2 w-64">
-          <select id="filterState" class="border rounded px-3 py-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="search" type="text" placeholder="Search title…" class="vh-input border rounded px-3 py-2 w-64">
+          <select id="filterState" class="vh-input border rounded px-3 py-2">
             <option value="">All states</option>
             <option value="open">Open</option>
             <option value="closed">Closed</option>
@@ -117,20 +135,72 @@
 
   <script>
     // Helpers
-    const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
-    const setUsers = (d) => localStorage.setItem('userList', JSON.stringify(d));
-    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
-    const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
-    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
-    const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
-    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
-    const setLog = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
-    const getFlags = () => { try { return JSON.parse(localStorage.getItem('pollFlags') || '{}'); } catch { return {}; } };
-    const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
+    const getUsers  = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
+    const setUsers  = (d) => localStorage.setItem('userList', JSON.stringify(d));
+    const getPolls  = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
+    const setPolls  = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
+    const getPending= () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const setPending= (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
+    const getLog    = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    const setLog    = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    const getFlags  = () => { try { return JSON.parse(localStorage.getItem('pollFlags') || '{}'); } catch { return {}; } };
+    const setFlags  = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
+    const getVotes  = () => { try { return JSON.parse(localStorage.getItem('pollVotes') || '{}'); } catch { return {}; } };
+    const setVotes  = (d) => localStorage.setItem('pollVotes', JSON.stringify(d));
+    const getVxUser = () => { try { return JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'); } catch { return {}; } };
+    const setVxUser = (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d));
+    const getFxUser = () => { try { return JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}'); } catch { return {}; } };
+    const setFxUser = (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d));
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('role'); localStorage.removeItem('username'); location.href = 'index.html';
+    });
+
+    // Backup / Restore
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const payload = {
+        __meta: { app: 'VoteHive', version: 1, exportedAt: new Date().toISOString() },
+        customPolls: getPolls(),
+        pendingPolls: getPending(),
+        pollVotes: getVotes(),
+        userList: getUsers(),
+        applicationLog: getLog(),
+        pollFlags: getFlags(),
+        vh_votesByUser: getVxUser(),
+        vh_flagsByUser: getFxUser()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `votehive-backup-${Date.now()}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data || typeof data !== 'object') throw new Error('Invalid JSON');
+          if (data.customPolls) setPolls(data.customPolls);
+          if (data.pendingPolls) setPending(data.pendingPolls);
+          if (data.pollVotes) setVotes(data.pollVotes);
+          if (data.userList) setUsers(data.userList);
+          if (data.applicationLog) setLog(data.applicationLog);
+          if (data.pollFlags) setFlags(data.pollFlags);
+          if (data.vh_votesByUser) setVxUser(data.vh_votesByUser);
+          if (data.vh_flagsByUser) setFxUser(data.vh_flagsByUser);
+          document.getElementById('importHint').textContent = 'Import complete. Reloading…';
+          setTimeout(()=>location.reload(), 600);
+        } catch (err) {
+          document.getElementById('importHint').textContent = 'Import failed: ' + err.message;
+        }
+      };
+      reader.readAsText(file);
     });
 
     function render() {
@@ -270,7 +340,7 @@
       });
     }
 
-    // Polls table (with flags + hide)
+    // Polls table (with edit/extend + flags + hide)
     function renderPolls(polls, flags){
       const list = document.getElementById('pollList');
       const term = (document.getElementById('search').value || '').toLowerCase();
@@ -290,26 +360,46 @@
         const closed = Date.now() > end.getTime();
         const fcount = flags[id] || 0;
         const row = document.createElement('div');
-        row.className = 'py-4 flex items-start justify-between gap-4';
+        row.className = 'py-4';
         row.innerHTML = `
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded-full text-xs ${closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${closed?'Closed':'Open'}</span>
-              <span class="text-xs text-gray-500">${p.category||'General'}</span>
-              ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
-              ${p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':''}
-              ${fcount?`<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Flags: ${fcount}</span>`:''}
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-xs ${closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${closed?'Closed':'Open'}</span>
+                <span class="text-xs text-gray-500">${p.category||'General'}</span>
+                ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
+                ${p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':''}
+                ${fcount?`<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">Flags: ${fcount}</span>`:''}
+              </div>
+              <div class="font-semibold mt-1">${p.title}</div>
+              <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+              <div class="text-xs text-gray-500">By: ${p.createdBy||'—'}</div>
             </div>
-            <div class="font-semibold mt-1">${p.title}</div>
-            <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-            <div class="text-xs text-gray-500">By: ${p.createdBy||'—'}</div>
+            <div class="flex flex-col gap-2">
+              <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
+              <button data-id="${id}" class="edit bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Edit</button>
+              <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
+              <button data-id="${id}" class="hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
+              <div class="flex gap-2">
+                <button data-id="${id}" class="extend bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">+7d</button>
+                <button data-id="${id}" class="closeNow bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
+              </div>
+              <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
+            </div>
           </div>
-          <div class="flex flex-col gap-2">
-            <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
-            <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
-            <button data-id="${id}" class="hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
-            <button data-id="${id}" class="closeNow bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
-            <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
+
+          <!-- Inline editor -->
+          <div class="editArea hidden mt-3 border rounded p-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input class="eTitle vh-input border rounded px-2 py-2" placeholder="Title" value="${p.title}">
+              <input class="eCategory vh-input border rounded px-2 py-2" placeholder="Category" value="${p.category||''}">
+              <textarea class="eOptions vh-input border rounded px-2 py-2 md:col-span-2" rows="2" placeholder="Option A, Option B">${(p.options||[]).join(', ')}</textarea>
+              <input class="eEnd vh-input border rounded px-2 py-2 md:col-span-2" type="datetime-local" value="${toLocalDateTimeValue(end)}">
+            </div>
+            <div class="mt-2 flex gap-2">
+              <button class="save bg-indigo-600 text-white px-3 py-1 rounded text-sm" data-id="${id}">Save</button>
+              <button class="cancel bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Cancel</button>
+            </div>
           </div>
         `;
         list.appendChild(row);
@@ -325,9 +415,43 @@
       list.querySelectorAll('.closeNow').forEach(b=>b.addEventListener('click',()=>{
         const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].endTime=new Date(Date.now()-1000).toISOString(); setPolls(polls); render();
       }));
+      list.querySelectorAll('.extend').forEach(b=>b.addEventListener('click',()=>{
+        const id=b.getAttribute('data-id'); const polls=getPolls(); const cur=new Date(polls[id].endTime||Date.now()); polls[id].endTime=new Date(cur.getTime()+7*24*60*60*1000).toISOString(); setPolls(polls); render();
+      }));
       list.querySelectorAll('.delete').forEach(b=>b.addEventListener('click',()=>{
         const id=b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return; const polls=getPolls(); delete polls[id]; setPolls(polls); render();
       }));
+      list.querySelectorAll('.edit').forEach(b=>b.addEventListener('click',()=>{
+        const container = b.closest('.py-4');
+        container.querySelector('.editArea').classList.remove('hidden');
+      }));
+      list.querySelectorAll('.cancel').forEach(b=>b.addEventListener('click',()=>{
+        const container = b.closest('.py-4');
+        container.querySelector('.editArea').classList.add('hidden');
+      }));
+      list.querySelectorAll('.save').forEach(b=>b.addEventListener('click',()=>{
+        const id = b.getAttribute('data-id');
+        const container = b.closest('.py-4');
+        const title = container.querySelector('.eTitle').value.trim();
+        const category = container.querySelector('.eCategory').value.trim();
+        const options = container.querySelector('.eOptions').value.split(',').map(s=>s.trim()).filter(Boolean);
+        const endVal = container.querySelector('.eEnd').value;
+        if (!title || !category || options.length<2) { alert('Please fill title, category, and at least 2 options.'); return; }
+        const polls = getPolls();
+        if (!polls[id]) return;
+        polls[id].title = title;
+        polls[id].category = category;
+        polls[id].options = options;
+        if (endVal) polls[id].endTime = new Date(endVal).toISOString();
+        setPolls(polls);
+        render();
+      }));
+    }
+
+    function toLocalDateTimeValue(d){
+      if (!(d instanceof Date) || isNaN(d)) return '';
+      const pad = n => String(n).padStart(2,'0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     document.getElementById('search').addEventListener('input', render);

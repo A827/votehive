@@ -6,6 +6,15 @@
   <title>Browse Polls – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    .vh-card { background:#fff; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; }
+    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+  </style>
+  <script src="theme.js"></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
@@ -15,12 +24,13 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-bold">VoteHive</span>
       </div>
-      <nav class="flex gap-4 text-sm">
+      <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <a href="login.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
+        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <a href="login.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Log In</a>
+        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
@@ -46,6 +56,13 @@
     </div>
 
     <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+
+    <!-- Pagination -->
+    <div id="pager" class="flex justify-center items-center gap-3 mt-8">
+      <button id="prev" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Prev</button>
+      <span id="pageInfo" class="text-sm text-gray-600"></span>
+      <button id="next" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Next</button>
+    </div>
   </main>
 
   <!-- Footer -->
@@ -65,6 +82,11 @@
     const catEl = document.getElementById('cat');
     const stateEl = document.getElementById('state');
     const grid = document.getElementById('grid');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+    const pageInfo = document.getElementById('pageInfo');
+
+    const PAGE = { index: 1, size: 12, totalPages: 1, totalItems: 0 };
 
     function getPolls() {
       try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; }
@@ -72,7 +94,7 @@
 
     function populateCats(polls){
       const cats = new Set();
-      Object.values(polls).forEach(p => p?.category && cats.add(p.category));
+      Object.values(polls).forEach(p => p?.category && !p.hidden && cats.add(p.category));
       if (catEl.options.length === 1) {
         [...cats].sort().forEach(c => {
           const opt = document.createElement('option');
@@ -81,15 +103,15 @@
       }
     }
 
-    function render(){
+    function filterPolls(){
       const polls = getPolls();
       populateCats(polls);
       const term = (qEl.value || '').toLowerCase();
       const cat  = catEl.value;
       const st   = stateEl.value;
 
-      const entries = Object.entries(polls).filter(([id,p])=>{
-        if (!p) return false;
+      const list = Object.entries(polls).filter(([id,p])=>{
+        if (!p || p.hidden) return false; // hide moderated polls
         const titleOk = !term || (p.title||'').toLowerCase().includes(term);
         const catOk   = !cat || p.category === cat;
         const end = new Date(p.endTime);
@@ -98,21 +120,36 @@
         return titleOk && catOk && stOk;
       }).sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
 
+      return list;
+    }
+
+    function render(){
+      const entries = filterPolls();
+      PAGE.totalItems = entries.length;
+      PAGE.totalPages = Math.max(1, Math.ceil(PAGE.totalItems / PAGE.size));
+      if (PAGE.index > PAGE.totalPages) PAGE.index = PAGE.totalPages;
+
       grid.innerHTML = '';
       if (entries.length === 0) {
         grid.innerHTML = '<div class="col-span-full text-center bg-gray-50 rounded p-10 text-gray-600">No polls match your filters.</div>';
+        pageInfo.textContent = '0 / 0';
+        prevBtn.disabled = true; nextBtn.disabled = true;
         return;
       }
 
-      entries.forEach(([id,p])=>{
+      const start = (PAGE.index - 1) * PAGE.size;
+      const slice = entries.slice(start, start + PAGE.size);
+
+      slice.forEach(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
         const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
         grid.insertAdjacentHTML('beforeend', `
-          <div class="bg-white shadow rounded p-4 flex flex-col">
+          <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
             <div class="flex items-center gap-2 text-sm mb-2">
               <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
               <span class="text-gray-500">${p.category || 'General'}</span>
+              ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
             </div>
             <h4 class="font-semibold mb-2">${p.title}</h4>
             <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
@@ -120,11 +157,19 @@
           </div>
         `);
       });
+
+      pageInfo.textContent = `${PAGE.index} / ${PAGE.totalPages}`;
+      prevBtn.disabled = PAGE.index <= 1;
+      nextBtn.disabled = PAGE.index >= PAGE.totalPages;
     }
 
-    qEl.addEventListener('input', render);
-    catEl.addEventListener('change', render);
-    stateEl.addEventListener('change', render);
+    // Events
+    qEl.addEventListener('input', () => { PAGE.index = 1; render(); });
+    catEl.addEventListener('change', () => { PAGE.index = 1; render(); });
+    stateEl.addEventListener('change', () => { PAGE.index = 1; render(); });
+    prevBtn.addEventListener('click', () => { if (PAGE.index>1){ PAGE.index--; render(); } });
+    nextBtn.addEventListener('click', () => { if (PAGE.index<PAGE.totalPages){ PAGE.index++; render(); } });
+
     render();
   </script>
 </body>
