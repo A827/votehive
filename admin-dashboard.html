@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard – VoteHive</title>
@@ -18,6 +17,7 @@
     html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
   </style>
   <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-gray-100">
   <!-- Header -->
@@ -39,7 +39,9 @@
 
   <!-- Guard -->
   <script>
-    if (localStorage.getItem('role') !== 'superadmin') location.href = 'login.html';
+    if (localStorage.getItem('session')) {
+      try { if (JSON.parse(localStorage.getItem('session')).role !== 'superadmin') location.href = 'login.html'; } catch { location.href='login.html'; }
+    } else { location.href = 'login.html'; }
   </script>
 
   <!-- Content -->
@@ -134,6 +136,16 @@
     </section>
   </main>
 
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
   <script>
     // Helpers
     const getUsers  = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
@@ -152,16 +164,19 @@
     const setVxUser = (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d));
     const getFxUser = () => { try { return JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}'); } catch { return {}; } };
     const setFxUser = (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d));
+    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
+    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+    function addPoints(username, amount){ const pts=getPoints(); pts[username]=(pts[username]||0)+amount; setPoints(pts); }
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('role'); localStorage.removeItem('username'); location.href = 'index.html';
+      localStorage.removeItem('session'); location.href = 'index.html';
     });
 
     // Backup / Restore
     document.getElementById('exportBtn').addEventListener('click', () => {
       const payload = {
-        __meta: { app: 'VoteHive', version: 1, exportedAt: new Date().toISOString() },
+        __meta: { app: 'VoteHive', version: 2, exportedAt: new Date().toISOString() },
         customPolls: getPolls(),
         pendingPolls: getPending(),
         pollVotes: getVotes(),
@@ -169,24 +184,21 @@
         applicationLog: getLog(),
         pollFlags: getFlags(),
         vh_votesByUser: getVxUser(),
-        vh_flagsByUser: getFxUser()
+        vh_flagsByUser: getFxUser(),
+        userPoints: getPoints()
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `votehive-backup-${Date.now()}.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href = url; a.download = `votehive-backup-${Date.now()}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     });
 
     document.getElementById('importInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
         try {
           const data = JSON.parse(reader.result);
-          if (!data || typeof data !== 'object') throw new Error('Invalid JSON');
           if (data.customPolls) setPolls(data.customPolls);
           if (data.pendingPolls) setPending(data.pendingPolls);
           if (data.pollVotes) setVotes(data.pollVotes);
@@ -195,6 +207,7 @@
           if (data.pollFlags) setFlags(data.pollFlags);
           if (data.vh_votesByUser) setVxUser(data.vh_votesByUser);
           if (data.vh_flagsByUser) setFxUser(data.vh_flagsByUser);
+          if (data.userPoints) setPoints(data.userPoints);
           document.getElementById('importHint').textContent = 'Import complete. Reloading…';
           setTimeout(()=>location.reload(), 600);
         } catch (err) {
@@ -223,7 +236,7 @@
       renderPolls(polls, flags);
     }
 
-    // Pending
+    // Pending (approve grants +10 to applicant)
     function renderPending(pending) {
       const el = document.getElementById('pendingList');
       const items = Object.entries(pending).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
@@ -303,8 +316,11 @@
       });
       setLog(log);
 
+      // 🎯 Gamification: applicant earns +10 on approval
+      if (app.applicant) { addPoints(app.applicant, 10); }
+
       delete pend[pid]; setPending(pend);
-      render(); alert('Approved and published!');
+      render(); alert('Approved and published! (+10 points to applicant)');
     }
 
     // Users
@@ -341,7 +357,7 @@
       });
     }
 
-    // Polls table (with edit/extend + flags + hide)
+    // Polls table (edit/extend + flags + hide)
     function renderPolls(polls, flags){
       const list = document.getElementById('pollList');
       const term = (document.getElementById('search').value || '').toLowerCase();
@@ -389,7 +405,6 @@
             </div>
           </div>
 
-          <!-- Inline editor -->
           <div class="editArea hidden mt-3 border rounded p-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input class="eTitle vh-input border rounded px-2 py-2" placeholder="Title" value="${p.title}">
@@ -423,12 +438,10 @@
         const id=b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return; const polls=getPolls(); delete polls[id]; setPolls(polls); render();
       }));
       list.querySelectorAll('.edit').forEach(b=>b.addEventListener('click',()=>{
-        const container = b.closest('.py-4');
-        container.querySelector('.editArea').classList.remove('hidden');
+        const container = b.closest('.py-4'); container.querySelector('.editArea').classList.remove('hidden');
       }));
       list.querySelectorAll('.cancel').forEach(b=>b.addEventListener('click',()=>{
-        const container = b.closest('.py-4');
-        container.querySelector('.editArea').classList.add('hidden');
+        const container = b.closest('.py-4'); container.querySelector('.editArea').classList.add('hidden');
       }));
       list.querySelectorAll('.save').forEach(b=>b.addEventListener('click',()=>{
         const id = b.getAttribute('data-id');

@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rewards – VoteHive</title>
+  <title>Rewards & Leaderboard – VoteHive</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    .vh-card { background:#fff; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; }
+    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
+  </style>
+  <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-
   <!-- Header -->
   <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
     <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
@@ -17,64 +26,57 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-bold">VoteHive</span>
       </div>
-      <nav class="flex gap-4 text-sm">
+      <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
-        <a href="trending.html" class="hover:underline">Trending Polls</a>
-        <a href="browse.html" class="hover:underline">Browse Polls</a>
-        <a href="my-polls.html" class="hover:underline">My Polls</a>
-        <a href="create.html" class="hover:underline">Create Poll</a>
-        <a href="rewards.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Rewards</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-2">Your Rewards</h1>
-    <p class="text-gray-600 mb-8">Earn points by creating polls, voting, and returning daily. Unlock badges as you grow!</p>
-
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <!-- Points -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-3">Total Points</h2>
-        <div class="text-4xl font-extrabold text-indigo-700" id="points">0</div>
-        <p class="text-xs text-gray-500 mt-2">Create poll: +10 · Vote: +2 · Daily streak: +5</p>
-      </div>
-
-      <!-- Streak -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-3">Daily Streak</h2>
-        <div class="flex items-baseline gap-3">
-          <div class="text-4xl font-extrabold text-purple-700" id="streak">0</div>
-          <span class="text-gray-600">days</span>
+  <main class="max-w-7xl mx-auto px-4 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- My rewards -->
+      <section class="vh-card border border-gray-100 shadow rounded p-6">
+        <h1 class="text-2xl font-bold mb-2">Your Rewards</h1>
+        <p class="text-sm text-gray-600 mb-4">Earn points by voting, sharing, and getting polls approved.</p>
+        <div id="me" class="text-gray-700">
+          <p class="mb-2"><span class="font-semibold">User:</span> <span id="meName">guest</span></p>
+          <p class="mb-2"><span class="font-semibold">Points:</span> <span id="mePoints">0</span></p>
+          <p class="mb-2"><span class="font-semibold">Badge:</span> <span id="meBadge" class="badge bg-gray-200 text-gray-800">None</span></p>
         </div>
-        <p class="text-xs text-gray-500 mt-2">Do at least one action (create or vote) each day to extend your streak.</p>
-      </div>
-
-      <!-- Progress to next tier -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-3">Next Tier Progress</h2>
-        <p class="text-sm text-gray-600 mb-2" id="tierLabel">Beginner → Rising</p>
-        <div class="w-full h-2 bg-gray-200 rounded">
-          <div id="tierBar" class="h-2 bg-indigo-600 rounded" style="width:0%"></div>
+        <div class="mt-6">
+          <h2 class="font-semibold mb-2">How to earn</h2>
+          <ul class="list-disc ml-6 text-sm text-gray-600 space-y-1">
+            <li>Vote on a poll: <strong>+2</strong> (once per poll)</li>
+            <li>Copy a poll’s share link: <strong>+1</strong> (once per poll)</li>
+            <li>Your poll application gets approved: <strong>+10</strong></li>
+          </ul>
         </div>
-        <p class="text-xs text-gray-500 mt-2" id="tierDetail"></p>
-      </div>
-    </section>
+      </section>
 
-    <!-- Badges -->
-    <section class="bg-white shadow rounded p-6 mb-8">
-      <h2 class="text-xl font-semibold mb-4">Badges</h2>
-      <div id="badges" class="flex flex-wrap gap-3"></div>
-      <p class="text-xs text-gray-500 mt-4">Examples: First Poll, Five Polls, Ten Polls, 50 Votes Cast, and tier badges.</p>
-    </section>
-
-    <!-- Activity -->
-    <section class="bg-white shadow rounded p-6">
-      <h2 class="text-xl font-semibold mb-4">Activity Summary</h2>
-      <ul class="text-sm text-gray-700 space-y-1" id="summary">
-        <!-- filled by JS -->
-      </ul>
-    </section>
+      <!-- Leaderboard -->
+      <section class="vh-card border border-gray-100 shadow rounded p-6 lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-semibold">Leaderboard</h2>
+          <input id="q" type="text" placeholder="Search username…" class="border rounded px-3 py-2 w-64">
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-600 border-b">
+                <th class="py-2 pr-4">Rank</th>
+                <th class="py-2 pr-4">User</th>
+                <th class="py-2 pr-4">Points</th>
+                <th class="py-2 pr-4">Badge</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
@@ -88,84 +90,61 @@
   </footer>
 
   <script>
-    // --- Shared profile helpers (same logic used on create/poll pages) ---
-    function getProfile() {
-      try { return JSON.parse(localStorage.getItem('vh_profile') || '{}'); } catch { return {}; }
-    }
-    function saveProfile(p) {
-      localStorage.setItem('vh_profile', JSON.stringify(p));
-    }
-    function ensureProfile() {
-      const p = getProfile();
-      return Object.assign({
-        points: 0,
-        badges: [],
-        streak: 0,
-        lastActiveISO: null,
-        createdCount: 0,
-        votesCast: 0
-      }, p);
-    }
-    const TIERS = [
-      { name: 'Beginner', min: 0 },
-      { name: 'Rising',   min: 50 },
-      { name: 'Influencer', min: 150 },
-      { name: 'Hive Master', min: 500 }
-    ];
-    function currentTier(points) {
-      let tier = TIERS[0];
-      for (const t of TIERS) if (points >= t.min) tier = t;
-      return tier;
-    }
-    function nextTier(points) {
-      for (const t of TIERS) if (points < t.min) return t;
-      return null;
+    const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
+    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
+    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+
+    function badgeFor(points){
+      if (points >= 400) return {name:'Diamond', cls:'bg-indigo-100 text-indigo-800', icon:'🔷'};
+      if (points >= 150) return {name:'Gold', cls:'bg-yellow-100 text-yellow-800', icon:'🟡'};
+      if (points >= 50)  return {name:'Silver', cls:'bg-gray-100 text-gray-800', icon:'⚪️'};
+      if (points >= 10)  return {name:'Bronze', cls:'bg-amber-100 text-amber-800', icon:'🟤'};
+      return {name:'None', cls:'bg-gray-200 text-gray-800', icon:'—'};
     }
 
-    // --- Render UI ---
-    function renderRewards() {
-      const p = ensureProfile();
-      document.getElementById('points').textContent = p.points || 0;
-      document.getElementById('streak').textContent = p.streak || 0;
+    function renderMe(){
+      const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
+      const pts = getPoints()[me] || 0;
+      document.getElementById('meName').textContent = me;
+      document.getElementById('mePoints').textContent = pts;
+      const b = badgeFor(pts);
+      const el = document.getElementById('meBadge');
+      el.textContent = `${b.icon} ${b.name}`;
+      el.className = `badge ${b.cls}`;
+    }
 
-      const ct = currentTier(p.points);
-      const nt = nextTier(p.points);
-      const tierLabel = document.getElementById('tierLabel');
-      const tierBar = document.getElementById('tierBar');
-      const tierDetail = document.getElementById('tierDetail');
-      if (nt) {
-        tierLabel.textContent = `${ct.name} → ${nt.name}`;
-        const range = nt.min - ct.min;
-        const prog = Math.max(0, Math.min(1, (p.points - ct.min) / range));
-        tierBar.style.width = Math.round(prog * 100) + '%';
-        tierDetail.textContent = `${p.points - ct.min} / ${range} points toward ${nt.name}`;
-      } else {
-        tierLabel.textContent = `${ct.name} (max tier)`;
-        tierBar.style.width = '100%';
-        tierDetail.textContent = `You’ve reached the top tier. Keep earning badges!`;
-      }
+    function renderTable(){
+      const q = (document.getElementById('q').value || '').toLowerCase();
+      const users = getUsers();
+      const pts = getPoints();
 
-      const badgesWrap = document.getElementById('badges');
-      badgesWrap.innerHTML = '';
-      (p.badges || []).forEach(b => {
-        const el = document.createElement('span');
-        el.className = 'px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm';
-        el.textContent = b;
-        badgesWrap.appendChild(el);
+      const list = users
+        .map(u => ({ username: u.username, points: pts[u.username] || 0 }))
+        .filter(u => !q || u.username.toLowerCase().includes(q))
+        .sort((a,b)=> b.points - a.points)
+        .slice(0, 50);
+
+      const rows = document.getElementById('rows');
+      rows.innerHTML = '';
+      list.forEach((u, i) => {
+        const b = badgeFor(u.points);
+        rows.insertAdjacentHTML('beforeend', `
+          <tr class="border-b">
+            <td class="py-2 pr-4">${i+1}</td>
+            <td class="py-2 pr-4">${u.username}</td>
+            <td class="py-2 pr-4">${u.points}</td>
+            <td class="py-2 pr-4"><span class="badge ${b.cls}">${b.icon} ${b.name}</span></td>
+          </tr>
+        `);
       });
-      if (!p.badges || p.badges.length === 0) {
-        badgesWrap.innerHTML = '<span class="text-gray-500 text-sm">No badges yet — start creating and voting!</span>';
-      }
 
-      const summary = document.getElementById('summary');
-      summary.innerHTML = `
-        <li>Polls created: <strong>${p.createdCount || 0}</strong></li>
-        <li>Votes cast: <strong>${p.votesCast || 0}</strong></li>
-        <li>Last active: <strong>${p.lastActiveISO ? new Date(p.lastActiveISO).toLocaleString() : '—'}</strong></li>
-      `;
+      if (list.length === 0) {
+        rows.innerHTML = '<tr><td class="py-6 text-center text-gray-600" colspan="4">No users yet.</td></tr>';
+      }
     }
 
-    renderRewards();
+    document.getElementById('q').addEventListener('input', renderTable);
+    renderMe(); renderTable();
   </script>
 </body>
 </html>

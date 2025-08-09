@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>VoteHive – Poll</title>
@@ -16,6 +15,7 @@
     html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
   </style>
   <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
@@ -29,8 +29,7 @@
       <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="applications.html" class="hover:underline">Applications</a>
-        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
         <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
@@ -67,7 +66,7 @@
         <input id="share-link" type="text" class="flex-1 border px-3 py-2 rounded" readonly>
         <button id="copy-btn" class="bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 text-sm">Copy</button>
       </div>
-      <p id="copied-msg" class="text-green-600 text-sm mt-1 hidden">Link copied!</p>
+      <p id="copied-msg" class="text-green-600 text-sm mt-1 hidden">Link copied! (+1 point)</p>
 
       <div id="qr-wrap" class="mt-4 hidden">
         <img id="qr-img" alt="QR code" class="w-44 h-44 border rounded"/>
@@ -94,10 +93,9 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
 
   <script>
-    // User context
-    const currentUser = localStorage.getItem('username') || 'guest';
+    // --- Shared helpers (points, votes, flags) ---
+    const currentUser = (window.VHAuth?.current?.() || {username:'guest'}).username;
 
-    // Storage helpers
     const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
     const getAllVotes = () => JSON.parse(localStorage.getItem("pollVotes") || "{}");
     const setAllVotes = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
@@ -107,6 +105,17 @@
     const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
     const getFlagsByUser = () => JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}');
     const setFlagsByUser = (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d));
+
+    const getPoints = () => JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+    function addPoints(username, amount){
+      const pts = getPoints(); pts[username] = (pts[username] || 0) + amount; setPoints(pts);
+    }
+    // prevent earning the same action multiple times per poll
+    const getEarned = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
+    const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
+    function markEarned(key){ const e=getEarned(); e[key]=true; setEarned(e); }
+    function hasEarned(key){ return !!getEarned()[key]; }
 
     // DOM
     const titleEl = document.getElementById("poll-title");
@@ -148,7 +157,6 @@
       shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
       shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
 
-      // QR (external image service)
       qrBtn.addEventListener('click', ()=>{
         const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
         qrImg.src = url;
@@ -186,7 +194,7 @@
       updateCountdown();
       setInterval(updateCountdown, 60000);
 
-      // Voting
+      // Voting / Results
       function currentVotes() {
         const all = getAllVotes();
         return all[pollId] || {};
@@ -229,7 +237,7 @@
       if (votesByUser[currentUser] && votesByUser[currentUser][pollId]) {
         submitBtn.disabled = true;
         formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        noteEl.textContent = `You already voted: ${votesByUser[currentUser][pollId]}`;
+        noteEl.textContent = `You already voted: ${votesByUser[currentUser][pollId]} (+2 points earned)`;
         noteEl.classList.remove('hidden');
       }
 
@@ -254,8 +262,12 @@
         votesByUser[currentUser] = myVotes;
         setVotesByUser(votesByUser);
 
+        // Award points once per poll for voting
+        const voteKey = `vote:${currentUser}:${pollId}`;
+        if (!hasEarned(voteKey)) { addPoints(currentUser, 2); markEarned(voteKey); }
+
         renderResults();
-        toast.textContent = `Thanks for voting!`;
+        toast.textContent = `Thanks for voting! (+2 points)`;
         toast.classList.remove('hidden');
         setTimeout(()=>toast.classList.add('hidden'), 1200);
 
@@ -286,17 +298,23 @@
         flagNote.textContent = "Thanks—your flag was recorded.";
         flagNote.classList.remove('hidden');
       });
-    }
 
-    // Copy link
-    document.getElementById("copy-btn").addEventListener("click", (e) => {
-      e.preventDefault();
-      const input = document.getElementById("share-link");
-      input.select(); document.execCommand("copy");
-      const msg = document.getElementById("copied-msg");
-      msg.classList.remove("hidden");
-      setTimeout(()=>msg.classList.add("hidden"), 1500);
-    });
+      // Copy link → +1 point (once per poll)
+      document.getElementById("copy-btn").addEventListener("click", (e) => {
+        e.preventDefault();
+        const input = document.getElementById("share-link");
+        input.select(); document.execCommand("copy");
+        const msg = document.getElementById("copied-msg");
+        msg.classList.remove("hidden");
+        setTimeout(()=>msg.classList.add("hidden"), 1500);
+
+        const key = `share:${currentUser}:${pollId}`;
+        if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
+      });
+
+      // SEO: set title on load
+      document.title = `${poll.title} – VoteHive`;
+    }
   </script>
 </body>
 </html>
