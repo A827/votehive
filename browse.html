@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Browse Polls – VoteHive</title>
@@ -9,13 +8,11 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
     .vh-card { background:#fff; }
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
   </style>
   <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
@@ -27,11 +24,10 @@
       </div>
       <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
-        <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <a href="login.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Log In</a>
-        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <a href="profile.html" class="hover:underline">Profile</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
@@ -42,23 +38,25 @@
     <p class="text-gray-600">Explore active debates and cast your vote.</p>
   </section>
 
-  <!-- Controls -->
   <main class="max-w-7xl mx-auto px-4 py-10">
     <div class="flex flex-wrap gap-3 items-center mb-6">
       <input id="q" type="text" placeholder="Search by title…" class="border rounded px-3 py-2 w-72">
-      <select id="cat" class="border rounded px-3 py-2">
-        <option value="">All categories</option>
-      </select>
+      <select id="cat" class="border rounded px-3 py-2"><option value="">All categories</option></select>
       <select id="state" class="border rounded px-3 py-2">
         <option value="">All states</option>
         <option value="open">Open</option>
         <option value="closed">Closed</option>
       </select>
+      <select id="sort" class="border rounded px-3 py-2">
+        <option value="trending" selected>🔥 Trending</option>
+        <option value="closing">⏳ Closing soon</option>
+        <option value="newest">🆕 Newest</option>
+        <option value="votes">📊 Most votes</option>
+      </select>
     </div>
 
     <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
-    <!-- Pagination -->
     <div id="pager" class="flex justify-center items-center gap-3 mt-8">
       <button id="prev" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Prev</button>
       <span id="pageInfo" class="text-sm text-gray-600"></span>
@@ -66,7 +64,6 @@
     </div>
   </main>
 
-  <!-- Footer -->
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
@@ -82,6 +79,7 @@
     const qEl = document.getElementById('q');
     const catEl = document.getElementById('cat');
     const stateEl = document.getElementById('state');
+    const sortEl = document.getElementById('sort');
     const grid = document.getElementById('grid');
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
@@ -89,8 +87,19 @@
 
     const PAGE = { index: 1, size: 12, totalPages: 1, totalItems: 0 };
 
-    function getPolls() {
-      try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; }
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
+
+    function votesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=>a+b,0);
+    }
+    function scoreFor(id, p){
+      const total = votesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date())/36e5);
+      const recency = 1/(1+hoursLeft);
+      const freshness = Math.min(1, (Date.now()-new Date(p.createdAt||Date.now()))/86400000 < 2 ? 1 : 0.6);
+      return total*0.8 + recency*10 + freshness*2;
     }
 
     function populateCats(polls){
@@ -112,14 +121,20 @@
       const st   = stateEl.value;
 
       const list = Object.entries(polls).filter(([id,p])=>{
-        if (!p || p.hidden) return false; // hide moderated polls
+        if (!p || p.hidden) return false;
         const titleOk = !term || (p.title||'').toLowerCase().includes(term);
         const catOk   = !cat || p.category === cat;
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
         const stOk = !st || (st==='open' && !closed) || (st==='closed' && closed);
         return titleOk && catOk && stOk;
-      }).sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
+      });
+
+      const mode = sortEl.value;
+      if (mode === 'trending') list.sort((a,b)=> scoreFor(b[0],b[1]) - scoreFor(a[0],a[1]));
+      if (mode === 'closing')  list.sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
+      if (mode === 'newest')   list.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0));
+      if (mode === 'votes')    list.sort((a,b)=> votesFor(b[0]) - votesFor(a[0]));
 
       return list;
     }
@@ -145,14 +160,18 @@
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
         const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        const v = votesFor(id);
+        const trending = scoreFor(id,p) > 10 && !closed;
         grid.insertAdjacentHTML('beforeend', `
           <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
             <div class="flex items-center gap-2 text-sm mb-2">
               <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
               <span class="text-gray-500">${p.category || 'General'}</span>
               ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
+              ${trending ? '<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">🔥 Trending</span>' : ''}
             </div>
             <h4 class="font-semibold mb-2">${p.title}</h4>
+            <p class="text-xs text-gray-500">Votes: ${v}</p>
             <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
             <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
           </div>
@@ -164,10 +183,10 @@
       nextBtn.disabled = PAGE.index >= PAGE.totalPages;
     }
 
-    // Events
     qEl.addEventListener('input', () => { PAGE.index = 1; render(); });
     catEl.addEventListener('change', () => { PAGE.index = 1; render(); });
     stateEl.addEventListener('change', () => { PAGE.index = 1; render(); });
+    sortEl.addEventListener('change', () => { PAGE.index = 1; render(); });
     prevBtn.addEventListener('click', () => { if (PAGE.index>1){ PAGE.index--; render(); } });
     nextBtn.addEventListener('click', () => { if (PAGE.index<PAGE.totalPages){ PAGE.index++; render(); } });
 

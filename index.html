@@ -1,26 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoteHive – Where Ideas Compete</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <style>
-    /* Simple dark scheme without Tailwind's dark variant */
-    html.vh-dark body { background-color: #0f172a; color: #e5e7eb; }
-    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
     .vh-card { background:#fff; }
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-input { background:#fff; }
-    html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
-    .vh-link { color:#4f46e5; }
-    html.vh-dark .vh-link { color:#a78bfa; }
   </style>
   <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
@@ -31,13 +23,11 @@
         <span class="text-xl font-bold">VoteHive</span>
       </div>
       <nav class="flex gap-3 text-sm items-center">
-        <a href="trending.html" class="hover:underline">Trending</a>
         <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="my-polls.html" class="hover:underline">My Polls</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <a href="login.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Log In</a>
-        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <a href="profile.html" class="hover:underline">Profile</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
   </header>
@@ -49,51 +39,32 @@
     <div class="flex flex-wrap justify-center gap-4">
       <a href="create.html" class="bg-white text-indigo-700 px-6 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
       <a href="browse.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
-      <a href="my-polls.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">My Polls</a>
+      <a href="rewards.html" class="border border-white px-6 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Leaderboard</a>
     </div>
   </section>
 
-  <!-- Features -->
-  <section class="bg-gray-50 py-12">
-    <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-      <div>
-        <div class="text-indigo-200 text-3xl mb-2">✏️</div>
-        <h3 class="font-semibold mb-1">Apply to Publish</h3>
-        <p class="text-sm text-gray-600">Admins review before polls go live.</p>
-      </div>
-      <div>
-        <div class="text-indigo-200 text-3xl mb-2">🗳️</div>
-        <h3 class="font-semibold mb-1">Real-Time Voting</h3>
-        <p class="text-sm text-gray-600">Engage the community instantly.</p>
-      </div>
-      <div>
-        <div class="text-indigo-200 text-3xl mb-2">📊</div>
-        <h3 class="font-semibold mb-1">Live Results</h3>
-        <p class="text-sm text-gray-600">See trends as they form.</p>
-      </div>
-      <div>
-        <div class="text-indigo-200 text-3xl mb-2">💡</div>
-        <h3 class="font-semibold mb-1">Data Insights</h3>
-        <p class="text-sm text-gray-600">Understand what people think.</p>
+  <!-- Trending -->
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-2xl font-bold">Trending Now</h2>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Sort</label>
+        <select id="sort" class="border rounded px-2 py-1 text-sm">
+          <option value="trending" selected>🔥 Trending score</option>
+          <option value="closing">⏳ Closing soon</option>
+          <option value="newest">🆕 Newest</option>
+          <option value="votes">📊 Most votes</option>
+        </select>
       </div>
     </div>
-  </section>
-
-  <!-- Featured (dynamic) -->
-  <section class="max-w-7xl mx-auto px-4 py-16">
-    <div class="flex items-center justify-between mb-8">
-      <h2 class="text-2xl font-bold">Featured Polls</h2>
-      <a href="browse.html" class="vh-link text-sm hover:underline">See all →</a>
-    </div>
-    <div id="featuredGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+    <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
   </section>
 
   <!-- Footer -->
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
-      <div class="flex gap-6 mt-2 md:mt-0">
-        <a href="applications.html" class="hover:underline">Your Applications</a>
+      <div class="flex gap-6">
         <a href="#" class="hover:underline">About</a>
         <a href="#" class="hover:underline">Contact</a>
       </div>
@@ -101,41 +72,68 @@
   </footer>
 
   <script>
-    (function renderFeatured(){
-      const wrap = document.getElementById('featuredGrid');
-      let polls = {};
-      try { polls = JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { polls = {}; }
+    const grid = document.getElementById('grid');
+    const sortEl = document.getElementById('sort');
 
-      const featured = Object.entries(polls)
-        .filter(([id,p]) => p && p.featured && !p.hidden)
-        .sort((a,b)=> new Date(a[1].endTime)-new Date(b[1].endTime))
-        .slice(0,6);
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
 
-      function card(id,p){
+    function votesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=>a+b,0);
+    }
+
+    // Trending score: recency (soon to close) + vote velocity proxy (total votes weighted)
+    function scoreFor(id, p){
+      const total = votesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date())/36e5);
+      const recency = 1/(1+hoursLeft);           // 0..1 (closer to closing → higher)
+      const freshness = Math.min(1, (Date.now()-new Date(p.createdAt||Date.now()))/86400000 < 2 ? 1 : 0.6);
+      return total*0.8 + recency*10 + freshness*2;
+    }
+
+    function list(){
+      return Object.entries(getPolls()).filter(([id,p])=>p && !p.hidden);
+    }
+
+    function render(){
+      const mode = sortEl.value;
+      let rows = list();
+
+      if (mode === 'trending') {
+        rows.sort((a,b)=> scoreFor(b[0],b[1]) - scoreFor(a[0],a[1]));
+      } else if (mode === 'closing') {
+        rows.sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
+      } else if (mode === 'newest') {
+        rows.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0));
+      } else if (mode === 'votes') {
+        rows.sort((a,b)=> votesFor(b[0]) - votesFor(a[0]));
+      }
+
+      grid.innerHTML = rows.slice(0,6).map(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
-        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        const badge = closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
+        const v = votesFor(id);
+        const trending = scoreFor(id,p) > 10 && !closed;
         return `
           <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
             <div class="flex items-center gap-2 text-sm mb-2">
               <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
               <span class="text-gray-500">${p.category || 'General'}</span>
+              ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
+              ${trending ? '<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">🔥 Trending</span>' : ''}
             </div>
             <h4 class="font-semibold mb-2">${p.title}</h4>
+            <p class="text-xs text-gray-500">Votes: ${v}</p>
             <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
             <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
-          </div>
-        `;
-      }
+          </div>`;
+      }).join('');
+    }
 
-      if (featured.length === 0) {
-        wrap.innerHTML = `
-          <div class="vh-card border border-gray-100 shadow rounded p-6 text-center text-gray-600">No featured polls yet.</div>
-        `;
-        return;
-      }
-      wrap.innerHTML = featured.map(([id,p])=>card(id,p)).join('');
-    })();
+    sortEl.addEventListener('change', render);
+    render();
   </script>
 </body>
 </html>
