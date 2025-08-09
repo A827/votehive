@@ -9,10 +9,8 @@
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
     html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
-    .vh-card { background:#fff; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; } html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
     .disabled { opacity:0.6; pointer-events:none; }
   </style>
   <script src="theme.js"></script>
@@ -30,8 +28,10 @@
       <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="leaderboard.html" class="hover:underline">Leaderboard</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <a href="moderation.html" class="hover:underline">Moderation</a>
         <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
@@ -43,7 +43,6 @@
     <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
     <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
-    <!-- Alerts -->
     <div id="guard-msg" class="hidden mb-4 text-sm p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200"></div>
 
     <form id="vote-form" class="vh-card border border-gray-100 shadow rounded p-4 space-y-3 mb-6"></form>
@@ -77,9 +76,11 @@
         <p class="text-xs text-gray-500 mt-2">Scan to open this poll.</p>
       </div>
 
-      <div class="flex items-center gap-2 mt-4">
-        <a id="share-wa" target="_blank" rel="noopener" class="inline-block bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600">Share on WhatsApp</a>
-        <a id="share-x"  target="_blank" rel="noopener" class="inline-block bg-black text-white text-sm px-3 py-2 rounded hover:opacity-90">Share on X</a>
+      <div class="flex flex-wrap items-center gap-2 mt-4">
+        <a id="share-wa" target="_blank" rel="noopener" class="inline-block bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600">WhatsApp</a>
+        <a id="share-tg" target="_blank" rel="noopener" class="inline-block bg-blue-500 text-white text-sm px-3 py-2 rounded hover:opacity-90">Telegram</a>
+        <a id="share-fb" target="_blank" rel="noopener" class="inline-block bg-blue-700 text-white text-sm px-3 py-2 rounded hover:opacity-90">Facebook</a>
+        <a id="share-x"  target="_blank" rel="noopener" class="inline-block bg-black text-white text-sm px-3 py-2 rounded hover:opacity-90">X</a>
       </div>
     </section>
 
@@ -125,7 +126,6 @@
     const role = session.role || 'user';
     const pageLoadedAt = Date.now();
 
-    // persistent device id
     function getDeviceId(){
       let id = localStorage.getItem('vh_device');
       if (!id) { id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('vh_device', id); }
@@ -172,6 +172,8 @@
     const copyBtn = document.getElementById("copy-btn");
     const copiedMsg = document.getElementById("copied-msg");
     const shareWA = document.getElementById("share-wa");
+    const shareTG = document.getElementById("share-tg");
+    const shareFB = document.getElementById("share-fb");
     const shareX  = document.getElementById("share-x");
     const toast = document.getElementById("toast");
     const flagBtn = document.getElementById("flag-btn");
@@ -205,10 +207,12 @@
       titleEl.textContent = poll.title || "Untitled poll";
       categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
 
-      // Share
+      // Share URLs
       const shareUrl = `${location.origin}${location.pathname}?id=${encodeURIComponent(pollId)}`;
       shareInput.value = shareUrl;
       shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
+      shareTG.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(poll.title)}`;
+      shareFB.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
       shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
       qrBtn.addEventListener('click', ()=>{
         const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
@@ -247,20 +251,10 @@
       setInterval(updateCountdown, 60000);
 
       // Results
-      function currentVotes() {
-        const all = ls.getVotes();
-        return all[pollId] || {};
-      }
-      function saveVotes(v) {
-        const all = ls.getVotes();
-        all[pollId] = v; ls.setVotes(all);
-      }
-      function castVote(option) {
-        const v = currentVotes();
-        v[option] = (v[option] || 0) + 1;
-        saveVotes(v);
-      }
-      function totalVotes(v) { return Object.values(v).reduce((a,b)=>a+b,0); }
+      function currentVotes() { const all = ls.getVotes(); return all[pollId] || {}; }
+      function saveVotes(v)    { const all = ls.getVotes(); all[pollId] = v; ls.setVotes(all); }
+      function castVote(option){ const v = currentVotes(); v[option] = (v[option] || 0) + 1; saveVotes(v); }
+      function totalVotes(v)   { return Object.values(v).reduce((a,b)=>a+b,0); }
       function renderResults() {
         const v = currentVotes();
         const t = totalVotes(v);
@@ -284,13 +278,15 @@
       }
       renderResults();
 
+      // Live refresh (local) every 5s
+      setInterval(renderResults, 5000);
+
       // ======== Voting guard: one vote per user AND per device ========
       const votesByUser = ls.getVotesByUser();
       const myVotes = votesByUser[currentUser] || {};
       const deviceLedger = ls.getDeviceLedger();
       const deviceMap = deviceLedger[pollId] || {};
 
-      // Pre-lock UI if already voted by user OR device
       const userVoted = !!myVotes[pollId];
       const deviceVoted = !!deviceMap[deviceId];
 
@@ -305,32 +301,17 @@
         showGuard('A vote for this poll has already been cast from this device. Log in from another device to vote.');
       }
 
-      // Anti-spam cooldown
-      let lastSubmitAt = 0;
-      const COOLDOWN_MS = 5000;
-
-      function tooFastSubmit(){
-        const sinceLoad = Date.now() - pageLoadedAt;
-        return sinceLoad < 2000;
-      }
-
-      function askSimpleCaptcha(){
-        const a = Math.floor(2 + Math.random()*7);
-        const b = Math.floor(2 + Math.random()*7);
-        return prompt(`Quick check: what is ${a} + ${b}?`, '') == (a+b);
-      }
+      // Anti-spam cooldown + captcha if too fast
+      let lastSubmitAt = 0; const COOLDOWN_MS = 5000;
+      function tooFastSubmit(){ return Date.now() - pageLoadedAt < 2000; }
+      function askSimpleCaptcha(){ const a=2+Math.floor(Math.random()*7), b=2+Math.floor(Math.random()*7); return prompt(`Quick check: ${a}+${b}=?`,'')==(a+b); }
 
       submitBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        hideGuard();
-
+        e.preventDefault(); hideGuard();
         if (new Date() > end) { updateCountdown(); return; }
 
         const now = Date.now();
-        if (now - lastSubmitAt < COOLDOWN_MS) {
-          showGuard('Please wait a moment before submitting again.');
-          return;
-        }
+        if (now - lastSubmitAt < COOLDOWN_MS) { showGuard('Please wait a moment before submitting again.'); return; }
 
         const votesByUser = ls.getVotesByUser();
         const myVotes = votesByUser[currentUser] || {};
@@ -339,11 +320,7 @@
 
         if (myVotes[pollId]) { showGuard('You have already voted on this poll.'); return; }
         if (deviceMap[deviceId]) { showGuard('This device has already voted on this poll.'); return; }
-
-        if (tooFastSubmit() && !askSimpleCaptcha()) {
-          showGuard('Captcha failed. Please try again.');
-          return;
-        }
+        if (tooFastSubmit() && !askSimpleCaptcha()) { showGuard('Captcha failed. Please try again.'); return; }
 
         const chosen = document.querySelector('input[name="vote"]:checked');
         if (!chosen) { showGuard('Please select an option.'); return; }
@@ -351,12 +328,11 @@
         // Record vote
         castVote(chosen.value);
 
-        // User ledger
+        // Ledgers
         myVotes[pollId] = chosen.value;
         votesByUser[currentUser] = myVotes;
         ls.setVotesByUser(votesByUser);
 
-        // Device ledger
         const ledger = ls.getDeviceLedger();
         ledger[pollId] = ledger[pollId] || {};
         ledger[pollId][deviceId] = true;
@@ -368,84 +344,51 @@
 
         renderResults();
         toast.textContent = `Thanks for voting! (+2 points)`;
-        toast.classList.remove('hidden');
-        setTimeout(()=>toast.classList.add('hidden'), 1200);
+        toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), 1200);
 
-        // Lock UI
         submitBtn.disabled = true;
         formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        noteEl.textContent = `You voted: ${chosen.value}`;
-        noteEl.classList.remove('hidden');
+        noteEl.textContent = `You voted: ${chosen.value}`; noteEl.classList.remove('hidden');
 
         lastSubmitAt = now;
       });
 
-      // Flagging (per user, once per poll)
+      // Flagging
       flagBtn.addEventListener('click', (e)=>{
         e.preventDefault();
         const flagsByUser = ls.getFlagsByUser();
         const my = flagsByUser[currentUser] || {};
-        if (my[pollId]) {
-          flagNote.textContent = "You’ve already flagged this poll.";
-          flagNote.classList.remove('hidden');
-          return;
-        }
-        const flags = ls.getFlags();
-        flags[pollId] = (flags[pollId] || 0) + 1;
-        ls.setFlags(flags);
-
-        my[pollId] = true;
-        flagsByUser[currentUser] = my;
-        ls.setFlagsByUser(flagsByUser);
-
-        flagNote.textContent = "Thanks—your flag was recorded.";
-        flagNote.classList.remove('hidden');
+        if (my[pollId]) { flagNote.textContent = "You’ve already flagged this poll."; flagNote.classList.remove('hidden'); return; }
+        const flags = ls.getFlags(); flags[pollId] = (flags[pollId] || 0) + 1; ls.setFlags(flags);
+        my[pollId] = true; flagsByUser[currentUser] = my; ls.setFlagsByUser(flagsByUser);
+        flagNote.textContent = "Thanks—your flag was recorded."; flagNote.classList.remove('hidden');
       });
 
-      // Copy link → +1 point (once per poll)
+      // Copy link → +1 point once
       copyBtn.addEventListener("click", (e) => {
         e.preventDefault();
         const input = document.getElementById("share-link");
         input.select(); document.execCommand("copy");
-        copiedMsg.classList.remove("hidden");
-        setTimeout(()=>copiedMsg.classList.add("hidden"), 1500);
-
-        const key = `share:${currentUser}:${pollId}`;
-        if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
+        copiedMsg.classList.remove("hidden"); setTimeout(()=>copiedMsg.classList.add("hidden"), 1500);
+        const key = `share:${currentUser}:${pollId}`; if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
       });
 
-      // SEO: set title on load
+      // SEO title
       document.title = `${poll.title} – VoteHive`;
 
       // ======== Comments ========
       const isLoggedIn = !!window.VHAuth?.current?.();
-      if (!isLoggedIn) {
-        commentGuard.classList.remove('hidden');
-      } else {
-        commentForm.classList.remove('hidden');
-      }
+      if (!isLoggedIn) { commentGuard.classList.remove('hidden'); } else { commentForm.classList.remove('hidden'); }
 
-      function loadComments() {
-        const all = ls.getComments();
-        return all[pollId] || [];
-      }
-      function saveComments(list) {
-        const all = ls.getComments();
-        all[pollId] = list;
-        ls.setComments(all);
-      }
-      function fmtTime(iso) {
-        const d = new Date(iso);
-        return isNaN(d) ? '' : d.toLocaleString();
-      }
+      function loadComments() { const all = ls.getComments(); return all[pollId] || []; }
+      function saveComments(list) { const all = ls.getComments(); all[pollId] = list; ls.setComments(all); }
+      function fmtTime(iso) { const d=new Date(iso); return isNaN(d)?'':d.toLocaleString(); }
+      function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
       function renderComments() {
         const items = loadComments();
-        commentList.innerHTML = '';
-        commentCount.textContent = `${items.length}`;
-        if (!items.length) {
-          commentList.innerHTML = '<div class="text-sm text-gray-500">No comments yet. Be the first to share your thoughts.</div>';
-          return;
-        }
+        commentList.innerHTML = ''; commentCount.textContent = `${items.length}`;
+        if (!items.length) { commentList.innerHTML = '<div class="text-sm text-gray-500">No comments yet. Be the first to share your thoughts.</div>'; return; }
         items.forEach(c => {
           const delBtn = (role === 'superadmin') ? `<button data-id="${c.id}" class="del bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs">Delete</button>` : '';
           commentList.insertAdjacentHTML('beforeend', `
@@ -458,27 +401,15 @@
             </div>
           `);
         });
-
         if (role === 'superadmin') {
           commentList.querySelectorAll('.del').forEach(btn=>{
             btn.addEventListener('click', ()=>{
               const id = btn.getAttribute('data-id');
               const list = loadComments().filter(x => x.id !== id);
-              saveComments(list);
-              renderComments();
+              saveComments(list); renderComments();
             });
           });
         }
-      }
-
-      // safely escape user content
-      function escapeHtml(s){
-        return (s||'')
-          .replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;')
-          .replace(/"/g,'&quot;')
-          .replace(/'/g,'&#039;')
       }
 
       commentForm.addEventListener('submit', (e)=>{
@@ -488,9 +419,7 @@
         if (text.length > 1000) { alert('Comment too long. (Max 1000 chars)'); return; }
         const list = loadComments();
         list.push({ id: 'c-' + Date.now() + Math.random().toString(36).slice(2), user: currentUser, text, ts: new Date().toISOString() });
-        saveComments(list);
-        commentText.value = '';
-        renderComments();
+        saveComments(list); commentText.value = ''; renderComments();
       });
 
       renderComments();

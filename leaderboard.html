@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaderboard – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
+  </style>
+  <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-3 text-sm items-center">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="rewards.html" class="hover:underline">Rewards</a>
+        <a href="profile.html" class="hover:underline">Profile</a>
+        <a href="moderation.html" class="hover:underline">Moderation</a>
+        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-12">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <h1 class="text-3xl font-bold">Leaderboard</h1>
+      <div class="flex items-center gap-2">
+        <select id="range" class="border rounded px-3 py-2">
+          <option value="today">Today</option>
+          <option value="week" selected>This Week</option>
+          <option value="all">All-time</option>
+        </select>
+        <select id="sort" class="border rounded px-3 py-2">
+          <option value="votes" selected>📊 Most votes</option>
+          <option value="trending">🔥 Trending score</option>
+          <option value="newest">🆕 Newest</option>
+          <option value="closing">⏳ Closing soon</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="vh-card border border-gray-100 shadow rounded p-6">
+      <div id="hint" class="text-sm text-gray-600 mb-3"></div>
+      <div id="list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+  </main>
+
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const listEl = document.getElementById('list');
+    const rangeEl = document.getElementById('range');
+    const sortEl  = document.getElementById('sort');
+    const hintEl  = document.getElementById('hint');
+
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
+
+    function votesFor(id){ const v = getVotes()[id] || {}; return Object.values(v).reduce((a,b)=>a+b,0); }
+    function trendingScore(id, p){
+      const total = votesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date())/36e5);
+      const recency = 1/(1+hoursLeft);
+      const freshness = Math.min(1, (Date.now()-new Date(p.createdAt||Date.now()))/86400000 < 2 ? 1 : 0.6);
+      return total*0.8 + recency*10 + freshness*2;
+    }
+
+    function inRange(p){
+      const mode = rangeEl.value;
+      const created = new Date(p.createdAt || Date.now());
+      const now = new Date();
+      if (mode === 'today'){
+        const diff = (now - created)/86400000; return diff < 1;
+      }
+      if (mode === 'week'){
+        const diff = (now - created)/86400000; return diff < 7;
+      }
+      return true;
+    }
+
+    function items(){
+      return Object.entries(getPolls()).filter(([id,p]) => p && !p.hidden && inRange(p));
+    }
+
+    function render(){
+      const arr = items();
+      const mode = sortEl.value;
+
+      if (mode === 'votes')   arr.sort((a,b)=> votesFor(b[0]) - votesFor(a[0]));
+      if (mode === 'trending')arr.sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]));
+      if (mode === 'newest')  arr.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0));
+      if (mode === 'closing') arr.sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
+
+      hintEl.textContent = arr.length ? `Showing top ${Math.min(50, arr.length)} of ${arr.length} poll(s).` : 'No polls yet.';
+      listEl.innerHTML = arr.slice(0,50).map(([id,p])=>{
+        const end = new Date(p.endTime);
+        const closed = Date.now() > end.getTime();
+        const badge = closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
+        const v = votesFor(id);
+        const tscore = Math.round(trendingScore(id,p));
+        return `
+          <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
+            <div class="flex items-center gap-2 text-sm mb-2">
+              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-gray-500">${p.category || 'General'}</span>
+              ${p.featured?'<span class="badge bg-yellow-100 text-yellow-700">Featured</span>':''}
+            </div>
+            <h4 class="font-semibold mb-2">${p.title}</h4>
+            <div class="text-xs text-gray-500">Votes: ${v} • 🔥 Score: ${tscore}</div>
+            <div class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
+          </div>`;
+      }).join('');
+    }
+
+    rangeEl.addEventListener('change', render);
+    sortEl.addEventListener('change', render);
+    render();
+  </script>
+</body>
+</html>

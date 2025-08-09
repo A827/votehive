@@ -8,8 +8,8 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .tag { display:inline-block; padding:4px 10px; border-radius:9999px; background:#f3f4f6; margin:4px; font-size:12px; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
@@ -24,9 +24,11 @@
       </div>
       <nav class="flex gap-3 text-sm items-center">
         <a href="index.html" class="hover:underline">Home</a>
+        <a href="leaderboard.html" class="hover:underline">Leaderboard</a>
         <a href="rewards.html" class="hover:underline">Rewards</a>
         <a href="profile.html" class="hover:underline">Profile</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <a href="moderation.html" class="hover:underline">Moderation</a>
         <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
@@ -53,6 +55,7 @@
         <option value="newest">🆕 Newest</option>
         <option value="votes">📊 Most votes</option>
       </select>
+      <div id="activeTag" class="hidden text-sm px-3 py-1 rounded bg-indigo-50 text-indigo-700"></div>
     </div>
 
     <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
@@ -62,6 +65,11 @@
       <span id="pageInfo" class="text-sm text-gray-600"></span>
       <button id="next" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Next</button>
     </div>
+
+    <section class="mt-12">
+      <h3 class="font-semibold mb-2">Popular Tags</h3>
+      <div id="tags" class="flex flex-wrap"></div>
+    </section>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
@@ -84,16 +92,18 @@
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
     const pageInfo = document.getElementById('pageInfo');
+    const tagsEl = document.getElementById('tags');
+    const activeTag = document.getElementById('activeTag');
 
     const PAGE = { index: 1, size: 12, totalPages: 1, totalItems: 0 };
 
     const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
     const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
 
-    function votesFor(id){
-      const v = getVotes()[id] || {};
-      return Object.values(v).reduce((a,b)=>a+b,0);
-    }
+    const urlParams = new URLSearchParams(location.search);
+    const presetTag = urlParams.get('tag');
+
+    function votesFor(id){ const v = getVotes()[id] || {}; return Object.values(v).reduce((a,b)=>a+b,0); }
     function scoreFor(id, p){
       const total = votesFor(id);
       const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date())/36e5);
@@ -113,6 +123,10 @@
       }
     }
 
+    function tokenise(title){
+      return (title||'').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    }
+
     function filterPolls(){
       const polls = getPolls();
       populateCats(polls);
@@ -127,7 +141,8 @@
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
         const stOk = !st || (st==='open' && !closed) || (st==='closed' && closed);
-        return titleOk && catOk && stOk;
+        const tagOk = !presetTag || tokenise(p.title).includes(presetTag.toLowerCase());
+        return titleOk && catOk && stOk && tagOk;
       });
 
       const mode = sortEl.value;
@@ -150,37 +165,59 @@
         grid.innerHTML = '<div class="col-span-full text-center bg-gray-50 rounded p-10 text-gray-600">No polls match your filters.</div>';
         pageInfo.textContent = '0 / 0';
         prevBtn.disabled = true; nextBtn.disabled = true;
-        return;
+      } else {
+        const start = (PAGE.index - 1) * PAGE.size;
+        const slice = entries.slice(start, start + PAGE.size);
+
+        slice.forEach(([id,p])=>{
+          const end = new Date(p.endTime);
+          const closed = Date.now() > end.getTime();
+          const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+          const v = votesFor(id);
+          const trending = scoreFor(id,p) > 10 && !closed;
+          grid.insertAdjacentHTML('beforeend', `
+            <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
+              <div class="flex items-center gap-2 text-sm mb-2">
+                <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
+                <span class="text-gray-500">${p.category || 'General'}</span>
+                ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
+                ${trending ? '<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">🔥 Trending</span>' : ''}
+              </div>
+              <h4 class="font-semibold mb-2">${p.title}</h4>
+              <p class="text-xs text-gray-500">Votes: ${v}</p>
+              <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
+              <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
+            </div>
+          `);
+        });
+
+        pageInfo.textContent = `${PAGE.index} / ${PAGE.totalPages}`;
+        prevBtn.disabled = PAGE.index <= 1;
+        nextBtn.disabled = PAGE.index >= PAGE.totalPages;
       }
 
-      const start = (PAGE.index - 1) * PAGE.size;
-      const slice = entries.slice(start, start + PAGE.size);
+      // active tag chip
+      if (presetTag) {
+        activeTag.textContent = `#${presetTag}`;
+        activeTag.classList.remove('hidden');
+      } else {
+        activeTag.classList.add('hidden');
+      }
 
-      slice.forEach(([id,p])=>{
-        const end = new Date(p.endTime);
-        const closed = Date.now() > end.getTime();
-        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
-        const v = votesFor(id);
-        const trending = scoreFor(id,p) > 10 && !closed;
-        grid.insertAdjacentHTML('beforeend', `
-          <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
-            <div class="flex items-center gap-2 text-sm mb-2">
-              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
-              <span class="text-gray-500">${p.category || 'General'}</span>
-              ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
-              ${trending ? '<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">🔥 Trending</span>' : ''}
-            </div>
-            <h4 class="font-semibold mb-2">${p.title}</h4>
-            <p class="text-xs text-gray-500">Votes: ${v}</p>
-            <p class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</p>
-            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
-          </div>
-        `);
+      renderTags();
+    }
+
+    function renderTags(){
+      const polls = getPolls();
+      const counts = {};
+      const stop = new Set(['the','is','a','an','to','of','and','in','on','for','with','by','or','be','are','will','do','does','should','we','you','your','our']);
+      Object.values(polls).forEach(p=>{
+        tokenise(p.title).filter(w=>!stop.has(w) && w.length>2).forEach(w=>{
+          counts[w] = (counts[w]||0)+1;
+        });
       });
-
-      pageInfo.textContent = `${PAGE.index} / ${PAGE.totalPages}`;
-      prevBtn.disabled = PAGE.index <= 1;
-      nextBtn.disabled = PAGE.index >= PAGE.totalPages;
+      const tags = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,30);
+      tagsEl.innerHTML = tags.map(([w,c])=>`<a class="tag hover:bg-indigo-50 hover:text-indigo-700" href="?tag=${encodeURIComponent(w)}">#${w}</a>`).join('') || '<div class="text-sm text-gray-600">No tags yet.</div>';
     }
 
     qEl.addEventListener('input', () => { PAGE.index = 1; render(); });
