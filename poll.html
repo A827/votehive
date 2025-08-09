@@ -2,98 +2,247 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VoteHive Poll</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VoteHive – Poll</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <div class="max-w-2xl mx-auto px-4 py-10">
-    <h1 id="pollTitle" class="text-3xl font-bold mb-4">Loading poll...</h1>
-    <p id="pollCategory" class="text-sm text-gray-500 mb-6"></p>
 
-    <form id="voteForm" class="space-y-4 mb-6"></form>
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="trending.html" class="hover:underline">Trending Polls</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
+        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
+      </nav>
+    </div>
+  </header>
 
-    <p id="countdown" class="text-sm text-gray-600 mb-4"></p>
-    <p id="shareLink" class="text-sm text-indigo-600 break-all"></p>
-  </div>
+  <!-- Poll Content -->
+  <main class="max-w-3xl mx-auto px-4 py-12">
+    <h1 id="poll-title" class="text-3xl font-bold mb-2">Loading...</h1>
+    <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
+    <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
+    <!-- Voting form -->
+    <form id="vote-form" class="space-y-3 mb-6"></form>
+    <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
+
+    <!-- Results -->
+    <section id="results" class="mt-8 hidden">
+      <h2 class="text-lg font-semibold mb-3">Results</h2>
+      <div id="results-list" class="space-y-3"></div>
+      <p id="total-votes" class="text-xs text-gray-500 mt-2"></p>
+    </section>
+
+    <!-- Share -->
+    <section class="mt-10">
+      <label class="block text-sm font-medium mb-1">📤 Share this poll</label>
+      <div class="flex gap-2">
+        <input id="share-link" type="text" class="flex-1 border px-3 py-2 rounded" readonly>
+        <button id="copy-btn" class="bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 text-sm">Copy</button>
+      </div>
+      <p id="copied-msg" class="text-green-600 text-sm mt-1 hidden">Link copied!</p>
+
+      <div class="flex items-center gap-2 mt-4">
+        <a id="share-wa" target="_blank" rel="noopener" class="inline-block bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600">Share on WhatsApp</a>
+        <a id="share-x"  target="_blank" rel="noopener" class="inline-block bg-black text-white text-sm px-3 py-2 rounded hover:opacity-90">Share on X</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script -->
   <script>
-    const polls = {
+    // Built-in sample polls (fallbacks for demo)
+    const builtinPolls = {
       "startup-vs-enterprise": {
         title: "Which is better: Startup or Enterprise job?",
         category: "Careers",
         options: ["Startup", "Enterprise"],
-        endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
+        endTime: new Date(Date.now() + 2*24*60*60*1000).toISOString()
       },
       "ai-future": {
         title: "Will AI create more jobs than it eliminates?",
         category: "Technology",
         options: ["Yes", "No", "Not Sure"],
-        endTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()
+        endTime: new Date(Date.now() + 24*60*60*1000).toISOString()
       },
       "real-estate-safe": {
         title: "Which property investment is safer?",
         category: "Real Estate",
-        options: ["Off-Plan", "Completed Project", "Land"],
-        endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+        options: ["Apartments", "Villas", "Commercial"],
+        endTime: new Date(Date.now() + 3*24*60*60*1000).toISOString()
       },
       "flat-vs-skeuo": {
-        title: "Which design trend is better?",
+        title: "Which UI design style do you prefer?",
         category: "Design",
         options: ["Flat Design", "Skeuomorphic Design"],
-        endTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString()
+        endTime: new Date(Date.now() + 2*24*60*60*1000).toISOString()
       },
       "global-online-vote": {
-        title: "Should global elections allow online voting?",
+        title: "Should national elections support online voting globally?",
         category: "Global",
-        options: ["Yes", "No", "Only Locally"],
-        endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+        options: ["Yes, it's time", "No, too risky", "Maybe in the future"],
+        endTime: new Date(Date.now() + 4*24*60*60*1000).toISOString()
       }
     };
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const pollId = urlParams.get("id");
+    // DOM refs
+    const titleEl       = document.getElementById("poll-title");
+    const categoryEl    = document.getElementById("poll-category");
+    const formEl        = document.getElementById("vote-form");
+    const submitBtn     = document.getElementById("submit-vote");
+    const countdownEl   = document.getElementById("countdown");
+    const resultsWrap   = document.getElementById("results");
+    const resultsList   = document.getElementById("results-list");
+    const totalVotesEl  = document.getElementById("total-votes");
+    const shareInput    = document.getElementById("share-link");
+    const copyBtn       = document.getElementById("copy-btn");
+    const copiedMsg     = document.getElementById("copied-msg");
+    const shareWA       = document.getElementById("share-wa");
+    const shareX        = document.getElementById("share-x");
 
-    const storedPolls = JSON.parse(localStorage.getItem("customPolls") || "{}");
-    const poll = storedPolls[pollId] || polls[pollId];
+    // Helpers: storage
+    const getCustomPolls = () => JSON.parse(localStorage.getItem("customPolls") || "{}");
+    const getAllVotes    = () => JSON.parse(localStorage.getItem("pollVotes")   || "{}");
+    const setAllVotes    = (v) => localStorage.setItem("pollVotes", JSON.stringify(v));
 
-    const titleEl = document.getElementById("pollTitle");
-    const categoryEl = document.getElementById("pollCategory");
-    const formEl = document.getElementById("voteForm");
-    const countdownEl = document.getElementById("countdown");
-    const shareLinkEl = document.getElementById("shareLink");
+    // Resolve poll by id
+    const params = new URLSearchParams(location.search);
+    const pollId = params.get("id") || "";
+    const poll   = getCustomPolls()[pollId] || builtinPolls[pollId];
 
     if (!poll) {
       titleEl.textContent = "Poll not found.";
-      formEl.remove();
+      formEl.innerHTML = "";
+      submitBtn.style.display = "none";
     } else {
-      titleEl.textContent = poll.title;
-      categoryEl.textContent = `Category: ${poll.category}`;
-      shareLinkEl.textContent = `${window.location.origin}${window.location.pathname}?id=${pollId}`;
+      // Meta
+      titleEl.textContent = poll.title || "Untitled poll";
+      categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
+      const shareUrl = `${location.origin}${location.pathname}?id=${encodeURIComponent(pollId)}`;
+      shareInput.value = shareUrl;
+      shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
+      shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
 
-      const endTime = new Date(poll.endTime);
-      const now = new Date();
-      if (now > endTime) {
-        countdownEl.textContent = "Poll closed.";
-        formEl.innerHTML = "<p class='text-red-500'>Voting is closed for this poll.</p>";
-      } else {
-        countdownEl.textContent = `Poll ends on: ${endTime.toLocaleString()}`;
-        poll.options.forEach((opt, i) => {
-          const label = document.createElement("label");
-          label.className = "block border border-gray-300 rounded p-2 cursor-pointer hover:bg-gray-50";
-          label.innerHTML = `
-            <input type="radio" name="option" value="${opt}" class="mr-2">
-            ${opt}
-          `;
-          formEl.appendChild(label);
-        });
-        const btn = document.createElement("button");
-        btn.type = "submit";
-        btn.textContent = "Vote";
-        btn.className = "mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700";
-        formEl.appendChild(btn);
+      // Build options
+      formEl.innerHTML = "";
+      (poll.options || []).forEach((opt, i) => {
+        const id = `opt-${i}`;
+        formEl.insertAdjacentHTML("beforeend", `
+          <label for="${id}" class="block border border-gray-300 rounded p-2 cursor-pointer hover:bg-gray-50">
+            <input id="${id}" type="radio" name="vote" value="${opt}" class="mr-2">${opt}
+          </label>
+        `);
+      });
+
+      // Countdown
+      const end = new Date(poll.endTime);
+      function updateCountdown() {
+        const diff = end - new Date();
+        if (isNaN(diff)) {
+          countdownEl.textContent = "";
+          return;
+        }
+        if (diff <= 0) {
+          countdownEl.textContent = "⏱️ Poll Closed";
+          if (submitBtn) submitBtn.disabled = true;
+          if (formEl) formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
+          renderResults(); // show results even when closed
+          return;
+        }
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff / 3600000) % 24);
+        const m = Math.floor((diff / 60000) % 60);
+        countdownEl.textContent = `⏳ Closes in ${d}d ${h}h ${m}m`;
       }
+      updateCountdown();
+      setInterval(updateCountdown, 60000);
+
+      // Voting
+      function currentVotes() {
+        const all = getAllVotes();
+        return all[pollId] || {};
+      }
+      function saveVotes(v) {
+        const all = getAllVotes();
+        all[pollId] = v;
+        setAllVotes(all);
+      }
+      function castVote(option) {
+        const v = currentVotes();
+        v[option] = (v[option] || 0) + 1;
+        saveVotes(v);
+      }
+      function totalVotes(v) {
+        return Object.values(v).reduce((a, b) => a + b, 0);
+      }
+
+      function renderResults() {
+        const v = currentVotes();
+        const t = totalVotes(v);
+        resultsList.innerHTML = "";
+        (poll.options || []).forEach(opt => {
+          const count = v[opt] || 0;
+          const pct = t ? Math.round((count / t) * 100) : 0;
+          resultsList.insertAdjacentHTML("beforeend", `
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>${opt}</span><span>${pct}% (${count})</span>
+              </div>
+              <div class="w-full h-2 bg-gray-200 rounded">
+                <div class="h-2 bg-indigo-600 rounded" style="width:${pct}%;"></div>
+              </div>
+            </div>
+          `);
+        });
+        totalVotesEl.textContent = `Total votes: ${t}`;
+        resultsWrap.classList.remove("hidden");
+      }
+
+      if (submitBtn) {
+        submitBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (new Date() > end) { updateCountdown(); return; }
+          const chosen = document.querySelector('input[name="vote"]:checked');
+          if (!chosen) { alert("Please select an option."); return; }
+          castVote(chosen.value);
+          renderResults();
+        });
+      }
+
+      // Show existing results if any
+      renderResults();
     }
+
+    // Copy link
+    copyBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      shareInput.select();
+      document.execCommand("copy");
+      copiedMsg.classList.remove("hidden");
+      setTimeout(() => copiedMsg.classList.add("hidden"), 1500);
+    });
   </script>
 </body>
 </html>
