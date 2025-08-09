@@ -2,86 +2,135 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Log In – VoteHive</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <style>
+    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
+    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    .vh-card { background:#fff; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-btn-light { background:#fff; color:#6b21a8; }
+    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .vh-input { background:#fff; }
+    html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
+  </style>
+  <script src="theme.js"></script>
+  <script src="auth.js" defer></script>
 </head>
-<body class="bg-gray-50 flex items-center justify-center h-screen">
-  <div class="bg-white p-8 rounded shadow-md w-96">
-    <h1 class="text-2xl font-bold mb-6 text-center">Log In</h1>
+<body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
+        <span class="text-xl font-bold">VoteHive</span>
+      </div>
+      <nav class="flex gap-3 text-sm items-center">
+        <a href="index.html" class="hover:underline">Home</a>
+        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
+        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+      </nav>
+    </div>
+  </header>
 
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Username</label>
-        <input type="text" id="username" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2" required>
+  <!-- Body -->
+  <main class="max-w-md mx-auto px-4 py-12">
+    <div id="already" class="vh-card border border-gray-100 shadow rounded p-5 hidden">
+      <h1 class="text-xl font-semibold mb-2">You’re already signed in</h1>
+      <p class="text-gray-600 mb-4">Signed in as <span id="curUser" class="font-semibold"></span>.</p>
+      <div class="flex gap-2">
+        <a href="index.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Go Home</a>
+        <button id="switchBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm">Log out & switch account</button>
       </div>
+    </div>
+
+    <form id="form" class="vh-card border border-gray-100 shadow rounded p-6 space-y-4">
+      <h1 class="text-2xl font-bold mb-2">Log In</h1>
+      <p class="text-sm text-gray-600 mb-4">Demo auth (no backend). Any username works. Use <code>superadmin</code> + <code>admin123</code> for admin access.</p>
+
       <div>
-        <label class="block text-sm font-medium text-gray-700">Password</label>
-        <input type="password" id="password" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2" required>
+        <label class="block font-semibold mb-1" for="username">Username</label>
+        <input id="username" class="vh-input w-full border rounded px-3 py-2" required placeholder="yourname"/>
       </div>
-      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded">Log In</button>
+
+      <div>
+        <label class="block font-semibold mb-1" for="password">Password</label>
+        <input id="password" class="vh-input w-full border rounded px-3 py-2" type="password" required placeholder="••••••••"/>
+      </div>
+
+      <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Sign In</button>
+
+      <p id="msg" class="text-sm mt-2"></p>
     </form>
+  </main>
 
-    <p id="error" class="text-red-500 text-sm mt-4 hidden">Invalid username or password.</p>
-    <p class="text-xs text-gray-500 mt-3 text-center">Prototype only — stored in your browser.</p>
-  </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
+  </footer>
 
   <script>
-    // Helper: load/save userList
-    function loadUsers() {
-      try { return JSON.parse(localStorage.getItem("userList") || "[]"); } catch { return []; }
-    }
-    function saveUsers(list) {
-      localStorage.setItem("userList", JSON.stringify(list));
-    }
-
-    // Add or update a user entry in userList
-    function upsertUser(username, role) {
-      const users = loadUsers();
-      const uname = (username || "").trim().toLowerCase();
-      const nowISO = new Date().toISOString();
-
-      let found = users.find(u => (u.username || "").toLowerCase() === uname);
-      if (!found) {
-        users.push({
-          username,
-          role: role || "user",
-          createdAt: nowISO,
-          lastLoginAt: nowISO
-        });
+    // If already logged in, show lockout UI
+    function refreshState() {
+      const s = VHAuth.current();
+      const already = document.getElementById('already');
+      const form = document.getElementById('form');
+      if (s) {
+        already.classList.remove('hidden');
+        form.classList.add('hidden');
+        document.getElementById('curUser').textContent = s.username + (s.role === 'superadmin' ? ' (admin)' : '');
       } else {
-        found.role = role || found.role || "user";
-        found.lastLoginAt = nowISO;
+        already.classList.add('hidden');
+        form.classList.remove('hidden');
       }
-      saveUsers(users);
     }
 
-    document.getElementById("loginForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const errorEl = document.getElementById("error");
-
-      // Superadmin login (demo)
-      if (username === "superadmin" && password === "admin123") {
-        localStorage.setItem("role", "superadmin");
-        localStorage.setItem("username", username);
-        upsertUser(username, "superadmin");
-        window.location.href = "admin-dashboard.html";
-        return;
-      }
-
-      // Simple demo rule: any non-empty credentials are accepted as a normal user
-      if (username && password.length >= 3) {
-        localStorage.setItem("role", "user");
-        localStorage.setItem("username", username);
-        upsertUser(username, "user");
-        window.location.href = "my-polls.html";
-      } else {
-        errorEl.textContent = "Please enter a valid username and a password (3+ chars).";
-        errorEl.classList.remove("hidden");
-      }
+    document.getElementById('switchBtn').addEventListener('click', () => {
+      VHAuth.logout();
+      refreshState();
     });
+
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      const msg = document.getElementById('msg');
+
+      if (!u || !p) { msg.textContent = 'Please enter username and password.'; msg.className='text-red-600 text-sm'; return; }
+
+      // Demo rules:
+      // - superadmin + admin123 => admin
+      // - anyone else: any password accepted => user
+      let role = 'user';
+      if (u.toLowerCase() === 'superadmin') {
+        if (p !== 'admin123') {
+          msg.textContent = 'Wrong password for superadmin (hint: admin123).';
+          msg.className = 'text-red-600 text-sm';
+          return;
+        }
+        role = 'superadmin';
+      }
+
+      VHAuth.login(u, role);
+      msg.textContent = 'Signed in. Redirecting…';
+      msg.className = 'text-green-600 text-sm';
+      setTimeout(() => {
+        if (role === 'superadmin') location.href = 'admin-dashboard.html';
+        else location.href = 'index.html';
+      }, 400);
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', refreshState);
+    window.addEventListener('vh-auth-change', refreshState);
   </script>
 </body>
 </html>
