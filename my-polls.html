@@ -17,8 +17,11 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="index.html" class="hover:underline">Home</a>
+        <a href="trending.html" class="hover:underline">Trending Polls</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline underline-offset-4">My Polls</a>
         <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
+        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
   </header>
@@ -72,10 +75,8 @@
 
     function loadPolls() {
       const data = JSON.parse(localStorage.getItem('customPolls') || '{}');
-      // Collect categories
       const categories = new Set();
       Object.values(data).forEach(p => { if (p.category) categories.add(p.category); });
-      // Populate category filter (once)
       if (categoryEl.options.length === 1) {
         [...categories].sort().forEach(c => {
           const opt = document.createElement('option');
@@ -120,7 +121,6 @@
         listEl.appendChild(card);
       });
 
-      // Bind delete buttons
       listEl.querySelectorAll('.remove').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.getAttribute('data-id');
@@ -142,7 +142,6 @@
     searchEl.addEventListener('input', render);
     categoryEl.addEventListener('change', render);
 
-    // Initial render
     render();
   </script>
 </body>

@@ -17,64 +17,65 @@
       </div>
       <nav class="flex gap-4 text-sm">
         <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Browse</a>
+        <a href="browse.html" class="hover:underline">Browse Polls</a>
+        <a href="my-polls.html" class="hover:underline">My Polls</a>
+        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
         <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
       </nav>
     </div>
   </header>
 
-  <!-- Form -->
+  <!-- Page Title -->
+  <section class="text-center py-12 bg-gray-50">
+    <h1 class="text-3xl font-bold mb-2">Create a New Poll</h1>
+    <p class="text-gray-600">Start a conversation and gather opinions instantly.</p>
+  </section>
+
+  <!-- Create Poll Form -->
   <section class="max-w-2xl mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-6 text-center">Create a New Poll</h1>
-    <form class="space-y-6">
+    <form class="bg-white shadow rounded-lg p-6 space-y-6">
       <div>
-        <label class="block text-sm font-medium mb-1" for="title">Poll Title</label>
-        <input type="text" id="title" name="title" class="w-full border border-gray-300 rounded px-4 py-2" placeholder="What's your question?">
+        <label class="block font-semibold mb-2">Poll Question</label>
+        <input type="text" placeholder="What do you want to ask?" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+      </div>
+      
+      <div>
+        <label class="block font-semibold mb-2">Options</label>
+        <input type="text" placeholder="Option 1" class="w-full border rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+        <input type="text" placeholder="Option 2" class="w-full border rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+        <button type="button" class="text-purple-700 font-medium hover:underline">+ Add another option</button>
       </div>
 
       <div>
-        <label class="block text-sm font-medium mb-1" for="category">Category</label>
-        <select id="category" name="category" class="w-full border border-gray-300 rounded px-4 py-2">
-          <option value="">Select Category</option>
+        <label class="block font-semibold mb-2">Category</label>
+        <select class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <option>Technology</option>
           <option>Politics</option>
-          <option>Startups</option>
-          <option>Real Estate</option>
-          <option>Design</option>
-          <option>Parenting</option>
-          <option>Brands</option>
           <option>Finance</option>
-          <option>Health</option>
-          <option>Global</option>
-          <option>Entertainment</option>
+          <option>Parenting</option>
+          <option>Design</option>
+          <option>Brands</option>
         </select>
       </div>
 
       <div>
-        <label class="block text-sm font-medium mb-1" for="duration">Poll Duration</label>
-        <select id="duration" name="duration" class="w-full border border-gray-300 rounded px-4 py-2">
-          <option value="1">1 Day</option>
-          <option value="3">3 Days</option>
-          <option value="7">7 Days</option>
-          <option value="custom">Custom (Coming Soon)</option>
+        <label class="block font-semibold mb-2">Poll Duration</label>
+        <select class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <option>1 Day</option>
+          <option>3 Days</option>
+          <option>7 Days</option>
+          <option>30 Days</option>
         </select>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-1" for="options">Poll Options</label>
-        <input type="text" class="w-full mb-2 border border-gray-300 rounded px-4 py-2" placeholder="Option 1">
-        <input type="text" class="w-full mb-2 border border-gray-300 rounded px-4 py-2" placeholder="Option 2">
-        <input type="text" class="w-full mb-2 border border-gray-300 rounded px-4 py-2" placeholder="Option 3 (optional)">
-        <input type="text" class="w-full border border-gray-300 rounded px-4 py-2" placeholder="Option 4 (optional)">
-      </div>
-
-      <div class="text-center">
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded font-semibold">Submit Poll</button>
+      <div class="text-right">
+        <button type="submit" class="bg-purple-700 text-white px-6 py-2 rounded hover:bg-purple-800">Create Poll</button>
       </div>
     </form>
   </section>
 
   <!-- Footer -->
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6">
     <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6 mt-2 md:mt-0">
