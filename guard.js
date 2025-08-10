@@ -1,32 +1,38 @@
-// guard.js — minimal auth helpers (NO rewrites)
-// Uses ONLY localStorage.currentUser with shape: { username, role }
-
+/* Minimal guards used across pages */
 (function () {
-  function getUser() {
-    try { return JSON.parse(localStorage.getItem('currentUser') || 'null'); }
-    catch { return null; }
+  function session() {
+    try {
+      return (window.VHAuth && window.VHAuth.current && window.VHAuth.current()) ||
+             JSON.parse(localStorage.getItem('currentUser') || 'null');
+    } catch { return null; }
   }
 
-  window.Auth = {
-    get: getUser,
-    logout() { localStorage.removeItem('currentUser'); location.href = 'index.html'; }
-  };
+  function isAdmin(u) { return !!(u && u.role === 'admin'); }
 
-  window.requireLogin = function(redirect = 'login.html') {
-    if (!getUser()) {
+  // Redirect to login if not authenticated
+  window.requireLogin = function () {
+    const me = session();
+    if (!me) {
       const next = encodeURIComponent(location.pathname + location.search);
-      location.href = `${redirect}?next=${next}`;
+      location.href = `login.html?next=${next}`;
     }
   };
 
-  window.requireAdmin = function(redirect = 'index.html') {
-    const me = getUser();
-    if (!me || (me.role !== 'admin' && me.role !== 'superadmin')) {
-      location.href = redirect;
+  // Redirect to home if not admin
+  window.requireAdmin = function () {
+    const me = session();
+    if (!me) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.href = `login.html?next=${next}`;
+      return;
+    }
+    if (!isAdmin(me)) {
+      // Not authorized — send to home
+      location.href = 'index.html';
     }
   };
 
-  window.usernameOrGuest = function () {
-    return (getUser() && getUser().username) || 'guest';
-  };
+  // Helper any page can use
+  window.getCurrentUser = session;
+  window.isAdmin = isAdmin;
 })();
