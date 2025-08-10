@@ -15,7 +15,7 @@
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-  <!-- Header mount (required) -->
+  <!-- Header mount -->
   <div id="vh-header"></div>
   <script src="guard.js"></script>
   <script src="header.js"></script>
@@ -107,19 +107,19 @@
     const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
 
     // Social: comments, reactions, reports, activity
-    const getComments = () => JSON.parse(localStorage.getItem('pollComments') || '{}'); // {pid: [ {id,user,text,ts,parentId,reactions,replies,lastActive,edits,deleted,reports} ]}
+    const getComments = () => JSON.parse(localStorage.getItem('pollComments') || '{}');
     const setComments = (d) => localStorage.setItem('pollComments', JSON.stringify(d));
-    const getUserReactions = () => JSON.parse(localStorage.getItem('userReactions') || '{}'); // {pid:{commentId:{username:'like'|'heart'|'idea'|'laugh'}}}
+    const getUserReactions = () => JSON.parse(localStorage.getItem('userReactions') || '{}');
     const setUserReactions = (d) => localStorage.setItem('userReactions', JSON.stringify(d));
-    const getReports = () => JSON.parse(localStorage.getItem('commentReports') || '{}'); // {pid:{commentId:{username:true}}}
+    const getReports = () => JSON.parse(localStorage.getItem('commentReports') || '{}');
     const setReports = (d) => localStorage.setItem('commentReports', JSON.stringify(d));
-    const getActivity = () => JSON.parse(localStorage.getItem('activityLog') || '[]'); // [ {type, pid, user, action, ts, meta} ]
+    const getActivity = () => JSON.parse(localStorage.getItem('activityLog') || '[]');
     const setActivity = (d) => localStorage.setItem('activityLog', JSON.stringify(d));
-
     function addActivity(evt){ const log = getActivity(); log.push(evt); setActivity(log.slice(-500)); }
 
-    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
     function fmtTime(date){ return new Date(date).toLocaleString(); }
+    function linkUser(u){ return `<a class="text-indigo-600 hover:underline" href="profile.html?u=${encodeURIComponent(u)}">${esc(u)}</a>`; }
     function mentionize(s){ return esc(s).replace(/@([a-zA-Z0-9_]{2,24})/g, '<span class="text-indigo-600">@$1</span>'); }
 
     // ========= Render poll =========
@@ -179,7 +179,7 @@
       const myVote = (me && userVotes[pid] && userVotes[pid][me.username] !== undefined)
         ? userVotes[pid][me.username] : null;
 
-      const counts = votes[pid] || {}; // { "0": 10, "1": 3, ... }
+      const counts = votes[pid] || {};
       const total = (p.options || []).reduce((acc, _, i) => acc + (counts[i] || 0), 0);
 
       optsEl.innerHTML = (p.options || []).map((opt, i) => {
@@ -259,28 +259,26 @@
       } catch (e) { alert('Copy failed.'); }
     });
 
-    // ========= Discussion logic =========
+    // ========= Discussion logic (with profile links) =========
     const sortEl = document.getElementById('sort');
     const threadEl = document.getElementById('thread');
     const noneEl = document.getElementById('none');
     const moreWrap = document.getElementById('moreWrap');
     const loadMoreBtn = document.getElementById('loadMore');
 
-    // Pagination state for parents
     let parentShow = 5;
 
+    function getAll(){ return getComments()[pid] || []; }
     function parentComments(arr){ return arr.filter(c => !c.parentId && !c.deleted); }
     function childComments(arr, pid){ return arr.filter(c => c.parentId === pid && !c.deleted); }
 
     function score(c, all){
-      // Top: likes weigh more, replies add weight, tiny time decay
       const r = c.reactions || {};
       const likes = (r.like||0) + (r.heart||0);
       const replies = childComments(all, c.id).length;
       const ageHrs = (Date.now() - new Date(c.ts)) / 36e5;
       return likes*2 + replies*1.5 + Math.max(0, 10 - ageHrs*0.2);
     }
-
     function lastActive(c, all){
       const kids = childComments(all, c.id);
       const latestChild = kids.reduce((mx, k)=> Math.max(mx, new Date(k.ts).getTime()), 0);
@@ -288,8 +286,8 @@
     }
 
     function renderComments(){
-      const data = getComments()[pid] || [];
-      const sort = sortEl.value; // top/new/active
+      const data = getAll();
+      const sort = sortEl.value;
 
       const parents = parentComments(data).slice();
       if (sort === 'new') parents.sort((a,b)=> new Date(b.ts)-new Date(a.ts));
@@ -300,16 +298,25 @@
       noneEl.classList.toggle('hidden', toShow.length>0);
 
       threadEl.innerHTML = toShow.map(p => parentHTML(p, data)).join('');
-      // Bind all dynamic buttons
       bindAllActions();
 
       moreWrap.classList.toggle('hidden', parents.length <= parentShow);
     }
 
+    function headerLine(c){
+      const name = linkUser(c.user);
+      return `
+        <div class="flex items-center justify-between" data-id="${c.id}">
+          <div class="text-xs text-gray-500"><strong class="text-gray-700">${name}</strong> • ${fmtTime(c.ts)}</div>
+          ${c.edits?.length ? `<div class="text-[11px] text-gray-400 italic">edited</div>` : ``}
+        </div>
+      `;
+    }
+
     function parentHTML(c, all){
       return `
         <article class="border border-gray-100 rounded p-3">
-          ${commentHeaderHTML(c)}
+          ${headerLine(c)}
           <div class="mt-1 text-sm">${mentionize(c.text||'')}</div>
           ${actionBarHTML(c)}
           <div class="pl-4 mt-3 space-y-3">
@@ -323,18 +330,9 @@
     function childHTML(c){
       return `
         <div class="border border-gray-100 rounded p-2">
-          ${commentHeaderHTML(c)}
+          ${headerLine(c)}
           <div class="mt-1 text-sm">${mentionize(c.text||'')}</div>
           ${actionBarHTML(c, true)}
-        </div>
-      `;
-    }
-
-    function commentHeaderHTML(c){
-      return `
-        <div class="flex items-center justify-between">
-          <div class="text-xs text-gray-500"><strong class="text-gray-700">${esc(c.user)}</strong> • ${fmtTime(c.ts)}</div>
-          ${c.edits?.length ? `<div class="text-[11px] text-gray-400 italic">edited</div>` : ``}
         </div>
       `;
     }
@@ -349,7 +347,7 @@
 
     function actionBarHTML(c, isChild=false){
       const mine = me && me.username === c.user;
-      const canEdit = mine && (Date.now() - new Date(c.ts).getTime() <= 10*60*1000); // 10 min window
+      const canEdit = mine && (Date.now() - new Date(c.ts).getTime() <= 10*60*1000);
       return `
         <div class="mt-2 flex items-center gap-3 text-xs">
           <div class="flex items-center gap-2">${reactionCounts(c.reactions)}</div>
@@ -376,9 +374,9 @@
       threadEl.querySelectorAll('.react').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           if (!me){ location.href='login.html?next='+encodeURIComponent(location.pathname+location.search); return; }
-          const cEl = btn.closest('[data-id]') || btn.closest('article,div');
-          const id = btn.closest('article,div').querySelector('.edit, .delete, .report, .reply')?.getAttribute('data-id');
-          const type = btn.getAttribute('data-r'); // like/heart/idea/laugh
+          const container = btn.closest('[data-id]');
+          const id = container?.getAttribute('data-id');
+          const type = btn.getAttribute('data-r');
           toggleReaction(id, type);
         });
       });
@@ -447,9 +445,7 @@
           const rep = getReports(); rep[pid] = rep[pid]||{}; rep[pid][id] = rep[pid][id]||{};
           if (rep[pid][id][me.username]){ alert('Already reported.'); return; }
           rep[pid][id][me.username]=true; setReports(rep);
-          // Increment counter on comment
-          const data = getComments(); const arr = data[pid]||[];
-          const it = arr.find(x=>x.id===id); if (it){ it.reports = (it.reports||0)+1; setComments(data); }
+          const data = getComments(); const arr = data[pid]||[]; const it = arr.find(x=>x.id===id); if (it){ it.reports = (it.reports||0)+1; setComments(data); }
           alert('Reported. Thank you.');
         });
       });
@@ -457,19 +453,17 @@
 
     function toggleReaction(commentId, type){
       const users = getUserReactions(); users[pid]=users[pid]||{}; users[pid][commentId]=users[pid][commentId]||{};
-      const prev = users[pid][commentId][me.username] || null;
+      const prev = me ? users[pid][commentId][me.username] : null;
       const db = getComments(); const arr = db[pid]||[]; const c = arr.find(x=>x.id===commentId); if (!c) return;
       c.reactions = c.reactions || {like:0,heart:0,idea:0,laugh:0};
 
       if (prev === type){
-        // toggle off
         c.reactions[type] = Math.max(0, (c.reactions[type]||0)-1);
-        delete users[pid][commentId][me.username];
+        if (me) delete users[pid][commentId][me.username];
       } else {
-        // switch reaction
         if (prev) c.reactions[prev] = Math.max(0, (c.reactions[prev]||0)-1);
         c.reactions[type] = (c.reactions[type]||0)+1;
-        users[pid][commentId][me.username] = type;
+        if (me) users[pid][commentId][me.username] = type;
       }
 
       setUserReactions(users);
@@ -487,7 +481,6 @@
         reactions: {like:0,heart:0,idea:0,laugh:0}, edits: [], deleted: false, reports: 0
       });
       setComments(db);
-      // Points +1 for parent, +1 for reply
       const pts = getPoints(); pts[me.username] = (pts[me.username] || 0) + 1; setPoints(pts);
       addActivity({type:'comment', pid, user:me.username, action: parentId ? 'reply' : 'comment', ts:Date.now(), meta:{parentId}});
     }
@@ -509,7 +502,10 @@
     })();
 
     // Sort + pagination
+    const sortEl = document.getElementById('sort');
     sortEl.addEventListener('change', ()=>{ parentShow = 5; renderComments(); });
+
+    const loadMoreBtn = document.getElementById('loadMore');
     loadMoreBtn.addEventListener('click', ()=>{ parentShow += 5; renderComments(); });
 
     // ========= Init =========
