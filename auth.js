@@ -1,84 +1,81 @@
-// auth.js — Single source of truth for demo auth via localStorage
-(function () {
-  const KEY = 'currentUser';
+<script>
+/*
+  VoteHive Auth (Local Demo)
+  - Non-destructive: only defines window.VHAuth if missing.
+  - Users stored in localStorage: key 'vh_users'
+  - Session stored at    : key 'currentUser'  ( {username, role} )
+  - Seeds: superadmin / admin123  (role: 'admin') if no users exist.
+  - Methods:
+      VHAuth.current() -> {username, role} | null
+      VHAuth.login(username, password) -> {ok, error?}
+      VHAuth.logout()
+      VHAuth.register({username, password}) -> {ok, error?}
+*/
+(function(){
+  if (window.VHAuth) return; // don’t override if already defined
 
-  function parseSafe(raw) {
-    try { return JSON.parse(raw); } catch { return null; }
+  const LS_USERS = 'vh_users';
+  const LS_SESSION = 'currentUser';
+
+  function loadUsers(){
+    try { return JSON.parse(localStorage.getItem(LS_USERS) || '{}'); }
+    catch { return {}; }
+  }
+  function saveUsers(db){ localStorage.setItem(LS_USERS, JSON.stringify(db)); }
+  async function sha256(txt){
+    const enc = new TextEncoder().encode(txt);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }
 
-  // Fire a cross-app event when auth changes
-  function notify() {
-    try { window.dispatchEvent(new Event('auth:change')); } catch {}
-  }
-
-  // Backward-compat: if legacy keys exist, migrate once
-  (function migrate() {
-    if (localStorage.getItem(KEY)) return;
-    const legacyKeys = ['VHAuth_user', 'auth_user', 'user', 'vhauth'];
-    for (const k of legacyKeys) {
-      const raw = localStorage.getItem(k);
-      if (!raw) continue;
-      let val = parseSafe(raw);
-      if (!val) val = { username: String(raw), role: 'user' };
-      const user = {
-        username: String(val.username || val.name || 'user'),
-        role: String(val.role || 'user').toLowerCase()
+  // seed admin on first run
+  (async function seed(){
+    const db = loadUsers();
+    if (!Object.keys(db).length){
+      db['superadmin'] = {
+        passHash: await sha256('admin123'),
+        role: 'admin',
+        createdAt: new Date().toISOString()
       };
-      localStorage.setItem(KEY, JSON.stringify(user));
-      break;
+      saveUsers(db);
     }
   })();
 
-  const Auth = {
-    get() {
-      const raw = localStorage.getItem(KEY);
-      if (!raw) return null;
-      const u = parseSafe(raw);
-      if (!u) return null;
-      return {
-        username: String(u.username || 'user'),
-        role: String(u.role || 'user').toLowerCase()
+  window.VHAuth = {
+    current(){
+      try { return JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); }
+      catch { return null; }
+    },
+    async login(username, password){
+      username = (username||'').trim();
+      const db = loadUsers();
+      if (!db[username]) return {ok:false, error:'User not found'};
+      const hash = await sha256(password||'');
+      if (db[username].passHash !== hash) return {ok:false, error:'Incorrect password'};
+      const session = {username, role: db[username].role || 'user'};
+      localStorage.setItem(LS_SESSION, JSON.stringify(session));
+      return {ok:true};
+    },
+    logout(){
+      localStorage.removeItem(LS_SESSION);
+      return {ok:true};
+    },
+    async register({username, password}){
+      username = (username||'').trim();
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) return {ok:false, error:'Username must be 3–24 letters/numbers/underscore'};
+      if ((password||'').length < 6) return {ok:false, error:'Password must be at least 6 characters'};
+      const db = loadUsers();
+      if (db[username]) return {ok:false, error:'Username already taken'};
+      db[username] = {
+        passHash: await sha256(password),
+        role: 'user',
+        createdAt: new Date().toISOString()
       };
-    },
-    set(user) {
-      if (!user || !user.username) return;
-      const u = {
-        username: String(user.username),
-        role: String(user.role || 'user').toLowerCase()
-      };
-      localStorage.setItem(KEY, JSON.stringify(u));
-      notify();
-    },
-    login(username, role = 'user') {
-      if (typeof username === 'object' && username) {
-        Auth.set(username);
-      } else {
-        Auth.set({ username, role });
-      }
-    },
-    logout() {
-      localStorage.removeItem(KEY);
-      notify();
-      location.href = 'index.html';
-    },
-    requireLogin(redirect = 'login.html') {
-      if (!Auth.get()) {
-        const next = encodeURIComponent(location.pathname + location.search);
-        location.replace(`${redirect}?next=${next}`);
-      }
-    },
-    requireAdmin(redirect = 'index.html') {
-      const me = Auth.get();
-      if (!me || (me.role !== 'admin' && me.role !== 'superadmin')) {
-        location.replace(redirect);
-      }
+      saveUsers(db);
+      // Auto-login after signup
+      localStorage.setItem(LS_SESSION, JSON.stringify({username, role:'user'}));
+      return {ok:true};
     }
   };
-
-  // Cross-tab sync
-  window.addEventListener('storage', (e) => {
-    if (e.key === KEY) notify();
-  });
-
-  window.Auth = Auth;
 })();
+</script>

@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Log in – VoteHive</title>
+  <title>Create Account – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
-  <!-- Header (role-aware) -->
+  <!-- Header -->
   <div id="vh-header"></div>
 
   <!-- Auth first -->
   <script src="auth.js"></script>
-  <!-- Then your existing guards & header (they can read VHAuth.current) -->
+  <!-- Then your guards & header -->
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -22,30 +22,33 @@
       <div class="bg-white border border-gray-100 shadow rounded-2xl p-6">
         <div class="text-center mb-5">
           <img src="/logo.svg" class="w-10 h-10 mx-auto mb-2" alt="VoteHive">
-          <h1 class="text-2xl font-bold">Welcome back</h1>
-          <p class="text-sm text-gray-600">Log in to vote, comment, and track your points.</p>
+          <h1 class="text-2xl font-bold">Create your account</h1>
+          <p class="text-sm text-gray-600">Join to vote, discuss, and climb the leaderboard.</p>
         </div>
 
         <form id="form" class="space-y-4">
           <div>
             <label class="block text-sm font-medium">Username</label>
-            <input id="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required/>
+            <input id="username" class="w-full border rounded px-3 py-2" placeholder="3–24 letters/numbers/_" required/>
           </div>
           <div>
             <label class="block text-sm font-medium">Password</label>
-            <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="••••••••" required/>
+            <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="At least 6 characters" required/>
           </div>
-          <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Log in</button>
+          <div>
+            <label class="block text-sm font-medium">Confirm Password</label>
+            <input id="confirm" type="password" class="w-full border rounded px-3 py-2" placeholder="Repeat password" required/>
+          </div>
+          <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Create account</button>
         </form>
 
         <p id="err" class="text-sm text-red-600 mt-3 hidden"></p>
+        <p id="ok" class="text-sm text-green-600 mt-3 hidden">Account created! Redirecting…</p>
 
         <div class="mt-6 text-sm text-center text-gray-600">
-          New here?
-          <a class="text-indigo-600 hover:underline" id="signupLink" href="signup.html">Create an account</a>
+          Already have an account?
+          <a class="text-indigo-600 hover:underline" id="loginLink" href="login.html">Log in</a>
         </div>
-
-        <div class="mt-2 text-xs text-center text-gray-400">Tip: demo admin is <code>superadmin</code> / <code>admin123</code></div>
       </div>
     </div>
   </main>
@@ -54,7 +57,7 @@
     const params = new URLSearchParams(location.search);
     const nextUrl = params.get('next') || 'index.html';
 
-    // If already logged in, bounce to next
+    // If already logged in, bounce
     (function(){
       const me = window.VHAuth?.current?.();
       if (me) location.replace(nextUrl);
@@ -64,22 +67,29 @@
       e.preventDefault();
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value;
-      const out = await window.VHAuth.login(u,p);
+      const c = document.getElementById('confirm').value;
+
       const err = document.getElementById('err');
+      const ok = document.getElementById('ok');
+      err.classList.add('hidden'); ok.classList.add('hidden');
+
+      if (p !== c){ err.textContent = 'Passwords do not match'; err.classList.remove('hidden'); return; }
+
+      const out = await window.VHAuth.register({username:u, password:p});
       if (!out.ok){
-        err.textContent = out.error || 'Login failed';
+        err.textContent = out.error || 'Sign up failed';
         err.classList.remove('hidden');
         return;
       }
-      // Success
-      location.href = nextUrl;
+      ok.classList.remove('hidden');
+      setTimeout(()=> location.href = nextUrl, 400);
     });
 
-    // Preserve ?next when jumping to signup
+    // Preserve ?next when jumping to login
     (function(){
-      const l = document.getElementById('signupLink');
+      const l = document.getElementById('loginLink');
       if (params.has('next')){
-        l.href = 'signup.html?next=' + encodeURIComponent(nextUrl);
+        l.href = 'login.html?next=' + encodeURIComponent(nextUrl);
       }
     })();
   </script>
