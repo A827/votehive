@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Apply to Create – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <!-- Auth guards -->
   <script src="guard.js"></script>
   <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+  <!-- Role-aware header -->
   <div id="vh-header"></div>
   <script src="header.js"></script>
 
@@ -18,64 +22,151 @@
     <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4">
       <div>
         <label class="block text-sm font-medium">Title</label>
-        <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140"/>
+        <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140" placeholder="e.g., Should remote work be the default?" />
       </div>
+
       <div>
         <label class="block text-sm font-medium">Category</label>
         <select id="category" class="w-full border rounded px-3 py-2">
-          <option>Startups</option><option>Politics</option><option>Brands</option><option>Finance</option><option>Design</option><option>Parenting</option>
+          <option>Startups</option><option>Politics</option><option>Brands</option>
+          <option>Finance</option><option>Design</option><option>Parenting</option>
         </select>
       </div>
+
       <div>
         <label class="block text-sm font-medium">Options (one per line, 2–6)</label>
         <textarea id="options" rows="4" class="w-full border rounded px-3 py-2" placeholder="Option A&#10;Option B" required></textarea>
+        <p class="text-xs text-gray-500 mt-1">Tip: keep options short and mutually exclusive.</p>
       </div>
+
       <div>
         <label class="block text-sm font-medium">Close Date</label>
         <input id="close" type="datetime-local" class="w-full border rounded px-3 py-2" required/>
+        <p class="text-xs text-gray-500 mt-1">Must be in the future (e.g., 2–14 days from now).</p>
       </div>
+
       <div>
         <label class="block text-sm font-medium">Why should this be featured? (optional)</label>
-        <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+        <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2" placeholder="Brief context for moderators…"></textarea>
       </div>
+
       <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Submit Application</button>
     </form>
 
-    <p id="ok" class="hidden mt-4 text-green-600">Application submitted. You can track it in Moderation once approved.</p>
+    <p id="ok" class="hidden mt-4 text-green-600 font-medium">✅ Application submitted. You can see it below and it will appear in Moderation for admins.</p>
+    <p id="err" class="hidden mt-4 text-red-600 font-medium"></p>
+
+    <!-- My submissions -->
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold mb-3">My Submissions</h2>
+      <div id="mine" class="space-y-3"></div>
+      <div id="emptyMine" class="text-sm text-gray-500 hidden">No submissions yet.</div>
+    </section>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+    </div>
   </footer>
 
   <script>
-    const me = VHAuth.current().username;
-    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
-    const setLog = (d)=> localStorage.setItem('applicationLog', JSON.stringify(d));
+    // --- Helpers / storage ---
+    const me = (window.VHAuth?.current?.() || {}).username;
+    const getLog = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
+    const setLog = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
 
+    // Prefill close datetime to +3 days
+    (function presetClose(){
+      const el = document.getElementById('close');
+      const addDays = 3;
+      const d = new Date(Date.now() + addDays*86400000);
+      d.setMinutes(Math.round(d.getMinutes()/15)*15, 0, 0);
+      el.value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      // set min = now + 1 hour
+      const min = new Date(Date.now() + 3600000);
+      document.getElementById('close').min = new Date(min.getTime() - min.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    })();
+
+    // --- Render my submissions ---
+    function renderMine(){
+      const mine = getLog().filter(x => x.applicant === me).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+      const wrap = document.getElementById('mine');
+      const empty = document.getElementById('emptyMine');
+      if (!mine.length){
+        wrap.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      wrap.innerHTML = mine.map(x => `
+        <article class="bg-white border border-gray-100 shadow rounded p-4">
+          <div class="text-xs text-gray-500 mb-1">Submitted: ${new Date(x.createdAt).toLocaleString()}</div>
+          <h3 class="font-semibold">${x.title}</h3>
+          <div class="text-sm text-gray-600 mb-1">Category: ${x.category}</div>
+          <div class="text-sm mb-2">Options: ${x.options.join(', ')}</div>
+          <div class="text-xs text-gray-500">Close: ${x.closeAt ? new Date(x.closeAt).toLocaleString() : 'N/A'}</div>
+          <div class="mt-2 text-xs">
+            Status:
+            ${x.status === 'approved'
+              ? '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700">Approved</span>'
+              : x.status === 'rejected'
+                ? '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700">Rejected</span>'
+                : '<span class="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Pending</span>'}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    // --- Submit handler ---
     document.getElementById('appForm').addEventListener('submit', (e)=>{
       e.preventDefault();
+      const ok = document.getElementById('ok');
+      const err = document.getElementById('err');
+      ok.classList.add('hidden'); err.classList.add('hidden'); err.textContent = '';
+
       const title = document.getElementById('title').value.trim();
       const category = document.getElementById('category').value;
-      const options = document.getElementById('options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      const options = document.getElementById('options').value
+        .split('\n').map(s=>s.trim()).filter(Boolean);
       const close = document.getElementById('close').value;
       const reason = document.getElementById('reason').value.trim();
 
-      if (options.length<2 || options.length>6) { alert('Please provide 2 to 6 options.'); return; }
+      // Validate
+      if (options.length < 2 || options.length > 6) {
+        err.textContent = 'Please provide 2 to 6 options.'; err.classList.remove('hidden'); return;
+      }
+      const closeAt = close ? new Date(close) : null;
+      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) {
+        err.textContent = 'Close date/time must be in the future.'; err.classList.remove('hidden'); return;
+      }
 
+      // Save application
       const entry = {
-        id: 'app-' + Date.now(),
+        id: 'app-' + Date.now() + Math.random().toString(36).slice(2),
         applicant: me,
         title, category, options,
-        closeAt: close,
+        closeAt: closeAt.toISOString(),
         reason,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-      const log = getLog(); log.push(entry); setLog(log);
-      document.getElementById('ok').classList.remove('hidden');
-      e.target.reset();
+
+      const log = getLog();
+      log.push(entry);
+      setLog(log);
+
+      // UX feedback
+      document.getElementById('appForm').reset();
+      ok.classList.remove('hidden');
+      renderMine();
+      // Optional: scroll to My Submissions
+      setTimeout(()=>{ document.getElementById('mine').scrollIntoView({behavior:'smooth'}); }, 150);
     });
+
+    // Initial render
+    renderMine();
   </script>
 </body>
 </html>
