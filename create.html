@@ -1,14 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Apply to Create – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 
-  <!-- Auth guards -->
+  <!-- Auth core -->
   <script src="guard.js"></script>
-  <script>requireLogin();</script>
+
+  <!-- Defensive auth shim: migrate any legacy keys to `currentUser` BEFORE guarding -->
+  <script>
+    (function migrateAuth(){
+      try {
+        if (!localStorage.getItem('currentUser')) {
+          const legacyKeys = ['VHAuth_user','auth_user','user','vhauth'];
+          for (const k of legacyKeys) {
+            const raw = localStorage.getItem(k);
+            if (!raw) continue;
+            let u = null;
+            try { u = JSON.parse(raw); } catch { u = { username: raw, role: 'user' }; }
+            if (u && (u.username || u.name)) {
+              const norm = { username: (u.username||u.name).toString(), role: (u.role||'user').toString().toLowerCase() };
+              localStorage.setItem('currentUser', JSON.stringify(norm));
+              break;
+            }
+          }
+        }
+      } catch(e){}
+    })();
+
+    // Now enforce login
+    requireLogin();
+  </script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Role-aware header -->
@@ -19,7 +44,7 @@
     <h1 class="text-2xl md:text-3xl font-bold mb-2">Apply to Create a Poll</h1>
     <p class="text-gray-600 mb-6">Your submission will be reviewed. You’ll be notified in-app when approved.</p>
 
-    <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4">
+    <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4" novalidate>
       <div>
         <label class="block text-sm font-medium">Title</label>
         <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140" placeholder="e.g., Should remote work be the default?" />
@@ -50,7 +75,7 @@
         <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2" placeholder="Brief context for moderators…"></textarea>
       </div>
 
-      <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Submit Application</button>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Submit Application</button>
     </form>
 
     <p id="ok" class="hidden mt-4 text-green-600 font-medium">✅ Application submitted. You can see it below and it will appear in Moderation for admins.</p>
@@ -73,25 +98,31 @@
 
   <script>
     // --- Helpers / storage ---
-    const me = (window.VHAuth?.current?.() || {}).username;
-    const getLog = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
-    const setLog = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    function me() {
+      try { return (window.VHAuth?.current?.() || {}).username || null; }
+      catch { return null; }
+    }
+    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    const setLog = (d) => { try { localStorage.setItem('applicationLog', JSON.stringify(d)); } catch(e) { showErr('Storage is unavailable.'); } };
 
-    // Prefill close datetime to +3 days
+    function showOk(msg){ const el=document.getElementById('ok'); el.textContent = msg || el.textContent; el.classList.remove('hidden'); }
+    function showErr(msg){ const el=document.getElementById('err'); el.textContent = msg || 'Something went wrong.'; el.classList.remove('hidden'); }
+
+    // Prefill close datetime to +3 days; set min to now+1h (timezone-safe)
     (function presetClose(){
       const el = document.getElementById('close');
-      const addDays = 3;
-      const d = new Date(Date.now() + addDays*86400000);
-      d.setMinutes(Math.round(d.getMinutes()/15)*15, 0, 0);
-      el.value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-      // set min = now + 1 hour
-      const min = new Date(Date.now() + 3600000);
-      document.getElementById('close').min = new Date(min.getTime() - min.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      const now = new Date();
+      const min = new Date(now.getTime() + 60*60*1000);
+      const def = new Date(now.getTime() + 3*24*60*60*1000);
+      const toLocal = (d)=> new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+      el.min = toLocal(min);
+      el.value = toLocal(def);
     })();
 
     // --- Render my submissions ---
     function renderMine(){
-      const mine = getLog().filter(x => x.applicant === me).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+      const user = me();
+      const mine = getLog().filter(x => x.applicant === user).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
       const wrap = document.getElementById('mine');
       const empty = document.getElementById('emptyMine');
       if (!mine.length){
@@ -105,7 +136,7 @@
           <div class="text-xs text-gray-500 mb-1">Submitted: ${new Date(x.createdAt).toLocaleString()}</div>
           <h3 class="font-semibold">${x.title}</h3>
           <div class="text-sm text-gray-600 mb-1">Category: ${x.category}</div>
-          <div class="text-sm mb-2">Options: ${x.options.join(', ')}</div>
+          <div class="text-sm mb-2">Options: ${x.options.map(o=>o.replace(/</g,'&lt;')).join(', ')}</div>
           <div class="text-xs text-gray-500">Close: ${x.closeAt ? new Date(x.closeAt).toLocaleString() : 'N/A'}</div>
           <div class="mt-2 text-xs">
             Status:
@@ -122,30 +153,28 @@
     // --- Submit handler ---
     document.getElementById('appForm').addEventListener('submit', (e)=>{
       e.preventDefault();
-      const ok = document.getElementById('ok');
-      const err = document.getElementById('err');
-      ok.classList.add('hidden'); err.classList.add('hidden'); err.textContent = '';
+      document.getElementById('ok').classList.add('hidden');
+      document.getElementById('err').classList.add('hidden');
+
+      const user = me();
+      if (!user) { showErr('Your session expired. Please log in again.'); requireLogin(); return; }
 
       const title = document.getElementById('title').value.trim();
       const category = document.getElementById('category').value;
       const options = document.getElementById('options').value
         .split('\n').map(s=>s.trim()).filter(Boolean);
-      const close = document.getElementById('close').value;
+      const closeVal = document.getElementById('close').value;
       const reason = document.getElementById('reason').value.trim();
 
-      // Validate
-      if (options.length < 2 || options.length > 6) {
-        err.textContent = 'Please provide 2 to 6 options.'; err.classList.remove('hidden'); return;
-      }
-      const closeAt = close ? new Date(close) : null;
-      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) {
-        err.textContent = 'Close date/time must be in the future.'; err.classList.remove('hidden'); return;
-      }
+      if (!title) { showErr('Please enter a title.'); return; }
+      if (options.length < 2 || options.length > 6) { showErr('Please provide 2 to 6 options.'); return; }
 
-      // Save application
+      const closeAt = closeVal ? new Date(closeVal) : null;
+      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) { showErr('Close date/time must be in the future.'); return; }
+
       const entry = {
         id: 'app-' + Date.now() + Math.random().toString(36).slice(2),
-        applicant: me,
+        applicant: user,
         title, category, options,
         closeAt: closeAt.toISOString(),
         reason,
@@ -157,12 +186,13 @@
       log.push(entry);
       setLog(log);
 
-      // UX feedback
-      document.getElementById('appForm').reset();
-      ok.classList.remove('hidden');
+      // Reset & feedback
+      e.target.reset();
+      showOk('✅ Application submitted. You can see it below and it will appear in Moderation for admins.');
       renderMine();
-      // Optional: scroll to My Submissions
-      setTimeout(()=>{ document.getElementById('mine').scrollIntoView({behavior:'smooth'}); }, 150);
+
+      // Smooth scroll to list
+      setTimeout(()=>{ document.getElementById('mine').scrollIntoView({behavior:'smooth'}); }, 120);
     });
 
     // Initial render
