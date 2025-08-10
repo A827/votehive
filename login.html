@@ -5,16 +5,68 @@
   <title>Log in – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <!-- Try external auth first (adjust path if your file is in /scripts/auth.js) -->
+  <script src="auth.js"></script>
+
+  <!-- Inline fallback: only defines VHAuth if the external didn't -->
+  <script>
+  (function(){
+    if (window.VHAuth) return; // external loaded fine
+    const LS_USERS='vh_users', LS_SESSION='currentUser';
+    function loadUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS)||'{}'); }catch{ return {}; } }
+    function saveUsers(db){ localStorage.setItem(LS_USERS, JSON.stringify(db)); }
+    async function sha256(txt){
+      try{
+        if (window.crypto?.subtle){
+          const enc=new TextEncoder().encode(txt);
+          const buf=await crypto.subtle.digest('SHA-256', enc);
+          return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+        }
+      }catch(e){}
+      let h=5381; for(let i=0;i<txt.length;i++) h=((h<<5)+h)^txt.charCodeAt(i);
+      return ('00000000'+(h>>>0).toString(16)).slice(-8);
+    }
+    (async function seed(){
+      const db=loadUsers();
+      if (!Object.keys(db).length){
+        db['superadmin']={ passHash: await sha256('admin123'), role:'admin', createdAt:new Date().toISOString() };
+        saveUsers(db);
+      }
+    })();
+    window.VHAuth={
+      current(){ try{ return JSON.parse(localStorage.getItem(LS_SESSION)||'null'); }catch{ return null; } },
+      async login(u,p){
+        u=(u||'').trim();
+        const db=loadUsers();
+        if (!db[u]) return {ok:false,error:'User not found'};
+        const hash=await sha256(p||'');
+        if (db[u].passHash!==hash) return {ok:false,error:'Incorrect password'};
+        localStorage.setItem(LS_SESSION, JSON.stringify({username:u, role:db[u].role||'user'}));
+        return {ok:true};
+      },
+      logout(){ localStorage.removeItem(LS_SESSION); return {ok:true}; },
+      async register({username,password}){
+        const u=(username||'').trim();
+        if (!/^[a-zA-Z0-9_]{3,24}$/.test(u)) return {ok:false,error:'Username must be 3–24 letters/numbers/_'};
+        if ((password||'').length<6) return {ok:false,error:'Password must be at least 6 chars'};
+        const db=loadUsers(); if (db[u]) return {ok:false,error:'Username already taken'};
+        db[u]={ passHash: await sha256(password), role:'user', createdAt:new Date().toISOString() };
+        saveUsers(db);
+        localStorage.setItem(LS_SESSION, JSON.stringify({username:u, role:'user'}));
+        return {ok:true};
+      }
+    };
+  })();
+  </script>
+
+  <!-- Now guards/header can safely use VHAuth -->
+  <script src="guard.js"></script>
+  <script src="header.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
-  <!-- Header mount -->
   <div id="vh-header"></div>
-
-  <!-- Remember: auth -> guard -> header -->
-  <script src="auth.js"></script>
-  <script src="guard.js"></script>
-  <script src="header.js"></script>
 
   <main class="min-h-[80vh] flex items-center justify-center px-4">
     <div class="w-full max-w-md">
@@ -54,7 +106,7 @@
     const params = new URLSearchParams(location.search);
     const nextUrl = params.get('next') || 'index.html';
 
-    // If already logged in, go where they came from
+    // If already logged in, bounce
     (function(){
       try{
         const me = window.VHAuth?.current?.();
@@ -75,7 +127,7 @@
       const p = document.getElementById('password').value;
 
       if (!window.VHAuth || !window.VHAuth.login){
-        err.textContent = 'Auth not initialized. Make sure auth.js is loaded before guard.js/header.js.';
+        err.textContent = 'Auth not initialized (auth.js).';
         err.classList.remove('hidden');
         return;
       }
@@ -83,15 +135,14 @@
       btn.disabled = true; btn.textContent = 'Logging in…';
       try{
         const out = await window.VHAuth.login(u,p);
-        if (!out || !out.ok){
-          err.textContent = (out && out.error) ? out.error : 'Login failed';
+        if (!out?.ok){
+          err.textContent = out?.error || 'Login failed';
           err.classList.remove('hidden');
           btn.disabled = false; btn.textContent = 'Log in';
           return;
         }
         ok.classList.remove('hidden');
-        // Short delay so user sees success
-        setTimeout(()=> { location.href = nextUrl; }, 300);
+        setTimeout(()=> location.href = nextUrl, 300);
       }catch(ex){
         err.textContent = 'Unexpected error. Try again.';
         err.classList.remove('hidden');
