@@ -5,71 +5,30 @@
   <title>Log in – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-
-  <!-- Try external auth first (adjust path if your file is in /scripts/auth.js) -->
-  <script src="auth.js"></script>
-
-  <!-- Inline fallback: only defines VHAuth if the external didn't -->
-  <script>
-  (function(){
-    if (window.VHAuth) return; // external loaded fine
-    const LS_USERS='vh_users', LS_SESSION='currentUser';
-    function loadUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS)||'{}'); }catch{ return {}; } }
-    function saveUsers(db){ localStorage.setItem(LS_USERS, JSON.stringify(db)); }
-    async function sha256(txt){
-      try{
-        if (window.crypto?.subtle){
-          const enc=new TextEncoder().encode(txt);
-          const buf=await crypto.subtle.digest('SHA-256', enc);
-          return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-        }
-      }catch(e){}
-      let h=5381; for(let i=0;i<txt.length;i++) h=((h<<5)+h)^txt.charCodeAt(i);
-      return ('00000000'+(h>>>0).toString(16)).slice(-8);
-    }
-    (async function seed(){
-      const db=loadUsers();
-      if (!Object.keys(db).length){
-        db['superadmin']={ passHash: await sha256('admin123'), role:'admin', createdAt:new Date().toISOString() };
-        saveUsers(db);
-      }
-    })();
-    window.VHAuth={
-      current(){ try{ return JSON.parse(localStorage.getItem(LS_SESSION)||'null'); }catch{ return null; } },
-      async login(u,p){
-        u=(u||'').trim();
-        const db=loadUsers();
-        if (!db[u]) return {ok:false,error:'User not found'};
-        const hash=await sha256(p||'');
-        if (db[u].passHash!==hash) return {ok:false,error:'Incorrect password'};
-        localStorage.setItem(LS_SESSION, JSON.stringify({username:u, role:db[u].role||'user'}));
-        return {ok:true};
-      },
-      logout(){ localStorage.removeItem(LS_SESSION); return {ok:true}; },
-      async register({username,password}){
-        const u=(username||'').trim();
-        if (!/^[a-zA-Z0-9_]{3,24}$/.test(u)) return {ok:false,error:'Username must be 3–24 letters/numbers/_'};
-        if ((password||'').length<6) return {ok:false,error:'Password must be at least 6 chars'};
-        const db=loadUsers(); if (db[u]) return {ok:false,error:'Username already taken'};
-        db[u]={ passHash: await sha256(password), role:'user', createdAt:new Date().toISOString() };
-        saveUsers(db);
-        localStorage.setItem(LS_SESSION, JSON.stringify({username:u, role:'user'}));
-        return {ok:true};
-      }
-    };
-  })();
-  </script>
-
-  <!-- Now guards/header can safely use VHAuth -->
-  <script src="guard.js"></script>
-  <script src="header.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
+  <!-- Header mount -->
   <div id="vh-header"></div>
+
+  <!-- IMPORTANT: order -->
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script src="header.js"></script>
 
   <main class="min-h-[80vh] flex items-center justify-center px-4">
     <div class="w-full max-w-md">
+      <!-- Logged-in banner (hidden by default) -->
+      <div id="already" class="hidden mb-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl p-4">
+        <div class="text-sm">
+          You’re already logged in as <strong id="meName">—</strong>.
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="goNext" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded text-sm">Continue</button>
+          <button id="switchAcc" class="bg-white border border-emerald-300 text-emerald-800 px-3 py-2 rounded text-sm">Log out & switch</button>
+        </div>
+      </div>
+
       <div class="bg-white border border-gray-100 shadow rounded-2xl p-6">
         <div class="text-center mb-5">
           <img src="/logo.svg" class="w-10 h-10 mx-auto mb-2" alt="VoteHive">
@@ -77,7 +36,7 @@
           <p class="text-sm text-gray-600">Log in to vote, comment, and track your points.</p>
         </div>
 
-        <form id="form" class="space-y-4" autocomplete="on">
+        <form id="form" class="space-y-4" autocomplete="on" novalidate>
           <div>
             <label class="block text-sm font-medium">Username</label>
             <input id="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required autofocus/>
@@ -103,22 +62,42 @@
   </main>
 
   <script>
+    // Read redirect target (optional)
     const params = new URLSearchParams(location.search);
     const nextUrl = params.get('next') || 'index.html';
 
-    // If already logged in, bounce
-    (function(){
+    const err  = document.getElementById('err');
+    const ok   = document.getElementById('ok');
+    const form = document.getElementById('form');
+    const btn  = document.getElementById('submitBtn');
+
+    // If a session exists, show banner instead of auto-redirecting
+    (function showIfLoggedIn(){
       try{
         const me = window.VHAuth?.current?.();
-        if (me) location.replace(nextUrl);
+        if (me) {
+          document.getElementById('already').classList.remove('hidden');
+          document.getElementById('meName').textContent = me.username;
+          // Still let them log in as someone else if they want — no redirect.
+        }
       }catch(e){}
     })();
 
-    const form = document.getElementById('form');
-    const btn  = document.getElementById('submitBtn');
-    const err  = document.getElementById('err');
-    const ok   = document.getElementById('ok');
+    // Continue (uses ?next if provided)
+    document.getElementById('goNext').addEventListener('click', ()=> {
+      location.href = nextUrl;
+    });
 
+    // Log out & switch
+    document.getElementById('switchAcc').addEventListener('click', ()=> {
+      try { window.VHAuth?.logout?.(); } catch(e){}
+      // Minimal UI reset
+      document.getElementById('already').classList.add('hidden');
+      err.classList.add('hidden'); ok.classList.add('hidden');
+      document.getElementById('username').focus();
+    });
+
+    // Login handler
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       err.classList.add('hidden'); ok.classList.add('hidden');
@@ -127,7 +106,7 @@
       const p = document.getElementById('password').value;
 
       if (!window.VHAuth || !window.VHAuth.login){
-        err.textContent = 'Auth not initialized (auth.js).';
+        err.textContent = 'Auth not initialized. Ensure: auth.js → guard.js → header.js';
         err.classList.remove('hidden');
         return;
       }
@@ -153,9 +132,7 @@
     // Preserve ?next when jumping to signup
     (function(){
       const l = document.getElementById('signupLink');
-      if (params.has('next')){
-        l.href = 'signup.html?next=' + encodeURIComponent(nextUrl);
-      }
+      if (params.has('next')) l.href = 'signup.html?next=' + encodeURIComponent(nextUrl);
     })();
   </script>
 </body>
