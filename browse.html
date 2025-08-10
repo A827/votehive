@@ -1,80 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Browse – VoteHive</title>
-  <link rel="icon" href="/favicon.ico" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Browse Polls – VoteHive</title>
+  <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .scrollhide::-webkit-scrollbar{display:none}
+    .img-thumb{object-fit:cover}
+  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Dynamic Header -->
+
+  <!-- Header -->
   <div id="vh-header"></div>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold">Browse Polls</h1>
-      <div class="flex gap-2">
-        <input id="q" class="border rounded px-3 py-2 text-sm" placeholder="Search…"/>
-        <select id="cat" class="border rounded px-3 py-2 text-sm">
-          <option value="">All</option>
-          <option>Startups</option><option>Politics</option><option>Brands</option>
-          <option>Finance</option><option>Design</option><option>Parenting</option>
-        </select>
+  <!-- Title + Search -->
+  <section class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <h1 class="text-3xl font-bold mb-2">Browse Polls</h1>
+      <p class="text-gray-600 mb-6">Explore active debates. Filter by category, sort by trend, and jump in.</p>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="md:col-span-2">
+          <div class="flex gap-2">
+            <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search by title…"/>
+            <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Search</button>
+          </div>
+        </div>
+        <div class="md:col-span-1">
+          <div class="flex gap-2 overflow-x-auto scrollhide">
+            <a data-cat="Startups" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Startups</a>
+            <a data-cat="Brands" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Brands</a>
+            <a data-cat="Politics" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Politics</a>
+            <a data-cat="Finance" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Finance</a>
+            <a data-cat="Design" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Design</a>
+            <a data-cat="Parenting" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Parenting</a>
+            <a data-cat="Real Estate" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Real Estate</a>
+            <a data-cat="Entertainment" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Entertainment</a>
+          </div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls yet.</div>
+  <!-- Filters bar -->
+  <section>
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Category</label>
+        <select id="fCategory" class="border rounded px-2 py-1 text-sm">
+          <option value="">All</option>
+          <option>Startups</option><option>Brands</option><option>Politics</option>
+          <option>Finance</option><option>Design</option><option>Parenting</option>
+          <option>Real Estate</option><option>Entertainment</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Sort</label>
+        <select id="fSort" class="border rounded px-2 py-1 text-sm">
+          <option value="trending">Trending</option>
+          <option value="new">New</option>
+          <option value="ending">Ending Soon</option>
+          <option value="votes">Most Votes</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Status</label>
+        <select id="fStatus" class="border rounded px-2 py-1 text-sm">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+      <div class="ml-auto text-sm text-gray-500">
+        <span id="metaCount">0</span> results
+      </div>
+    </div>
+  </section>
+
+  <!-- Grid -->
+  <main class="max-w-7xl mx-auto px-4 pb-10">
+    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls match your filters.</div>
+    <div id="moreWrap" class="text-center mt-6 hidden">
+      <button id="loadMore" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm">Load more</button>
+    </div>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+  <!-- Footer -->
+  <footer class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <span class="font-semibold">VoteHive</span>
+      </div>
+      <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
     </div>
   </footer>
 
   <script>
-    const grid = document.getElementById('grid');
-    const qEl  = document.getElementById('q');
-    const cEl  = document.getElementById('cat');
-    const empty= document.getElementById('empty');
+    // ---------- Data helpers ----------
+    const getPolls  = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const getVotes  = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
+    const pollsObj  = getPolls();
+    const votesObj  = getVotes();
 
-    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
-    function list(){ return Object.entries(getPolls()).filter(([id,p])=>p && !p.hidden); }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+    function totalVotesFor(id){ const v = votesObj[id] || {}; return Object.values(v).reduce((a,b)=>a+(+b||0),0); }
 
-    function render(){
-      const term = (qEl.value||'').toLowerCase().trim();
-      const cat = cEl.value;
-      const rows = list().filter(([id,p])=>{
-        const okT = !term || (p.title||'').toLowerCase().includes(term);
-        const okC = !cat  || (p.category===cat);
-        return okT && okC;
+    // ---------- Query state ----------
+    const params = new URLSearchParams(location.search);
+    const state = {
+      q: params.get('q') || '',
+      category: params.get('category') || '',
+      sort: params.get('sort') || 'trending',
+      status: params.get('status') || 'open'
+    };
+
+    // ---------- DOM refs ----------
+    const searchInput = document.getElementById('search');
+    const searchBtn   = document.getElementById('searchBtn');
+    const gridEl      = document.getElementById('grid');
+    const emptyEl     = document.getElementById('empty');
+    const moreWrap    = document.getElementById('moreWrap');
+    const loadMoreBtn = document.getElementById('loadMore');
+    const metaCountEl = document.getElementById('metaCount');
+    const fCat        = document.getElementById('fCategory');
+    const fSort       = document.getElementById('fSort');
+    const fStatus     = document.getElementById('fStatus');
+
+    // ---------- UI init ----------
+    searchInput.value = state.q;
+    if (state.category) fCat.value = state.category;
+    fSort.value = state.sort;
+    fStatus.value = state.status;
+
+    // top chips
+    document.querySelectorAll('[data-cat]').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        state.category = chip.getAttribute('data-cat');
+        applyState();
       });
+    });
 
-      grid.innerHTML = rows.map(([id,p])=>{
-        const end = new Date(p.endTime); const closed = Date.now()>end;
-        const badge = closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-        return `
-          <article class="bg-white border border-gray-100 shadow rounded p-4 flex flex-col">
-            <div class="flex items-center gap-2 text-xs mb-2">
-              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
-              <span class="text-gray-500">${p.category||'General'}</span>
-              ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
-            </div>
-            <h3 class="font-semibold mb-2">${p.title}</h3>
-            <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
-          </article>`;
-      }).join('');
+    // search
+    searchBtn.addEventListener('click', ()=>{
+      state.q = searchInput.value.trim();
+      applyState();
+    });
+    searchInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter'){ e.preventDefault(); state.q = searchInput.value.trim(); applyState(); }
+    });
 
-      empty.classList.toggle('hidden', rows.length>0);
+    // filters
+    fCat.addEventListener('change', ()=>{ state.category = fCat.value; applyState(); });
+    fSort.addEventListener('change', ()=>{ state.sort = fSort.value; applyState(); });
+    fStatus.addEventListener('change', ()=>{ state.status = fStatus.value; applyState(); });
+
+    // ---------- Router (update URL) ----------
+    function applyState(){
+      const p = new URLSearchParams();
+      if (state.q) p.set('q', state.q);
+      if (state.category) p.set('category', state.category);
+      if (state.sort && state.sort!=='trending') p.set('sort', state.sort);
+      if (state.status && state.status!=='open') p.set('status', state.status);
+      history.replaceState(null, '', location.pathname + (p.toString()?('?'+p.toString()):''));
+      // reset paging
+      shown = 0;
+      render();
     }
 
-    qEl.addEventListener('input', render);
-    cEl.addEventListener('change', render);
+    // ---------- Filtering / sorting ----------
+    function trendingScore(id, p){
+      const t = totalVotesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
+      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5)));
+      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5;
+    }
+
+    function statusOf(p){
+      const end = new Date(p.endTime);
+      return (!isNaN(end) && Date.now() > end.getTime()) ? 'closed' : 'open';
+    }
+
+    function filterAndSort(){
+      const rows = Object.entries(pollsObj).filter(([id,p]) => p && !p.hidden);
+      const q = state.q.toLowerCase();
+      let out = rows.filter(([id,p])=>{
+        const matchQ = !q || (p.title||'').toLowerCase().includes(q);
+        const matchC = !state.category || (p.category === state.category);
+        const matchS = state.status==='all' || statusOf(p)===state.status;
+        return matchQ && matchC && matchS;
+      });
+
+      switch(state.sort){
+        case 'new':
+          out.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0)); break;
+        case 'ending':
+          out.sort((a,b)=> new Date(a[1].endTime||0) - new Date(b[1].endTime||0)); break;
+        case 'votes':
+          out.sort((a,b)=> totalVotesFor(b[0]) - totalVotesFor(a[0])); break;
+        default:
+          out.sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]));
+      }
+      return out;
+    }
+
+    // ---------- Render ----------
+    const PAGE = 12;
+    let shown = 0;
+    function cardHTML(id, p){
+      const end = new Date(p.endTime);
+      const closed = !isNaN(end) && Date.now() > end.getTime();
+      const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+      const votes = totalVotesFor(id);
+      const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+      return `
+        <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
+          <div class="h-36 w-full overflow-hidden">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+          </div>
+          <div class="p-4 flex-1 flex flex-col">
+            <div class="flex items-center gap-2 text-xs mb-1">
+              <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-gray-500">${esc(p.category || 'General')}</span>
+              ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
+            </div>
+            <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+            <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
+          </div>
+        </article>
+      `;
+    }
+
+    function render(){
+      const data = filterAndSort();
+      metaCountEl.textContent = data.length;
+
+      if (!data.length){
+        gridEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        moreWrap.classList.add('hidden');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+
+      const slice = data.slice(0, shown + PAGE);
+      shown = slice.length;
+
+      gridEl.innerHTML = slice.map(([id,p]) => cardHTML(id,p)).join('');
+
+      moreWrap.classList.toggle('hidden', shown >= data.length);
+    }
+
+    loadMoreBtn.addEventListener('click', ()=>{
+      const data = filterAndSort();
+      const slice = data.slice(0, shown + PAGE);
+      shown = slice.length;
+      gridEl.innerHTML = slice.map(([id,p]) => cardHTML(id,p)).join('');
+      moreWrap.classList.toggle('hidden', shown >= data.length);
+    });
+
+    // ---------- Demo fallback ----------
+    (function maybeDemo(){
+      if (Object.keys(pollsObj).length) return;
+      const demo = {
+        demo1:{title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop'},
+        demo2:{title:'Should office-first return in tech?', category:'Startups', endTime:new Date(Date.now()+4*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1529336953121-adb1181a7d3b?q=80&w=1200&auto=format&fit=crop'},
+        demo3:{title:'Will crypto be mainstream by 2030?', category:'Finance', endTime:new Date(Date.now()+1*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1621768216002-5ac171876625?q=80&w=1200&auto=format&fit=crop'}
+      };
+      localStorage.setItem('customPolls', JSON.stringify(demo));
+      location.reload();
+    })();
+
+    // Initial render
     render();
   </script>
 </body>
