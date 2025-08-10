@@ -1,165 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>VoteHive – Where Ideas Compete</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <!-- Minimal page styles -->
   <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; transition:box-shadow .2s ease, transform .06s ease; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-card:hover { box-shadow:0 10px 30px rgba(2,6,23,.08); }
-    .tag { display:inline-block; padding:6px 12px; border-radius:9999px; background:#f3f4f6; margin:4px; font-size:12px; }
-    html.vh-dark .tag { background:#1f2937; }
-    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
-    .menu-enter.open { max-height:420px; }
-    @media (max-width: 767px){ .vh-quickbar { position: sticky; bottom: 0; z-index: 30; } }
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .glass{backdrop-filter:saturate(160%) blur(6px)}
+    .scrollhide::-webkit-scrollbar{display:none}
   </style>
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
-  <script src="streak.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-  <!-- Role-aware header mount -->
+  <!-- Role-aware header (uses your existing scripts) -->
   <div id="vh-header"></div>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
   <!-- Hero -->
-  <section class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-12 md:py-16">
-      <div class="max-w-2xl">
-        <h1 class="text-3xl md:text-5xl font-extrabold leading-tight">Where Ideas Compete</h1>
-        <p class="mt-3 md:mt-4 text-base md:text-lg opacity-90">Create, vote, and discover the most influential ideas across industries.</p>
-        <div class="mt-5 flex flex-wrap gap-3">
-          <a href="create.html" class="bg-white text-indigo-700 px-5 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
-          <a href="browse.html" class="border border-white px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
-          <a href="leaderboard.html" class="border border-white px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Leaderboard</a>
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-indigo-700 to-purple-700"></div>
+    <div class="relative max-w-7xl mx-auto px-4 py-16 md:py-20 text-white">
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+        <div>
+          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">
+            Where <span class="text-yellow-300">Ideas</span> Compete
+          </h1>
+          <p class="mt-4 text-white text-opacity-90 md:text-lg">
+            Create debates, vote in real time, and discover what people really think across brands, startups, politics and more.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a href="create.html" class="bg-white text-indigo-700 px-5 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
+            <a href="browse.html" class="border border-white/80 px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
+            <a href="leaderboard.html" class="border border-white/80 px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Leaderboard</a>
+          </div>
+          <div class="mt-6 flex items-center gap-3 text-xs text-white/80">
+            <span class="chip bg-white/10">Live voting</span>
+            <span class="chip bg-white/10">Trend insights</span>
+            <span class="chip bg-white/10">No login to view</span>
+          </div>
+        </div>
+        <div class="hidden md:block">
+          <div class="rounded-2xl shadow-2xl glass bg-white/5 p-4 border border-white/10">
+            <div class="bg-white/10 rounded-xl p-6">
+              <div class="text-sm text-white/80 mb-2">Trending right now</div>
+              <div id="heroTrending" class="space-y-3"></div>
+              <a href="browse.html" class="mt-4 inline-block text-sm underline">See more →</a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Trending -->
-  <section class="max-w-7xl mx-auto px-4 py-10 md:py-14">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl md:text-2xl font-bold">Trending Now</h2>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Sort</label>
-        <select id="sort" class="border rounded px-2 py-1 text-sm">
-          <option value="trending" selected>🔥 Trending score</option>
-          <option value="closing">⏳ Closing soon</option>
-          <option value="newest">🆕 Newest</option>
-          <option value="votes">📊 Most votes</option>
-        </select>
+  <!-- Quick Stats / Promises -->
+  <section class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
+        <div class="text-2xl">🗳️</div>
+        <div class="font-semibold mt-1">Vote instantly</div>
+        <div class="text-sm text-gray-600">One tap to weigh in. Results update live.</div>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
+        <div class="text-2xl">📊</div>
+        <div class="font-semibold mt-1">Explore trends</div>
+        <div class="text-sm text-gray-600">See what’s rising, split, or decided.</div>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
+        <div class="text-2xl">🏆</div>
+        <div class="font-semibold mt-1">Earn rewards</div>
+        <div class="text-sm text-gray-600">Points for voting, sharing, and contributing.</div>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
+        <div class="text-2xl">🧑‍⚖️</div>
+        <div class="font-semibold mt-1">Curated polls</div>
+        <div class="text-sm text-gray-600">Creator applications are reviewed by admins.</div>
       </div>
     </div>
-    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
   </section>
 
-  <!-- Trending tags -->
-  <section class="max-w-7xl mx-auto px-4 pb-24 md:pb-16">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg md:text-xl font-semibold">Trending Tags</h3>
-      <a href="browse.html" class="text-sm text-indigo-600 hover:underline">See all →</a>
+  <!-- Categories (horizontal scroll on mobile) -->
+  <section class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl md:text-2xl font-bold">Categories</h2>
+      <a href="browse.html" class="text-sm text-indigo-600 hover:underline">Browse all</a>
     </div>
-    <div id="tags" class="flex flex-wrap"></div>
+    <div class="flex gap-3 overflow-x-auto scrollhide pb-1">
+      <a href="browse.html?category=Startups" class="chip bg-indigo-50 text-indigo-700">Startups</a>
+      <a href="browse.html?category=Brands" class="chip bg-indigo-50 text-indigo-700">Brands</a>
+      <a href="browse.html?category=Politics" class="chip bg-indigo-50 text-indigo-700">Politics</a>
+      <a href="browse.html?category=Finance" class="chip bg-indigo-50 text-indigo-700">Finance</a>
+      <a href="browse.html?category=Design" class="chip bg-indigo-50 text-indigo-700">Design</a>
+      <a href="browse.html?category=Parenting" class="chip bg-indigo-50 text-indigo-700">Parenting</a>
+      <a href="browse.html?category=Real%20Estate" class="chip bg-indigo-50 text-indigo-700">Real Estate</a>
+      <a href="browse.html?category=Entertainment" class="chip bg-indigo-50 text-indigo-700">Entertainment</a>
+    </div>
   </section>
 
-  <!-- Mobile Quick Actions -->
-  <div class="vh-quickbar md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-    <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between">
-      <a href="browse.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-      <a href="feed.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
-      <a href="create.html" class="flex-1 text-center py-2 rounded bg-indigo-600 text-white mx-2">Create</a>
-      <a href="leaderboard.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Top</a>
+  <!-- Featured / Trending Polls -->
+  <section class="max-w-7xl mx-auto px-4 pb-4">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl md:text-2xl font-bold">Trending Polls</h2>
+      <div class="text-sm text-gray-500" id="trendingMeta"></div>
     </div>
-  </div>
+    <div id="trendingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="trendingEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls yet. Be the first to <a class="text-indigo-600 underline" href="create.html">apply</a>.</div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="mt-8">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="rounded-2xl bg-gradient-to-r from-indigo-700 to-purple-700 text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div class="mb-4 md:mb-0">
+          <h3 class="text-xl font-semibold">Ready to put your idea to the test?</h3>
+          <p class="text-white/90 text-sm mt-1">Submit your poll for review. If approved, it goes live to the crowd.</p>
+        </div>
+        <div class="flex gap-3">
+          <a href="create.html" class="bg-white text-purple-700 px-5 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
+          <a href="leaderboard.html" class="border border-white/80 px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">View Leaderboard</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Footer -->
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
+  <footer class="bg-gray-50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <span class="font-semibold">VoteHive</span>
       </div>
+      <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
     </div>
   </footer>
 
+  <!-- Page script: render trending polls from localStorage (fallbacks if empty) -->
   <script>
-    // Trending logic
-    const grid = document.getElementById('grid');
-    const sortEl = document.getElementById('sort');
-    const tagsEl = document.getElementById('tags');
-
+    // Helpers
     const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
     const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
 
-    function votesFor(id){ const v = getVotes()[id] || {}; return Object.values(v).reduce((a,b)=>a+b,0); }
-    function scoreFor(id, p){
-      const total = votesFor(id);
-      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date())/36e5);
-      const recency = 1/(1+hoursLeft);
-      const freshness = Math.min(1, (Date.now()-new Date(p.createdAt||Date.now()))/86400000 < 2 ? 1 : 0.6);
-      return total*0.8 + recency*10 + freshness*2;
+    function totalVotesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=>a + (Number(b)||0), 0);
     }
-    function list(){ return Object.entries(getPolls()).filter(([id,p])=>p && !p.hidden); }
-
-    function render(){
-      const mode = sortEl.value;
-      let rows = list();
-
-      if (mode === 'trending') rows.sort((a,b)=> scoreFor(b[0],b[1]) - scoreFor(a[0],a[1]));
-      if (mode === 'closing')  rows.sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
-      if (mode === 'newest')   rows.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0));
-      if (mode === 'votes')    rows.sort((a,b)=> votesFor(b[0]) - votesFor(a[0]));
-
-      grid.innerHTML = rows.slice(0,6).map(([id,p])=>{
-        const end = new Date(p.endTime);
-        const closed = Date.now() > end.getTime();
-        const badge = closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-        const v = votesFor(id);
-        const trending = scoreFor(id,p) > 10 && !closed;
-
-        return `
-          <article class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 flex flex-col">
-            <div class="flex items-center gap-2 text-xs md:text-sm mb-2">
-              <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
-              <span class="text-gray-500">${p.category || 'General'}</span>
-              ${p.featured ? '<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>' : ''}
-              ${trending ? '<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">🔥 Trending</span>' : ''}
-            </div>
-            <h3 class="font-semibold text-base md:text-lg leading-snug mb-2">${p.title}</h3>
-            <div class="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1 mb-4">
-              <span>Votes: <strong>${v}</strong></span>
-              <span>Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</span>
-            </div>
-            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block text-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
-          </article>`;
-      }).join('');
-
-      renderTags(rows.map(r=>r[1]));
+    function trendingScore(id, p){
+      const t = totalVotesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
+      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5))); // favor last ~3 days
+      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5;
     }
 
-    function renderTags(polls){
-      const stop = new Set(['the','is','a','an','to','of','and','in','on','for','with','by','or','be','are','will','do','does','should','we','you','your','our']);
-      const counts = {};
-      polls.forEach(p=>{
-        (p.title||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w && !stop.has(w) && w.length>2).forEach(w=>{
-          counts[w] = (counts[w]||0)+1;
-        });
-      });
-      const tags = Object.entries(counts).sort((a,b)=> b[1]-a[1]).slice(0,14);
-      tagsEl.innerHTML = tags.length
-        ? tags.map(([w,c])=>`<a class="tag hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-800" href="browse.html?tag=${encodeURIComponent(w)}">#${w}</a>`).join('')
-        : '<div class="text-sm text-gray-600">No tags yet.</div>';
+    function cardHTML(id, p){
+      const end = new Date(p.endTime);
+      const closed = !isNaN(end) && Date.now() > end.getTime();
+      const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+      const votes = totalVotesFor(id);
+      return `
+        <article class="bg-white border border-gray-100 shadow rounded-xl p-4 flex flex-col">
+          <div class="flex items-center gap-2 text-xs mb-2">
+            <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+            <span class="text-gray-500">${p.category || 'General'}</span>
+            ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
+          </div>
+          <h3 class="font-semibold mb-1 line-clamp-2">${(p.title||'').replace(/</g,'&lt;')}</h3>
+          <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+          <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
+        </article>
+      `;
     }
 
-    sortEl.addEventListener('change', render);
-    render();
+    function placeholderCards(){
+      const samples = [
+        {id:'demo1', title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), createdAt:new Date().toISOString(), featured:true},
+        {id:'demo2', title:'Should office-first return in tech?', category:'Startups', endTime:new Date(Date.now()+4*864e5).toISOString(), createdAt:new Date().toISOString()},
+        {id:'demo3', title:'Will crypto be mainstream by 2030?', category:'Finance', endTime:new Date(Date.now()+1*864e5).toISOString(), createdAt:new Date().toISOString()},
+      ];
+      const hero = document.getElementById('heroTrending');
+      hero.innerHTML = samples.map(s => `
+        <div class="bg-white/10 rounded-lg p-3">
+          <div class="text-sm font-medium">${s.title}</div>
+          <div class="text-xs text-white/80 mt-1">${s.category} • Ends ${new Date(s.endTime).toLocaleDateString()}</div>
+          <a class="text-xs underline inline-block mt-1" href="poll.html?id=${encodeURIComponent(s.id)}">Preview</a>
+        </div>
+      `).join('');
+
+      document.getElementById('trendingMeta').textContent = 'Demo data';
+      document.getElementById('trendingGrid').innerHTML = samples.map(s => cardHTML(s.id, s)).join('');
+      document.getElementById('trendingEmpty').classList.add('hidden');
+    }
+
+    (function renderHome(){
+      const polls = getPolls();
+      const rows = Object.entries(polls)
+        .filter(([id,p]) => p && !p.hidden)
+        .sort((a,b) => trendingScore(b[0], b[1]) - trendingScore(a[0], a[1]))
+        .slice(0, 6);
+
+      // Hero mini-list
+      const hero = document.getElementById('heroTrending');
+      if (rows.length){
+        hero.innerHTML = rows.slice(0,3).map(([id,p]) => `
+          <div class="bg-white/10 rounded-lg p-3">
+            <div class="text-sm font-medium">${(p.title||'').replace(/</g,'&lt;')}</div>
+            <div class="text-xs text-white/80 mt-1">${p.category||'General'} • Votes ${totalVotesFor(id)}</div>
+            <a class="text-xs underline inline-block mt-1" href="poll.html?id=${encodeURIComponent(id)}">Open</a>
+          </div>
+        `).join('');
+      } else {
+        placeholderCards();
+        return;
+      }
+
+      // Grid
+      const grid = document.getElementById('trendingGrid');
+      grid.innerHTML = rows.map(([id,p]) => cardHTML(id,p)).join('');
+      document.getElementById('trendingEmpty').classList.toggle('hidden', rows.length>0);
+
+      // Meta
+      document.getElementById('trendingMeta').textContent = `${rows.length} of ${Object.keys(polls).length} shown`;
+    })();
   </script>
 </body>
 </html>

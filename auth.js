@@ -1,128 +1,84 @@
-/* VoteHive – Global Auth & Header Mount (localStorage demo)
-   - Session: localStorage.session = { username, role, loggedInAt }
-   - Users:   localStorage.userList = [{ username, role, createdAt, lastLoginAt }]
-   - Auto-injects a username pill + dropdown into the page header.
-   - De-duplicates any hard-coded "Log In" links in the header nav.
-*/
-
+// auth.js — Single source of truth for demo auth via localStorage
 (function () {
-  const LS = { session: 'session', users: 'userList' };
+  const KEY = 'currentUser';
 
-  function getSession() {
-    try { return JSON.parse(localStorage.getItem(LS.session) || 'null'); } catch { return null; }
+  function parseSafe(raw) {
+    try { return JSON.parse(raw); } catch { return null; }
   }
-  function setSession(s) { localStorage.setItem(LS.session, JSON.stringify(s)); }
-  function clearSession() { localStorage.removeItem(LS.session); }
 
-  function getUsers() {
-    try { return JSON.parse(localStorage.getItem(LS.users) || '[]'); } catch { return []; }
+  // Fire a cross-app event when auth changes
+  function notify() {
+    try { window.dispatchEvent(new Event('auth:change')); } catch {}
   }
-  function setUsers(list) { localStorage.setItem(LS.users, JSON.stringify(list)); }
 
-  function ensureUser(username, role) {
-    const users = getUsers();
-    const found = users.find(u => u.username === username);
-    const now = new Date().toISOString();
-    if (found) {
-      found.role = role || found.role || 'user';
-      found.lastLoginAt = now;
-    } else {
-      users.push({ username, role: role || 'user', createdAt: now, lastLoginAt: now });
+  // Backward-compat: if legacy keys exist, migrate once
+  (function migrate() {
+    if (localStorage.getItem(KEY)) return;
+    const legacyKeys = ['VHAuth_user', 'auth_user', 'user', 'vhauth'];
+    for (const k of legacyKeys) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      let val = parseSafe(raw);
+      if (!val) val = { username: String(raw), role: 'user' };
+      const user = {
+        username: String(val.username || val.name || 'user'),
+        role: String(val.role || 'user').toLowerCase()
+      };
+      localStorage.setItem(KEY, JSON.stringify(user));
+      break;
     }
-    setUsers(users);
-  }
+  })();
 
-  // Public API
-  window.VHAuth = {
-    isLoggedIn() { return !!getSession(); },
-    current() { return getSession(); },
-    login(username, role) {
-      const payload = { username, role: role || 'user', loggedInAt: new Date().toISOString() };
-      setSession(payload);
-      ensureUser(username, payload.role);
-      try { window.dispatchEvent(new CustomEvent('vh-auth-change', { detail: payload })); } catch {}
-      return payload;
+  const Auth = {
+    get() {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      const u = parseSafe(raw);
+      if (!u) return null;
+      return {
+        username: String(u.username || 'user'),
+        role: String(u.role || 'user').toLowerCase()
+      };
+    },
+    set(user) {
+      if (!user || !user.username) return;
+      const u = {
+        username: String(user.username),
+        role: String(user.role || 'user').toLowerCase()
+      };
+      localStorage.setItem(KEY, JSON.stringify(u));
+      notify();
+    },
+    login(username, role = 'user') {
+      if (typeof username === 'object' && username) {
+        Auth.set(username);
+      } else {
+        Auth.set({ username, role });
+      }
     },
     logout() {
-      clearSession();
-      try { window.dispatchEvent(new CustomEvent('vh-auth-change', { detail: null })); } catch {}
+      localStorage.removeItem(KEY);
+      notify();
+      location.href = 'index.html';
+    },
+    requireLogin(redirect = 'login.html') {
+      if (!Auth.get()) {
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.replace(`${redirect}?next=${next}`);
+      }
+    },
+    requireAdmin(redirect = 'index.html') {
+      const me = Auth.get();
+      if (!me || (me.role !== 'admin' && me.role !== 'superadmin')) {
+        location.replace(redirect);
+      }
     }
   };
 
-  // ---- Header UI injection ----
-  function mountHeaderAuth() {
-    const header = document.querySelector('header');
-    if (!header) return;
+  // Cross-tab sync
+  window.addEventListener('storage', (e) => {
+    if (e.key === KEY) notify();
+  });
 
-    let nav = header.querySelector('nav');
-    if (!nav) {
-      nav = document.createElement('nav');
-      nav.className = 'flex gap-3 text-sm items-center';
-      header.querySelector('div')?.appendChild(nav);
-    }
-
-    // Remove any hard-coded login buttons in this nav (to prevent duplicates)
-    nav.querySelectorAll('a[href$="login.html"]').forEach(a => {
-      // keep only ones inside our mount container
-      if (!a.closest('#vh-auth')) a.remove();
-    });
-
-    // Ensure a single mount container
-    let mount = document.getElementById('vh-auth');
-    if (!mount) {
-      mount = document.createElement('div');
-      mount.id = 'vh-auth';
-      nav.appendChild(mount);
-    } else {
-      // Clear it on re-mount to avoid duplicates
-      mount.innerHTML = '';
-    }
-
-    const sess = getSession();
-    if (!sess) {
-      mount.innerHTML = `
-        <a href="login.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
-      `;
-      return;
-    }
-
-    const { username, role } = sess;
-    mount.innerHTML = `
-      <div class="relative">
-        <button id="vh-userbtn" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200 flex items-center gap-2">
-          <span class="inline-block rounded-full bg-purple-600 text-white w-6 h-6 grid place-items-center text-xs">${username.slice(0,1).toUpperCase()}</span>
-          <span class="font-medium">${username}</span>
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 011.06.02L10 11.19l3.71-3.96a.75.75 0 111.08 1.04l-4.25 4.53a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"/></svg>
-        </button>
-        <div id="vh-menu" class="hidden absolute right-0 mt-2 w-44 bg-white text-gray-800 border rounded shadow z-50">
-          <a href="my-polls.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">My Polls</a>
-          <a href="applications.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Applications</a>
-          <a href="rewards.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Rewards</a>
-          ${role === 'superadmin' ? '<a href="admin-dashboard.html" class="block px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Admin</a>' : ''}
-          <button id="vh-logout" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-gray-800">Log Out</button>
-        </div>
-      </div>
-    `;
-
-    const btn = mount.querySelector('#vh-userbtn');
-    const menu = mount.querySelector('#vh-menu');
-    const logoutBtn = mount.querySelector('#vh-logout');
-
-    btn.addEventListener('click', () => {
-      menu.classList.toggle('hidden');
-    });
-    document.addEventListener('click', (e) => {
-      if (!mount.contains(e.target)) menu.classList.add('hidden');
-    });
-    logoutBtn.addEventListener('click', () => {
-      VHAuth.logout();
-      // After logout, re-mount will inject a single "Log In" link
-      mountHeaderAuth();
-      // Optional redirect:
-      if (!location.pathname.endsWith('login.html')) location.href = 'index.html';
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', mountHeaderAuth);
-  window.addEventListener('vh-auth-change', mountHeaderAuth);
+  window.Auth = Auth;
 })();
