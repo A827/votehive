@@ -7,101 +7,96 @@
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 
-  <!-- Minimal page styles -->
   <style>
     .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
-    .glass{backdrop-filter:saturate(160%) blur(6px)}
     .scrollhide::-webkit-scrollbar{display:none}
+    .ticker{white-space:nowrap;overflow:hidden}
+    .ticker > div{display:inline-block;padding-left:100%;animation:marquee 18s linear infinite}
+    @keyframes marquee {0%{transform:translate(0,0)}100%{transform:translate(-100%,0)}}
+    .countdown{font-variant-numeric:tabular-nums}
+    .img-thumb{object-fit:cover}
   </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-  <!-- Role-aware header (uses your existing scripts) -->
+  <!-- Role-aware header -->
   <div id="vh-header"></div>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <!-- Hero -->
+  <!-- HERO with Spotlight + Ticker -->
   <section class="relative overflow-hidden">
     <div class="absolute inset-0 bg-gradient-to-br from-indigo-700 to-purple-700"></div>
-    <div class="relative max-w-7xl mx-auto px-4 py-16 md:py-20 text-white">
-      <div class="grid md:grid-cols-2 gap-8 items-center">
-        <div>
-          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">
-            Where <span class="text-yellow-300">Ideas</span> Compete
-          </h1>
-          <p class="mt-4 text-white text-opacity-90 md:text-lg">
-            Create debates, vote in real time, and discover what people really think across brands, startups, politics and more.
-          </p>
+    <div class="relative max-w-7xl mx-auto px-4 py-14 md:py-18 text-white">
+      <div class="grid md:grid-cols-3 gap-6 items-stretch">
+        <!-- Left: Claim + CTAs -->
+        <div class="md:col-span-1 flex flex-col justify-between">
+          <div>
+            <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">
+              Where <span class="text-yellow-300">Ideas</span> Compete
+            </h1>
+            <p class="mt-4 text-white/90 md:text-lg">
+              Vote in real time, join the discussion, and uncover what people really think.
+            </p>
+          </div>
           <div class="mt-6 flex flex-wrap gap-3">
             <a href="create.html" class="bg-white text-indigo-700 px-5 py-3 rounded font-semibold text-sm hover:bg-gray-100">Apply to Create</a>
             <a href="browse.html" class="border border-white/80 px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Browse Polls</a>
             <a href="leaderboard.html" class="border border-white/80 px-5 py-3 rounded font-semibold text-sm hover:bg-white hover:text-purple-700">Leaderboard</a>
           </div>
-          <div class="mt-6 flex items-center gap-3 text-xs text-white/80">
-            <span class="chip bg-white/10">Live voting</span>
-            <span class="chip bg-white/10">Trend insights</span>
-            <span class="chip bg-white/10">No login to view</span>
+        </div>
+
+        <!-- Middle: Spotlight -->
+        <div class="md:col-span-1">
+          <div class="rounded-2xl shadow-2xl bg-white/10 border border-white/10 p-4 h-full">
+            <div class="text-sm text-white/90 mb-2">Daily Spotlight</div>
+            <article id="spotlight" class="bg-white/10 rounded-xl overflow-hidden">
+              <!-- Filled by JS -->
+            </article>
           </div>
         </div>
-        <div class="hidden md:block">
-          <div class="rounded-2xl shadow-2xl glass bg-white/5 p-4 border border-white/10">
-            <div class="bg-white/10 rounded-xl p-6">
-              <div class="text-sm text-white/80 mb-2">Trending right now</div>
-              <div id="heroTrending" class="space-y-3"></div>
-              <a href="browse.html" class="mt-4 inline-block text-sm underline">See more →</a>
+
+        <!-- Right: Activity Ticker -->
+        <div class="md:col-span-1">
+          <div class="rounded-2xl shadow-2xl bg-white/10 border border-white/10 p-4 h-full">
+            <div class="text-sm text-white/90 mb-2">Live Activity</div>
+            <div class="ticker bg-white/10 rounded-lg">
+              <div id="tickerInner" class="py-3 text-sm">
+                <!-- Items injected by JS -->
+              </div>
             </div>
+            <div class="mt-3 text-xs text-white/70">Real-time feed of votes, comments and shares.</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Quick Stats / Promises -->
-  <section class="bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
-        <div class="text-2xl">🗳️</div>
-        <div class="font-semibold mt-1">Vote instantly</div>
-        <div class="text-sm text-gray-600">One tap to weigh in. Results update live.</div>
+  <!-- Search + Categories -->
+  <section class="max-w-7xl mx-auto px-4 pt-8 pb-4">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2">
+        <div class="flex gap-2">
+          <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search polls by title…"/>
+          <a id="searchBtn" href="browse.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Search</a>
+        </div>
       </div>
-      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
-        <div class="text-2xl">📊</div>
-        <div class="font-semibold mt-1">Explore trends</div>
-        <div class="text-sm text-gray-600">See what’s rising, split, or decided.</div>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
-        <div class="text-2xl">🏆</div>
-        <div class="font-semibold mt-1">Earn rewards</div>
-        <div class="text-sm text-gray-600">Points for voting, sharing, and contributing.</div>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-100 shadow p-4">
-        <div class="text-2xl">🧑‍⚖️</div>
-        <div class="font-semibold mt-1">Curated polls</div>
-        <div class="text-sm text-gray-600">Creator applications are reviewed by admins.</div>
+      <div class="md:col-span-1">
+        <div class="flex gap-2 overflow-x-auto scrollhide">
+          <a href="browse.html?category=Startups" class="chip bg-indigo-50 text-indigo-700">Startups</a>
+          <a href="browse.html?category=Brands" class="chip bg-indigo-50 text-indigo-700">Brands</a>
+          <a href="browse.html?category=Politics" class="chip bg-indigo-50 text-indigo-700">Politics</a>
+          <a href="browse.html?category=Finance" class="chip bg-indigo-50 text-indigo-700">Finance</a>
+          <a href="browse.html?category=Design" class="chip bg-indigo-50 text-indigo-700">Design</a>
+          <a href="browse.html?category=Parenting" class="chip bg-indigo-50 text-indigo-700">Parenting</a>
+          <a href="browse.html?category=Real%20Estate" class="chip bg-indigo-50 text-indigo-700">Real Estate</a>
+          <a href="browse.html?category=Entertainment" class="chip bg-indigo-50 text-indigo-700">Entertainment</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Categories (horizontal scroll on mobile) -->
-  <section class="max-w-7xl mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl md:text-2xl font-bold">Categories</h2>
-      <a href="browse.html" class="text-sm text-indigo-600 hover:underline">Browse all</a>
-    </div>
-    <div class="flex gap-3 overflow-x-auto scrollhide pb-1">
-      <a href="browse.html?category=Startups" class="chip bg-indigo-50 text-indigo-700">Startups</a>
-      <a href="browse.html?category=Brands" class="chip bg-indigo-50 text-indigo-700">Brands</a>
-      <a href="browse.html?category=Politics" class="chip bg-indigo-50 text-indigo-700">Politics</a>
-      <a href="browse.html?category=Finance" class="chip bg-indigo-50 text-indigo-700">Finance</a>
-      <a href="browse.html?category=Design" class="chip bg-indigo-50 text-indigo-700">Design</a>
-      <a href="browse.html?category=Parenting" class="chip bg-indigo-50 text-indigo-700">Parenting</a>
-      <a href="browse.html?category=Real%20Estate" class="chip bg-indigo-50 text-indigo-700">Real Estate</a>
-      <a href="browse.html?category=Entertainment" class="chip bg-indigo-50 text-indigo-700">Entertainment</a>
-    </div>
-  </section>
-
-  <!-- Featured / Trending Polls -->
+  <!-- Trending with Thumbnails -->
   <section class="max-w-7xl mx-auto px-4 pb-4">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl md:text-2xl font-bold">Trending Polls</h2>
@@ -109,6 +104,15 @@
     </div>
     <div id="trendingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     <div id="trendingEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls yet. Be the first to <a class="text-indigo-600 underline" href="create.html">apply</a>.</div>
+  </section>
+
+  <!-- Top Voters (social proof) -->
+  <section class="max-w-7xl mx-auto px-4 py-8 bg-gray-50 rounded-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl md:text-2xl font-bold">Top Voters This Week</h2>
+      <a href="leaderboard.html" class="text-sm text-indigo-600 hover:underline">Full leaderboard</a>
+    </div>
+    <div id="topVoters" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
   </section>
 
   <!-- CTA band -->
@@ -138,92 +142,182 @@
     </div>
   </footer>
 
-  <!-- Page script: render trending polls from localStorage (fallbacks if empty) -->
+  <!-- Page script -->
   <script>
-    // Helpers
+    // ------- Data helpers -------
     const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
     const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
+    const getActivity = () => { try { return JSON.parse(localStorage.getItem('activityLog')||'[]'); } catch { return []; } };
+    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints')||'{}'); } catch { return {}; } };
 
-    function totalVotesFor(id){
-      const v = getVotes()[id] || {};
-      return Object.values(v).reduce((a,b)=>a + (Number(b)||0), 0);
-    }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+    function totalVotesFor(id){ const v = getVotes()[id] || {}; return Object.values(v).reduce((a,b)=>a + (Number(b)||0), 0); }
+
     function trendingScore(id, p){
       const t = totalVotesFor(id);
       const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
-      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5))); // favor last ~3 days
-      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5;
+      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5))); // ~3 days
+      const commentsWeight = 0; // hook for future (if we store per-poll comment counts)
+      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5 + commentsWeight;
     }
 
+    // ------- Spotlight -------
+    function spotlightPoll(){
+      const polls = getPolls();
+      const keys = Object.keys(polls);
+      let pick = null;
+      if (keys.length){
+        // choose highest trending, fallback random
+        pick = keys.map(id => [id, polls[id]]).sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]))[0];
+      }
+      const el = document.getElementById('spotlight');
+      if (!pick){
+        // demo spotlight
+        const demo = {
+          id:'demo1',
+          title:'Which coffee chain wins in 2025?',
+          category:'Brands',
+          endTime:new Date(Date.now()+2*864e5).toISOString(),
+          thumbnail:'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop'
+        };
+        el.innerHTML = spotlightHTML(demo.id, demo);
+        return;
+      }
+      el.innerHTML = spotlightHTML(pick[0], pick[1]);
+    }
+
+    function spotlightHTML(id, p){
+      const end = new Date(p.endTime);
+      const closed = !isNaN(end) && Date.now() > end.getTime();
+      const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+      const votes = totalVotesFor(id);
+      const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+      return `
+        <div class="grid grid-cols-3 gap-0">
+          <div class="col-span-3 h-40 md:h-44 overflow-hidden">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+          </div>
+          <div class="col-span-3 p-4">
+            <div class="flex items-center gap-2 text-xs mb-1">
+              <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-white/90">${esc(p.category||'General')}</span>
+            </div>
+            <div class="font-semibold clamp-2">${esc(p.title||'Untitled')}</div>
+            <div class="text-xs text-white/80 mt-1">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleDateString()}</div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-white text-indigo-700 px-4 py-2 rounded text-sm">Open Poll</a>
+          </div>
+        </div>
+      `;
+    }
+
+    // ------- Activity Ticker -------
+    function renderTicker(){
+      const log = (getActivity()||[]).slice(-30).reverse(); // newest first
+      const polls = getPolls();
+      const fmt = log.map(ev => {
+        const p = polls[ev.pid] || {};
+        const title = (p.title || 'a poll').slice(0,60);
+        if (ev.type === 'vote')   return `<span class="mx-6">🗳️ <strong>${esc(ev.user||'Someone')}</strong> voted on <em>${esc(title)}</em></span>`;
+        if (ev.type === 'comment')return `<span class="mx-6">💬 <strong>${esc(ev.user||'Someone')}</strong> replied in <em>${esc(title)}</em></span>`;
+        if (ev.type === 'share')  return `<span class="mx-6">🔗 <strong>${esc(ev.user||'Someone')}</strong> shared <em>${esc(title)}</em></span>`;
+        return '';
+      }).join('') || `<span class="mx-6">Welcome to VoteHive — activity will appear here as people vote & comment.</span>`;
+      document.getElementById('tickerInner').innerHTML = fmt;
+    }
+
+    // ------- Trending Grid with thumbnails -------
     function cardHTML(id, p){
       const end = new Date(p.endTime);
       const closed = !isNaN(end) && Date.now() > end.getTime();
       const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
       const votes = totalVotesFor(id);
+      const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
       return `
-        <article class="bg-white border border-gray-100 shadow rounded-xl p-4 flex flex-col">
-          <div class="flex items-center gap-2 text-xs mb-2">
-            <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
-            <span class="text-gray-500">${p.category || 'General'}</span>
-            ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
+        <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
+          <div class="h-36 w-full overflow-hidden">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
           </div>
-          <h3 class="font-semibold mb-1 line-clamp-2">${(p.title||'').replace(/</g,'&lt;')}</h3>
-          <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-          <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
+          <div class="p-4 flex-1 flex flex-col">
+            <div class="flex items-center gap-2 text-xs mb-1">
+              <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-gray-500">${esc(p.category || 'General')}</span>
+              ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
+            </div>
+            <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+            <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
+          </div>
         </article>
       `;
     }
 
-    function placeholderCards(){
-      const samples = [
-        {id:'demo1', title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), createdAt:new Date().toISOString(), featured:true},
-        {id:'demo2', title:'Should office-first return in tech?', category:'Startups', endTime:new Date(Date.now()+4*864e5).toISOString(), createdAt:new Date().toISOString()},
-        {id:'demo3', title:'Will crypto be mainstream by 2030?', category:'Finance', endTime:new Date(Date.now()+1*864e5).toISOString(), createdAt:new Date().toISOString()},
-      ];
-      const hero = document.getElementById('heroTrending');
-      hero.innerHTML = samples.map(s => `
-        <div class="bg-white/10 rounded-lg p-3">
-          <div class="text-sm font-medium">${s.title}</div>
-          <div class="text-xs text-white/80 mt-1">${s.category} • Ends ${new Date(s.endTime).toLocaleDateString()}</div>
-          <a class="text-xs underline inline-block mt-1" href="poll.html?id=${encodeURIComponent(s.id)}">Preview</a>
-        </div>
-      `).join('');
-
-      document.getElementById('trendingMeta').textContent = 'Demo data';
-      document.getElementById('trendingGrid').innerHTML = samples.map(s => cardHTML(s.id, s)).join('');
-      document.getElementById('trendingEmpty').classList.add('hidden');
-    }
-
-    (function renderHome(){
+    function renderTrending(){
       const polls = getPolls();
       const rows = Object.entries(polls)
         .filter(([id,p]) => p && !p.hidden)
         .sort((a,b) => trendingScore(b[0], b[1]) - trendingScore(a[0], a[1]))
         .slice(0, 6);
 
-      // Hero mini-list
-      const hero = document.getElementById('heroTrending');
-      if (rows.length){
-        hero.innerHTML = rows.slice(0,3).map(([id,p]) => `
-          <div class="bg-white/10 rounded-lg p-3">
-            <div class="text-sm font-medium">${(p.title||'').replace(/</g,'&lt;')}</div>
-            <div class="text-xs text-white/80 mt-1">${p.category||'General'} • Votes ${totalVotesFor(id)}</div>
-            <a class="text-xs underline inline-block mt-1" href="poll.html?id=${encodeURIComponent(id)}">Open</a>
-          </div>
-        `).join('');
-      } else {
-        placeholderCards();
+      const grid = document.getElementById('trendingGrid');
+      const meta = document.getElementById('trendingMeta');
+
+      if (!rows.length){
+        // demo cards
+        const demo = [
+          {id:'demo1', title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), thumbnail:'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop'},
+          {id:'demo2', title:'Should office-first return in tech?', category:'Startups', endTime:new Date(Date.now()+4*864e5).toISOString(), thumbnail:'https://images.unsplash.com/photo-1529336953121-adb1181a7d3b?q=80&w=1200&auto=format&fit=crop'},
+          {id:'demo3', title:'Will crypto be mainstream by 2030?', category:'Finance', endTime:new Date(Date.now()+1*864e5).toISOString(), thumbnail:'https://images.unsplash.com/photo-1621768216002-5ac171876625?q=80&w=1200&auto=format&fit=crop'}
+        ];
+        grid.innerHTML = demo.map(d => cardHTML(d.id, d)).join('');
+        meta.textContent = 'Demo data';
+        document.getElementById('trendingEmpty').classList.add('hidden');
         return;
       }
 
-      // Grid
-      const grid = document.getElementById('trendingGrid');
       grid.innerHTML = rows.map(([id,p]) => cardHTML(id,p)).join('');
+      meta.textContent = `${rows.length} of ${Object.keys(polls).length} shown`;
       document.getElementById('trendingEmpty').classList.toggle('hidden', rows.length>0);
+    }
 
-      // Meta
-      document.getElementById('trendingMeta').textContent = `${rows.length} of ${Object.keys(polls).length} shown`;
+    // ------- Top Voters -------
+    function renderTopVoters(){
+      const pts = getPoints();
+      const rows = Object.entries(pts).sort((a,b)=> (b[1]||0)-(a[1]||0)).slice(0,6);
+      const el = document.getElementById('topVoters');
+      if (!rows.length){
+        el.innerHTML = `
+          <div class="text-sm text-gray-500 col-span-full">No voter activity yet. Start by <a class="text-indigo-600 underline" href="browse.html">browsing polls</a>.</div>
+        `;
+        return;
+      }
+      el.innerHTML = rows.map(([user,score])=>`
+        <div class="bg-white border border-gray-100 rounded-xl p-4 text-center">
+          <div class="mx-auto mb-2 w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-semibold">${esc(user[0]||'U').toUpperCase()}</div>
+          <div class="font-medium">${esc(user)}</div>
+          <div class="text-xs text-gray-500">Points: ${score}</div>
+        </div>
+      `).join('');
+    }
+
+    // ------- Search button wiring -------
+    (function(){
+      const input = document.getElementById('search');
+      const btn = document.getElementById('searchBtn');
+      btn.addEventListener('click', (e)=>{
+        const q = (input.value||'').trim();
+        if (!q) return;
+        btn.href = 'browse.html?q=' + encodeURIComponent(q);
+      });
+      input.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter'){ e.preventDefault(); btn.click(); }
+      });
     })();
+
+    // ------- Init all -------
+    spotlightPoll();
+    renderTicker();
+    renderTrending();
+    renderTopVoters();
   </script>
 </body>
 </html>
