@@ -2,116 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rewards & Leaderboard – VoteHive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rewards – VoteHive</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
   <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
-    .vh-card { background:#fff; }
+    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
+    .vh-card { background:#fff; transition:box-shadow .2s ease; }
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
+    .vh-card:hover { box-shadow:0 10px 30px rgba(2,6,23,.08); }
+    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
+    .menu-enter.open { max-height:420px; }
     .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
-    .stat { border-radius:12px; padding:14px; }
-    html.vh-dark .stat { background:#0b1222; border:1px solid #1f2937; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
+  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-3 text-sm">
+        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
       </nav>
+      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="px-4 py-2 grid gap-1">
+        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <div class="flex gap-2 mt-1">
+          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-12">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- My rewards -->
-      <section class="vh-card border border-gray-100 shadow rounded p-6">
-        <h1 class="text-2xl font-bold mb-2">Your Rewards</h1>
-        <p class="text-sm text-gray-600 mb-4">Earn points by voting and sharing polls. (Local demo)</p>
+  <!-- Hero -->
+  <section class="text-center py-10 md:py-12 bg-gray-50 dark:bg-gray-900">
+    <h1 class="text-2xl md:text-3xl font-bold mb-2">Rewards</h1>
+    <p class="text-gray-600 dark:text-gray-300">Earn points for voting, sharing, and contributing. Unlock badges as you go.</p>
+  </section>
 
-        <div id="me" class="text-gray-700">
-          <p class="mb-2"><span class="font-semibold">User:</span> <span id="meName">guest</span></p>
-          <p class="mb-2"><span class="font-semibold">Points:</span> <span id="mePoints">0</span></p>
-          <p class="mb-4"><span class="font-semibold">Badge:</span> <span id="meBadge" class="badge bg-gray-200 text-gray-800">None</span></p>
-        </div>
+  <main class="max-w-7xl mx-auto px-4 py-8 md:py-12 grid gap-6 md:grid-cols-3">
+    <!-- Points / Badges -->
+    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-6 md:col-span-1">
+      <h2 class="text-lg font-semibold">Your Points</h2>
+      <div class="mt-2 text-4xl font-extrabold text-indigo-700 dark:text-indigo-300" id="points">0</div>
+      <p class="text-sm text-gray-600 dark:text-gray-300">Points are local-only for now (demo). Sign in on this device to keep earning.</p>
+      <h3 class="text-base font-semibold mt-6 mb-2">Badges</h3>
+      <div id="badges" class="flex flex-wrap gap-2"></div>
+    </section>
 
-        <div class="grid grid-cols-3 gap-3">
-          <div class="stat">
-            <div class="text-xs text-gray-500">Votes cast</div>
-            <div id="meVotes" class="text-2xl font-extrabold mt-1">0</div>
-          </div>
-          <div class="stat">
-            <div class="text-xs text-gray-500">Polls shared</div>
-            <div id="meShares" class="text-2xl font-extrabold mt-1">0</div>
-          </div>
-          <div class="stat">
-            <div class="text-xs text-gray-500">Apps approved</div>
-            <div id="meApprovals" class="text-2xl font-extrabold mt-1">0</div>
-          </div>
-        </div>
+    <!-- Ways to earn -->
+    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-6 md:col-span-2">
+      <h2 class="text-lg font-semibold mb-3">How to earn points</h2>
+      <ul class="space-y-2 text-sm">
+        <li>✅ Vote on a poll: <strong>+2</strong> (once per poll)</li>
+        <li>💬 Post a comment: <strong>+1</strong></li>
+        <li>🔗 Copy/share a poll link: <strong>+1</strong> (once per poll)</li>
+        <li>📝 Approved poll you submitted: <strong>+10</strong></li>
+      </ul>
 
-        <div class="mt-6">
-          <h2 class="font-semibold mb-2">How to earn</h2>
-          <ul class="list-disc ml-6 text-sm text-gray-600 space-y-1">
-            <li>Vote on a poll: <strong>+2</strong> (once per poll)</li>
-            <li>Copy a poll’s share link: <strong>+1</strong> (once per poll)</li>
-            <li>Your poll application gets approved: <strong>+10</strong></li>
-          </ul>
-        </div>
-      </section>
+      <h3 class="text-base font-semibold mt-6 mb-2">Your recent activity</h3>
+      <div id="activity" class="text-sm text-gray-700 dark:text-gray-300 space-y-2"></div>
 
-      <!-- Leaderboard -->
-      <section class="vh-card border border-gray-100 shadow rounded p-6 lg:col-span-2">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <h2 class="text-xl font-semibold">Leaderboard</h2>
-          <div class="flex items-center gap-2">
-            <input id="q" type="text" placeholder="Search username…" class="border rounded px-3 py-2 w-64">
-            <select id="limit" class="border rounded px-3 py-2">
-              <option value="10">Top 10</option>
-              <option value="25">Top 25</option>
-              <option value="50" selected>Top 50</option>
-              <option value="100">Top 100</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead>
-              <tr class="text-left text-gray-600 border-b">
-                <th class="py-2 pr-4">Rank</th>
-                <th class="py-2 pr-4">User</th>
-                <th class="py-2 pr-4">Points</th>
-                <th class="py-2 pr-4">Badge</th>
-                <th class="py-2 pr-4">Votes</th>
-                <th class="py-2 pr-4">Shares</th>
-                <th class="py-2 pr-4">Approvals</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+      <h3 class="text-base font-semibold mt-6 mb-2">Redeem (coming soon)</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-300">Gift cards, creator boosts, and profile cosmetics will be available after we connect a backend.</p>
+    </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6">
         <a href="#" class="hover:underline">About</a>
@@ -121,106 +99,54 @@
   </footer>
 
   <script>
-    // ---- data helpers ----
-    const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
-    const getUsers = () => { try { return JSON.parse(localStorage.getItem('userList') || '[]'); } catch { return []; } };
-    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
-    const getVotesByUser = () => { try { return JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'); } catch { return {}; } };
-    const getEarned = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
-    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    // Mobile nav
+    const burger = document.getElementById('burger');
+    const mobileMenu = document.getElementById('mobileMenu');
+    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
 
-    function badgeFor(points){
-      if (points >= 400) return {name:'Diamond', cls:'bg-indigo-100 text-indigo-800', icon:'🔷'};
-      if (points >= 150) return {name:'Gold', cls:'bg-yellow-100 text-yellow-800', icon:'🟡'};
-      if (points >= 50)  return {name:'Silver', cls:'bg-gray-100 text-gray-800', icon:'⚪️'};
-      if (points >= 10)  return {name:'Bronze', cls:'bg-amber-100 text-amber-800', icon:'🟤'};
-      return {name:'None', cls:'bg-gray-200 text-gray-800', icon:'—'};
+    // Storage helpers
+    const getPoints  = () => JSON.parse(localStorage.getItem('userPoints') || '{}');
+    const getEarned  = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
+    const getLog     = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
+    const session    = (window.VHAuth?.current?.() || {username:'guest', role:'user'});
+
+    const me = session.username;
+
+    function calcBadges(points){
+      const list = [];
+      if (points >= 1)   list.push({name:'Starter',   desc:'First points earned'});
+      if (points >= 10)  list.push({name:'Supporter', desc:'10+ points'});
+      if (points >= 25)  list.push({name:'Contributor',desc:'25+ points'});
+      if (points >= 50)  list.push({name:'Influencer',desc:'50+ points'});
+      if (points >= 100) list.push({name:'Trendsetter',desc:'100+ points'});
+      return list;
     }
 
-    function myStats(){
-      const votes = getVotesByUser()[me] || {};
-      const shareKeys = Object.keys(getEarned()).filter(k => k.startsWith(`share:${me}:`)).length;
-      const approvals = getLog().filter(x => x.applicant === me && x.status === 'approved').length;
-      return { votes: Object.keys(votes).length, shares: shareKeys, approvals };
-    }
-
-    // ---- render "me" ----
-    function renderMe(){
+    function render(){
       const pts = getPoints()[me] || 0;
-      const b = badgeFor(pts);
-      document.getElementById('meName').textContent = me;
-      document.getElementById('mePoints').textContent = pts;
-      const el = document.getElementById('meBadge');
-      el.textContent = `${b.icon} ${b.name}`;
-      el.className = `badge ${b.cls}`;
+      document.getElementById('points').textContent = pts;
 
-      const stats = myStats();
-      document.getElementById('meVotes').textContent = stats.votes;
-      document.getElementById('meShares').textContent = stats.shares;
-      document.getElementById('meApprovals').textContent = stats.approvals;
-    }
+      // Badges
+      const badges = calcBadges(pts);
+      const bEl = document.getElementById('badges');
+      bEl.innerHTML = badges.length
+        ? badges.map(b=>`<span class="badge bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">${b.name}</span>`).join('')
+        : '<span class="text-sm text-gray-500">No badges yet.</span>';
 
-    // ---- leaderboard table ----
-    function renderTable(){
-      const q = (document.getElementById('q').value || '').toLowerCase();
-      const limit = parseInt(document.getElementById('limit').value, 10);
-      const users = getUsers();
-      const pts = getPoints();
-      const votesByUser = getVotesByUser();
+      // Simple activity feed (based on earned keys + approvals log)
       const earned = getEarned();
-      const logs = getLog();
-
-      const shareCounts = {};
+      const feed = [];
       Object.keys(earned).forEach(k=>{
-        // k looks like "share:username:pollId"
-        const parts = k.split(':');
-        if (parts[0]==='share' && parts[1]) shareCounts[parts[1]] = (shareCounts[parts[1]]||0) + 1;
+        if (!k.includes(`:${me}:`)) return;
+        if (k.startsWith('vote:'))  feed.push('Voted on a poll (+2)');
+        if (k.startsWith('share:')) feed.push('Shared a poll (+1)');
       });
-
-      const approvalsByUser = {};
-      logs.forEach(x => {
-        if (x.status === 'approved' && x.applicant) approvalsByUser[x.applicant] = (approvalsByUser[x.applicant]||0) + 1;
-      });
-
-      const rows = users.map(u => {
-        const uname = u.username;
-        return {
-          username: uname,
-          points: pts[uname] || 0,
-          votes: Object.keys(votesByUser[uname] || {}).length,
-          shares: shareCounts[uname] || 0,
-          approvals: approvalsByUser[uname] || 0
-        };
-      })
-      .filter(u => !q || u.username.toLowerCase().includes(q))
-      .sort((a,b)=> b.points - a.points)
-      .slice(0, limit);
-
-      const tbody = document.getElementById('rows');
-      tbody.innerHTML = '';
-      rows.forEach((u, i) => {
-        const b = badgeFor(u.points);
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr class="border-b">
-            <td class="py-2 pr-4">${i+1}</td>
-            <td class="py-2 pr-4">${u.username}</td>
-            <td class="py-2 pr-4">${u.points}</td>
-            <td class="py-2 pr-4"><span class="badge ${b.cls}">${b.icon} ${b.name}</span></td>
-            <td class="py-2 pr-4">${u.votes}</td>
-            <td class="py-2 pr-4">${u.shares}</td>
-            <td class="py-2 pr-4">${u.approvals}</td>
-          </tr>
-        `);
-      });
-
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td class="py-6 text-center text-gray-600" colspan="7">No users yet.</td></tr>';
-      }
+      getLog().filter(x=>x.applicant===me && x.status==='approved').forEach(()=> feed.push('Poll approved (+10)'));
+      const aEl = document.getElementById('activity');
+      aEl.innerHTML = feed.length ? feed.slice(-10).reverse().map(i=>`<div>• ${i}</div>`).join('') : '<div class="text-gray-500">No activity yet.</div>';
     }
 
-    document.getElementById('q').addEventListener('input', renderTable);
-    document.getElementById('limit').addEventListener('change', renderTable);
-    renderMe(); renderTable();
+    render();
   </script>
 </body>
 </html>
