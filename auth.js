@@ -1,10 +1,12 @@
+<script>
 /*
-  VoteHive Auth (Local Demo) — robust version (+ready +events)
+  VoteHive Auth (Local Demo) — robust version (+ready +events +superadmin tools)
   - Users in localStorage: 'vh_users'
   - Session in 'currentUser'  ({ username, role })
-  - Seeds admin: superadmin / admin123
+  - Seeds: superadmin / admin123     (role: superadmin)
   - Hashing via SubtleCrypto with safe fallback
-  - Adds: VHAuth.ready(), cross-tab events on auth changes
+  - Cross-tab events via localStorage '__vh_emit__'
+  - Adds superadmin APIs: listUsers, setRole, blockUser, unblockUser, changePassword
 */
 (function () {
   if (window.VHAuth) return; // don't override an existing implementation
@@ -24,6 +26,10 @@
     try { localStorage.setItem(LS_USERS, JSON.stringify(db)); }
     catch { /* ignore quota errors in demo */ }
   }
+  function getSession() {
+    try { return JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); }
+    catch { return null; }
+  }
   function setSession(sess) {
     try { localStorage.setItem(LS_SESSION, JSON.stringify(sess)); }
     catch { /* ignore */ }
@@ -33,7 +39,7 @@
     catch { /* ignore */ }
   }
   function emit(type) {
-    // helpful for header.js to re-render on login/logout/register across tabs
+    // Helpful for header.js / other tabs to re-render on auth or user admin changes
     try { localStorage.setItem(LS_EMIT, type + ':' + Date.now()); }
     catch { /* ignore */ }
   }
@@ -62,13 +68,25 @@
     if (!Object.keys(db).length) {
       db['superadmin'] = {
         passHash: await sha256('admin123'),
-        role: 'admin',
-        createdAt: new Date().toISOString()
+        role: 'superadmin',             // <-- superadmin out of the box
+        blocked: false,
+        createdAt: new Date().toISOString(),
+        lastLogin: null
       };
       saveUsers(db);
     }
     _seedDoneResolve();
   })();
+
+  // -------- internal guards --------
+  function isSuper(u){ return !!(u && u.role === 'superadmin'); }
+
+  async function requireSuper() {
+    const me = getSession();
+    if (!isSuper(me)) {
+      throw new Error('Superadmin required');
+    }
+  }
 
   // -------- API --------
   window.VHAuth = {
@@ -76,22 +94,25 @@
     ready: () => seedDone,
 
     current() {
-      try {
-        const raw = localStorage.getItem(LS_SESSION);
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
+      return getSession();
     },
 
     async login(username, password) {
       await seedDone;
       username = (username || '').trim();
       const db = loadUsers();
-      if (!db[username]) return { ok: false, error: 'User not found' };
+      const rec = db[username];
+      if (!rec) return { ok: false, error: 'User not found' };
+      if (rec.blocked) return { ok: false, error: 'Account is blocked' };
 
       const hash = await sha256(password || '');
-      if (db[username].passHash !== hash) return { ok: false, error: 'Incorrect password' };
+      if (rec.passHash !== hash) return { ok: false, error: 'Incorrect password' };
 
-      const session = { username, role: db[username].role || 'user' };
+      // stamp lastLogin
+      rec.lastLogin = new Date().toISOString();
+      saveUsers(db);
+
+      const session = { username, role: rec.role || 'user' };
       setSession(session);
       emit('login');
       return { ok: true, user: session };
@@ -118,7 +139,9 @@
       db[username] = {
         passHash: await sha256(password),
         role: 'user',
-        createdAt: new Date().toISOString()
+        blocked: false,
+        createdAt: new Date().toISOString(),
+        lastLogin: null
       };
       saveUsers(db);
 
@@ -126,6 +149,87 @@
       setSession(session);
       emit('register');
       return { ok: true, user: session };
+    },
+
+    // ---------- Superadmin tools ----------
+    listUsers() {
+      // safe summary (no password hashes)
+      const db = loadUsers();
+      return Object.entries(db).map(([u, rec]) => ({
+        username: u,
+        role: rec.role || 'user',
+        blocked: !!rec.blocked,
+        createdAt: rec.createdAt || null,
+        lastLogin: rec.lastLogin || null
+      }));
+    },
+
+    async setRole(username, role) {
+      await requireSuper();
+      const okRoles = ['user', 'admin', 'superadmin'];
+      if (!okRoles.includes(role)) throw new Error('Invalid role');
+      const db = loadUsers();
+      if (!db[username]) throw new Error('User not found');
+      db[username].role = role;
+      saveUsers(db);
+      emit('users:role');
+      // If the currently logged-in user changed role, refresh session role
+      const sess = getSession();
+      if (sess && sess.username === username) {
+        setSession({ username, role });
+        emit('login'); // nudge headers to re-render role-based nav
+      }
+      return { ok: true };
+    },
+
+    async blockUser(username) {
+      await requireSuper();
+      const db = loadUsers();
+      if (!db[username]) throw new Error('User not found');
+      db[username].blocked = true;
+      saveUsers(db);
+      emit('users:block');
+
+      // If the blocked user is the active session, log them out
+      const sess = getSession();
+      if (sess && sess.username === username) {
+        clearSession();
+        emit('logout');
+      }
+      return { ok: true };
+    },
+
+    async unblockUser(username) {
+      await requireSuper();
+      const db = loadUsers();
+      if (!db[username]) throw new Error('User not found');
+      db[username].blocked = false;
+      saveUsers(db);
+      emit('users:unblock');
+      return { ok: true };
+    },
+
+    async changePassword(username, newPassword) {
+      await seedDone;
+      const me = getSession();
+      if (!me) throw new Error('Login required');
+
+      // self-service OR superadmin override
+      if (me.username !== username && !isSuper(me)) {
+        throw new Error('Superadmin required');
+      }
+      if ((newPassword || '').length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      const db = loadUsers();
+      if (!db[username]) throw new Error('User not found');
+
+      db[username].passHash = await sha256(newPassword);
+      saveUsers(db);
+      emit('users:password');
+      return { ok: true };
     }
   };
 })();
+</script>

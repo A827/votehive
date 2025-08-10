@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>User Management – VoteHive</title>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+  <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script>requireSuperAdmin();</script>
+  <script src="header.js"></script>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold">User Management</h1>
+      <a href="moderation.html" class="text-sm text-indigo-600 hover:underline">← Back to Moderation</a>
+    </div>
+
+    <div class="mb-4 flex gap-2">
+      <input id="q" class="w-72 border rounded px-3 py-2 text-sm" placeholder="Search username…"/>
+      <select id="roleFilter" class="border rounded px-3 py-2 text-sm">
+        <option value="">All roles</option>
+        <option>user</option><option>admin</option><option>superadmin</option>
+      </select>
+      <select id="stateFilter" class="border rounded px-3 py-2 text-sm">
+        <option value="">All states</option>
+        <option value="active">Active</option>
+        <option value="blocked">Blocked</option>
+      </select>
+    </div>
+
+    <div class="bg-white border border-gray-100 rounded-xl shadow overflow-hidden">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="text-left px-4 py-3">User</th>
+            <th class="text-left px-4 py-3">Role</th>
+            <th class="text-left px-4 py-3">State</th>
+            <th class="text-left px-4 py-3">Created</th>
+            <th class="text-left px-4 py-3">Last Login</th>
+            <th class="text-right px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-8">No users found.</div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2"><img src="/logo.svg" class="w-6 h-6" alt=""><span class="font-semibold">VoteHive</span></div>
+      <div class="text-gray-500">© 2025 VoteHive</div>
+    </div>
+  </footer>
+
+  <script>
+    const q = document.getElementById('q');
+    const rf = document.getElementById('roleFilter');
+    const sf = document.getElementById('stateFilter');
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('empty');
+
+    function fetchUsers(){
+      try { return window.VHAuth.listUsers(); } catch(e){ return []; }
+    }
+
+    function render(){
+      const term = (q.value||'').toLowerCase().trim();
+      const role = rf.value;
+      const state = sf.value;
+
+      const data = fetchUsers().filter(u=>{
+        if (term && !u.username.toLowerCase().includes(term)) return false;
+        if (role && u.role !== role) return false;
+        if (state === 'active' && u.blocked) return false;
+        if (state === 'blocked' && !u.blocked) return false;
+        return true;
+      });
+
+      rowsEl.innerHTML = data.map(u => rowHTML(u)).join('');
+      emptyEl.classList.toggle('hidden', data.length>0);
+      bindActions();
+    }
+
+    function rowHTML(u){
+      const stateBadge = u.blocked ? '<span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">Blocked</span>' :
+                                     '<span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">Active</span>';
+      const created = u.createdAt ? new Date(u.createdAt).toLocaleString() : '—';
+      const last = u.lastLogin ? new Date(u.lastLogin).toLocaleString() : '—';
+
+      return `
+        <tr class="border-t">
+          <td class="px-4 py-3 font-medium">${u.username}</td>
+          <td class="px-4 py-3">
+            <select class="roleSel border rounded px-2 py-1 text-sm" data-u="${u.username}">
+              ${['user','admin','superadmin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
+            </select>
+          </td>
+          <td class="px-4 py-3">${stateBadge}</td>
+          <td class="px-4 py-3">${created}</td>
+          <td class="px-4 py-3">${last}</td>
+          <td class="px-4 py-3 text-right">
+            <button class="act-pass bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded text-xs" data-u="${u.username}">Change Password</button>
+            ${u.role === 'superadmin' ? '' : `
+              ${u.blocked
+                ? `<button class="act-unblock bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs" data-u="${u.username}">Unblock</button>`
+                : `<button class="act-block bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs" data-u="${u.username}">Block</button>`}
+            `}
+          </td>
+        </tr>
+      `;
+    }
+
+    function bindActions(){
+      rowsEl.querySelectorAll('.roleSel').forEach(sel=>{
+        sel.addEventListener('change', ()=>{
+          const u = sel.getAttribute('data-u');
+          const r = sel.value;
+          try{
+            window.VHAuth.setRole(u, r);
+            render();
+          }catch(e){ alert(e.message||'Failed'); render(); }
+        });
+      });
+
+      rowsEl.querySelectorAll('.act-block').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const u = btn.getAttribute('data-u');
+          if (!confirm(`Block ${u}? They will be logged out.`)) return;
+          try { window.VHAuth.blockUser(u); render(); } catch(e){ alert(e.message||'Failed'); }
+        });
+      });
+
+      rowsEl.querySelectorAll('.act-unblock').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const u = btn.getAttribute('data-u');
+          try { window.VHAuth.unblockUser(u); render(); } catch(e){ alert(e.message||'Failed'); }
+        });
+      });
+
+      rowsEl.querySelectorAll('.act-pass').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const u = btn.getAttribute('data-u');
+          const pw = prompt(`Set a new password for ${u}: (min 6 chars)`);
+          if (!pw) return;
+          try { await window.VHAuth.changePassword(u, pw); alert('Password updated.'); }
+          catch(e){ alert(e.message||'Failed'); }
+        });
+      });
+    }
+
+    q.addEventListener('input', render);
+    rf.addEventListener('change', render);
+    sf.addEventListener('change', render);
+
+    render();
+  </script>
+</body>
+</html>
