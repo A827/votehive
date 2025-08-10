@@ -8,8 +8,17 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-input { background:#fff; } html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
+    .vh-card { background:#fff; transition: box-shadow .2s ease, transform .06s ease; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+    .vh-btn { background:#f3f4f6; }
+    .vh-btn:hover { background:#e5e7eb; }
+    .vh-cta { background:#4f46e5; color:#fff; }
+    .vh-cta:hover { background:#4338ca; }
+    .vh-link { color:#4f46e5; }
+    .vh-link:hover { text-decoration: underline; }
+    .vh-input { background:#fff; }
+    html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
@@ -26,6 +35,7 @@
         <a href="index.html" class="hover:underline">Home</a>
         <a href="browse.html" class="hover:underline">Browse</a>
         <a href="applications.html" class="hover:underline">Applications</a>
+        <a href="moderation.html" class="hover:underline">Moderation</a>
         <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
       </nav>
     </div>
@@ -40,10 +50,15 @@
   </script>
 
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <h1 class="text-3xl font-bold mb-6">Superadmin Dashboard</h1>
+    <div class="flex items-start justify-between gap-6 flex-wrap">
+      <h1 class="text-3xl font-bold">Superadmin Dashboard</h1>
+      <div class="text-sm text-gray-600">
+        Review applications → publish polls → manage visibility.  
+      </div>
+    </div>
 
     <!-- Pending applications -->
-    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8">
+    <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8 mt-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">Pending Applications</h2>
         <span class="text-sm text-gray-500" id="pendingHint"></span>
@@ -53,9 +68,12 @@
 
     <!-- Existing polls quick view -->
     <section class="vh-card border border-gray-100 shadow rounded p-6">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
         <h2 class="text-xl font-semibold">Published Polls</h2>
-        <input id="search" type="text" placeholder="Search title…" class="vh-input border rounded px-3 py-2 w-72">
+        <div class="flex items-center gap-2">
+          <input id="search" type="text" placeholder="Search title…" class="vh-input border rounded px-3 py-2 w-72">
+          <a href="moderation.html" class="vh-link text-sm">Go to Moderation →</a>
+        </div>
       </div>
       <div id="pollList" class="divide-y"></div>
     </section>
@@ -123,8 +141,8 @@
                 <option value="30">30 days</option>
               </select>
               <div class="flex gap-2">
-                <button data-pid="${pid}" class="approve bg-indigo-600 text-white px-3 py-1 rounded text-sm">Approve</button>
-                <button data-pid="${pid}" class="reject bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Reject</button>
+                <button data-pid="${pid}" class="approve vh-cta px-3 py-1 rounded text-sm">Approve</button>
+                <button data-pid="${pid}" class="reject vh-btn px-3 py-1 rounded text-sm">Reject</button>
               </div>
             </div>
           </div>
@@ -163,12 +181,14 @@
       const polls = getPolls();
       if (polls[id]) id = id + '-' + Date.now();
 
+      const nowIso = new Date().toISOString();
       const endTime = new Date(Date.now() + days*24*60*60*1000).toISOString();
       polls[id] = {
         title: app.title,
         category: app.category,
         options: app.options,
         endTime,
+        createdAt: nowIso,              /* NEW: stored for trending/newest sorts */
         createdBy: app.applicant || 'guest',
         featured: false,
         hidden: false
@@ -179,7 +199,7 @@
       const log = getLog();
       log.push({
         id: pid, status: 'approved', title: app.title, category: app.category,
-        applicant: app.applicant || 'guest', decidedAt: new Date().toISOString(), pollId: id
+        applicant: app.applicant || 'guest', decidedAt: nowIso, pollId: id
       });
       setLog(log);
 
@@ -223,14 +243,14 @@
               <div class="text-xs text-gray-500">By: ${p.createdBy||'—'}</div>
             </div>
             <div class="flex flex-col gap-2">
-              <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm text-center">Open</a>
-              <button data-id="${id}" class="feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
-              <button data-id="${id}" class="hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
+              <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="vh-btn px-3 py-1 rounded text-sm text-center">Open</a>
+              <button data-id="${id}" class="feature vh-btn px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
+              <button data-id="${id}" class="hide vh-btn px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
               <div class="flex gap-2">
-                <button data-id="${id}" class="extend bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">+7d</button>
-                <button data-id="${id}" class="closeNow bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
+                <button data-id="${id}" class="extend vh-btn px-3 py-1 rounded text-sm">+7d</button>
+                <button data-id="${id}" class="closeNow vh-btn px-3 py-1 rounded text-sm">Close Now</button>
               </div>
-              <button data-id="${id}" class="delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
+              <button data-id="${id}" class="delete vh-btn px-3 py-1 rounded text-sm">Delete</button>
             </div>
           </div>
         `;
