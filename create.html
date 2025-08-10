@@ -6,7 +6,8 @@
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 
-  <!-- Auth guard (must load BEFORE requireLogin) -->
+  <!-- Auth + Guards (ORDER MATTERS) -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script>requireLogin();</script>
 </head>
@@ -21,32 +22,33 @@
 
     <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4" novalidate>
       <div>
-        <label class="block text-sm font-medium">Title</label>
+        <label class="block text-sm font-medium" for="title">Title</label>
         <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140" placeholder="e.g., Should remote work be the default?" />
       </div>
 
       <div>
-        <label class="block text-sm font-medium">Category</label>
-        <select id="category" class="w-full border rounded px-3 py-2">
+        <label class="block text-sm font-medium" for="category">Category</label>
+        <select id="category" class="w-full border rounded px-3 py-2" aria-label="Category">
           <option>Startups</option><option>Politics</option><option>Brands</option>
           <option>Finance</option><option>Design</option><option>Parenting</option>
+          <option>Real Estate</option><option>Entertainment</option>
         </select>
       </div>
 
       <div>
-        <label class="block text-sm font-medium">Options (one per line, 2–6)</label>
+        <label class="block text-sm font-medium" for="options">Options (one per line, 2–6)</label>
         <textarea id="options" rows="4" class="w-full border rounded px-3 py-2" placeholder="Option A&#10;Option B" required></textarea>
         <p class="text-xs text-gray-500 mt-1">Tip: keep options short and mutually exclusive.</p>
       </div>
 
       <div>
-        <label class="block text-sm font-medium">Close Date</label>
+        <label class="block text-sm font-medium" for="close">Close Date</label>
         <input id="close" type="datetime-local" class="w-full border rounded px-3 py-2" required/>
         <p class="text-xs text-gray-500 mt-1">Must be in the future (e.g., 2–14 days from now).</p>
       </div>
 
       <div>
-        <label class="block text-sm font-medium">Why should this be featured? (optional)</label>
+        <label class="block text-sm font-medium" for="reason">Why should this be featured? (optional)</label>
         <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2" placeholder="Brief context for moderators…"></textarea>
       </div>
 
@@ -71,9 +73,26 @@
   </footer>
 
   <script>
-    const me = (Auth.get() || {}).username;
-    const getLog = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
-    const setLog = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    // ----- session/user -----
+    let me = null;
+    (async function resolveUser(){
+      try {
+        if (window.VHAuth && typeof VHAuth.ready === 'function') { await VHAuth.ready(); }
+        me = (window.VHAuth && typeof VHAuth.current === 'function') ? VHAuth.current() : null;
+      } catch {}
+      if (!me || !me.username) {
+        // Fallback: if somehow requireLogin didn't redirect, do it here
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = 'login.html?next=' + next;
+        return;
+      }
+      me = me.username; // we only need the username string below
+      renderMine(); // initial render once user is known
+    })();
+
+    // ----- storage helpers -----
+    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    const setLog = (d) => { try { localStorage.setItem('applicationLog', JSON.stringify(d)); } catch {} };
 
     // Prefill close datetime: now+3 days; min: now+1h
     (function presetClose(){
@@ -86,18 +105,25 @@
       el.value = toLocal(def);
     })();
 
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
     function renderMine(){
+      if (!me) return; // wait until user resolved
       const mine = getLog().filter(x => x.applicant === me).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
       const wrap = document.getElementById('mine');
       const empty = document.getElementById('emptyMine');
-      if (!mine.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
+      if (!mine.length){
+        wrap.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
       empty.classList.add('hidden');
       wrap.innerHTML = mine.map(x => `
         <article class="bg-white border border-gray-100 shadow rounded p-4">
           <div class="text-xs text-gray-500 mb-1">Submitted: ${new Date(x.createdAt).toLocaleString()}</div>
-          <h3 class="font-semibold">${x.title}</h3>
-          <div class="text-sm text-gray-600 mb-1">Category: ${x.category}</div>
-          <div class="text-sm mb-2">Options: ${x.options.join(', ')}</div>
+          <h3 class="font-semibold">${esc(x.title)}</h3>
+          <div class="text-sm text-gray-600 mb-1">Category: ${esc(x.category)}</div>
+          <div class="text-sm mb-2">Options: ${x.options.map(esc).join(', ')}</div>
           <div class="text-xs text-gray-500">Close: ${x.closeAt ? new Date(x.closeAt).toLocaleString() : 'N/A'}</div>
           <div class="mt-2 text-xs">
             Status:
@@ -111,10 +137,19 @@
       `).join('');
     }
 
+    // Submit handler
     document.getElementById('appForm').addEventListener('submit', (e)=>{
       e.preventDefault();
-      document.getElementById('ok').classList.add('hidden');
-      document.getElementById('err').classList.add('hidden');
+      const ok  = document.getElementById('ok');
+      const err = document.getElementById('err');
+      ok.classList.add('hidden'); err.classList.add('hidden'); err.textContent = '';
+
+      // safety: ensure user still present (multi-tab cases)
+      const sess = (window.VHAuth && typeof VHAuth.current === 'function') ? VHAuth.current() : null;
+      if (!sess || !sess.username){
+        err.textContent = 'Your session expired. Please log in again.'; err.classList.remove('hidden');
+        return;
+      }
 
       const title = document.getElementById('title').value.trim();
       const category = document.getElementById('category').value;
@@ -122,15 +157,15 @@
       const closeVal = document.getElementById('close').value;
       const reason = document.getElementById('reason').value.trim();
 
-      if (!title) { document.getElementById('err').textContent='Please enter a title.'; document.getElementById('err').classList.remove('hidden'); return; }
-      if (options.length < 2 || options.length > 6) { document.getElementById('err').textContent='Please provide 2 to 6 options.'; document.getElementById('err').classList.remove('hidden'); return; }
+      if (!title) { err.textContent='Please enter a title.'; err.classList.remove('hidden'); return; }
+      if (options.length < 2 || options.length > 6) { err.textContent='Please provide 2 to 6 options.'; err.classList.remove('hidden'); return; }
 
       const closeAt = closeVal ? new Date(closeVal) : null;
-      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) { document.getElementById('err').textContent='Close date/time must be in the future.'; document.getElementById('err').classList.remove('hidden'); return; }
+      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) { err.textContent='Close date/time must be in the future.'; err.classList.remove('hidden'); return; }
 
       const entry = {
         id: 'app-' + Date.now() + Math.random().toString(36).slice(2),
-        applicant: me,
+        applicant: sess.username,
         title, category, options,
         closeAt: closeAt.toISOString(),
         reason,
@@ -140,12 +175,15 @@
       const log = getLog(); log.push(entry); setLog(log);
 
       e.target.reset();
-      document.getElementById('ok').classList.remove('hidden');
+      ok.classList.remove('hidden');
       renderMine();
       setTimeout(()=> document.getElementById('mine').scrollIntoView({behavior:'smooth'}), 120);
     });
 
-    renderMine();
+    // Live update "My Submissions" if another tab modifies applicationLog
+    window.addEventListener('storage', (e)=>{
+      if (e.key === 'applicationLog') renderMine();
+    });
   </script>
 </body>
 </html>

@@ -15,8 +15,9 @@
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-  <!-- Header -->
+  <!-- Header (load in the correct order: auth -> guard -> header) -->
   <div id="vh-header"></div>
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -133,7 +134,7 @@
     const paramUser = params.get('u');
 
     function get(key, fallback){
-      try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }
+      try{ const v = JSON.parse(localStorage.getItem(key)); return (v===null||v===undefined)?fallback:v; }
       catch{ return fallback; }
     }
     function set(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
@@ -146,14 +147,21 @@
     const activity = (get('activityLog', [])||[])      // [{type,user,ts,pid,meta}]
       .filter(x => x && x.user && x.ts).slice(-200).reverse();
 
-    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;'}[m])); }
+    function esc(s){
+      return (s||'').replace(/[&<>"']/g, m => (
+        m === '&' ? '&amp;'
+        : m === '<' ? '&lt;'
+        : m === '>' ? '&gt;'
+        : '&quot;'
+      ));
+    }
     function fmt(n){ return (n||0).toLocaleString(); }
     function fmtTime(ts){ return new Date(ts).toLocaleString(); }
 
     // ------- Determine whose profile -------
     const profileUser = paramUser || (me && me.username) || null;
 
-    // Redirect hint if none
+    // If none, show hint and stop
     if (!profileUser){
       document.querySelector('main').innerHTML = `
         <section class="bg-white border border-gray-100 rounded-2xl shadow p-8 text-center">
@@ -176,8 +184,8 @@
 
       avatar.textContent = (profileUser[0]||'U').toUpperCase();
       pName.textContent = profileUser;
-      pRole.textContent = me && me.username===profileUser ? (me.role||'user') : 'User';
-      pPoints.textContent = (points[profileUser]||0) + ' pts';
+      pRole.textContent = isOwner ? (me.role||'user') : 'User';
+      pPoints.textContent = fmt(points[profileUser]||0) + ' pts';
 
       const bio = (profiles[profileUser] && profiles[profileUser].bio) || 'No bio yet.';
       bioText.textContent = bio;
@@ -346,8 +354,10 @@
       }).join('');
     })();
 
-    // Default tab visible
-    document.querySelector('[data-tab="activity"]').click();
+    // Default tab visible (ensure one click triggers after DOM ready)
+    window.addEventListener('DOMContentLoaded', ()=>{
+      document.querySelector('[data-tab="activity"]')?.click();
+    });
   </script>
 </body>
 </html>

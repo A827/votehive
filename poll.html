@@ -17,6 +17,8 @@
 
   <!-- Header mount -->
   <div id="vh-header"></div>
+  <!-- IMPORTANT ORDER -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -53,7 +55,7 @@
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-semibold">Discussion</h3>
           <div class="flex items-center gap-2 text-sm">
-            <label class="text-gray-600">Sort:</label>
+            <label class="text-gray-600" for="sort">Sort:</label>
             <select id="sort" class="border rounded px-2 py-1">
               <option value="top">Top</option>
               <option value="new">New</option>
@@ -92,29 +94,34 @@
   <script>
     // ========= Helpers / Storage =========
     const pid = new URLSearchParams(location.search).get('id') || 'test';
-    const me = (window.VHAuth?.current?.() || null); // {username, role}? or null
+    let me = null;
+
+    (async function resolveMe(){
+      try { if (window.VHAuth?.ready) await VHAuth.ready(); } catch {}
+      try { me = window.VHAuth?.current?.() || null; } catch { me = null; }
+    })();
 
     // Polls & votes (existing)
-    const getPolls = () => JSON.parse(localStorage.getItem('customPolls') || '{}');
-    const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
-    const getVotes = () => JSON.parse(localStorage.getItem('pollVotes') || '{}');
-    const setVotes = (d) => localStorage.setItem('pollVotes', JSON.stringify(d));
-    const getUserVotes = () => JSON.parse(localStorage.getItem('userVotes') || '{}');
-    const setUserVotes = (d) => localStorage.setItem('userVotes', JSON.stringify(d));
-    const getPoints = () => JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
-    const getEarned = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
-    const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
+    const setPolls = (d) => { try { localStorage.setItem('customPolls', JSON.stringify(d)); } catch {} };
+    const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes') || '{}'); } catch { return {}; } };
+    const setVotes = (d) => { try { localStorage.setItem('pollVotes', JSON.stringify(d)); } catch {} };
+    const getUserVotes = () => { try { return JSON.parse(localStorage.getItem('userVotes') || '{}'); } catch { return {}; } };
+    const setUserVotes = (d) => { try { localStorage.setItem('userVotes', JSON.stringify(d)); } catch {} };
+    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
+    const setPoints = (d) => { try { localStorage.setItem('userPoints', JSON.stringify(d)); } catch {} };
+    const getEarned = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
+    const setEarned = (d) => { try { localStorage.setItem('vh_pointsEarned', JSON.stringify(d)); } catch {} };
 
     // Social: comments, reactions, reports, activity
-    const getComments = () => JSON.parse(localStorage.getItem('pollComments') || '{}');
-    const setComments = (d) => localStorage.setItem('pollComments', JSON.stringify(d));
-    const getUserReactions = () => JSON.parse(localStorage.getItem('userReactions') || '{}');
-    const setUserReactions = (d) => localStorage.setItem('userReactions', JSON.stringify(d));
-    const getReports = () => JSON.parse(localStorage.getItem('commentReports') || '{}');
-    const setReports = (d) => localStorage.setItem('commentReports', JSON.stringify(d));
-    const getActivity = () => JSON.parse(localStorage.getItem('activityLog') || '[]');
-    const setActivity = (d) => localStorage.setItem('activityLog', JSON.stringify(d));
+    const getComments = () => { try { return JSON.parse(localStorage.getItem('pollComments') || '{}'); } catch { return {}; } };
+    const setComments = (d) => { try { localStorage.setItem('pollComments', JSON.stringify(d)); } catch {} };
+    const getUserReactions = () => { try { return JSON.parse(localStorage.getItem('userReactions') || '{}'); } catch { return {}; } };
+    const setUserReactions = (d) => { try { localStorage.setItem('userReactions', JSON.stringify(d)); } catch {} };
+    const getReports = () => { try { return JSON.parse(localStorage.getItem('commentReports') || '{}'); } catch { return {}; } };
+    const setReports = (d) => { try { localStorage.setItem('commentReports', JSON.stringify(d)); } catch {} };
+    const getActivity = () => { try { return JSON.parse(localStorage.getItem('activityLog') || '[]'); } catch { return []; } };
+    const setActivity = (d) => { try { localStorage.setItem('activityLog', JSON.stringify(d)); } catch {} };
     function addActivity(evt){ const log = getActivity(); log.push(evt); setActivity(log.slice(-500)); }
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
@@ -501,12 +508,17 @@
       });
     })();
 
-    // Sort + pagination
-    const sortEl = document.getElementById('sort');
+    // Sort + pagination listeners (no duplicate consts)
     sortEl.addEventListener('change', ()=>{ parentShow = 5; renderComments(); });
-
-    const loadMoreBtn = document.getElementById('loadMore');
     loadMoreBtn.addEventListener('click', ()=>{ parentShow += 5; renderComments(); });
+
+    // Live updates from other tabs/actions
+    window.addEventListener('storage', (e)=>{
+      if (['customPolls','pollVotes','pollComments','userPoints','userReactions'].includes(e.key)) {
+        renderPoll();
+        renderComments();
+      }
+    });
 
     // ========= Init =========
     renderPoll();

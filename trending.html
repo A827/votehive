@@ -1,92 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Trending Polls – VoteHive</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script>
-    if (localStorage.getItem('theme') === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-  </script>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .img-thumb{object-fit:cover}
+  </style>
 </head>
-<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans transition-colors duration-300">
-  <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">VoteHive</h1>
+<body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header (auth -> guard -> header) -->
+  <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script src="header.js"></script>
+
+  <!-- Title -->
+  <section class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <h1 class="text-3xl font-bold mb-2">🔥 Trending Polls</h1>
+      <p class="text-gray-600">What the community is voting on right now.</p>
+    </div>
+  </section>
+
+  <!-- Controls -->
+  <section class="max-w-7xl mx-auto px-4 pt-6">
+    <div class="flex flex-col md:flex-row md:items-center gap-3">
+      <div class="flex-1 flex gap-2">
+        <input id="search" class="w-full border rounded px-3 py-2" placeholder="Search by title…"/>
+        <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Search</button>
       </div>
-      <div class="flex gap-3 items-center">
-        <a href="index.html" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Home</a>
-        <a href="create.html" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Create Poll</a>
-        <a href="browse.html" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Browse Polls</a>
-        <button onclick="toggleTheme()" class="ml-2 px-3 py-1 text-xs border rounded border-indigo-500 text-indigo-600 dark:text-indigo-300">Toggle Theme</button>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Category</label>
+        <select id="fCategory" class="border rounded px-2 py-2 text-sm">
+          <option value="">All</option>
+          <option>Startups</option><option>Brands</option><option>Politics</option>
+          <option>Finance</option><option>Design</option><option>Parenting</option>
+          <option>Real Estate</option><option>Entertainment</option>
+        </select>
+      </div>
+      <div class="ml-auto text-sm text-gray-500">
+        <span id="metaCount">0</span> results
       </div>
     </div>
-  </header>
+  </section>
 
-  <main class="max-w-4xl mx-auto px-4 py-12 space-y-10">
-    <h2 class="text-3xl font-bold text-center">🔥 Trending Polls</h2>
-
-    <div class="space-y-6">
-      <!-- Trending Poll Item -->
-      <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Should remote work remain permanent?</h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">💬 1,340 votes | 🏷️ Work</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 italic">🧠 78% of users believe remote work is here to stay.</p>
-      </div>
-
-      <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Which EV brand leads the future?</h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">💬 980 votes | 🏷️ Tech</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 italic">🧠 Tesla still dominates, but BYD is gaining momentum.</p>
-      </div>
-
-      <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Best investment in 2025?</h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">💬 712 votes | 🏷️ Finance</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 italic">🧠 Real estate and AI stocks dominate early trends.</p>
-      </div>
-
-      <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Do you trust AI-generated news?</h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">💬 684 votes | 🏷️ AI</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 italic">🧠 Only 43% of users trust AI as a primary source.</p>
-      </div>
-
-      <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded shadow">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Most exciting startup of the year?</h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">💬 502 votes | 🏷️ Startups</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 italic">🧠 AI tools and green tech are top categories.</p>
-      </div>
+  <!-- Grid -->
+  <main class="max-w-7xl mx-auto px-4 pb-12">
+    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"></div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">
+      No trending polls yet. Be the first to <a class="text-indigo-600 underline" href="create.html">apply</a>.
     </div>
   </main>
 
-  <footer class="bg-gray-50 dark:bg-gray-800 mt-20 p-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t">
-    © 2025 VoteHive. | <a href="#" class="hover:underline">About</a> | <a href="#" class="hover:underline">Contact</a>
+  <footer class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <span class="font-semibold">VoteHive</span>
+      </div>
+      <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
+    </div>
   </footer>
 
   <script>
-    function toggleTheme() {
-      const html = document.documentElement;
-      html.classList.toggle('dark');
-      const isDark = html.classList.contains('dark');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    // ---------- Data helpers ----------
+    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const getVotes = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
+
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+    function totalVotesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=>a + (Number(b)||0), 0);
     }
+
+    // Same trending formula as home/browse (votes + time pressure + recency)
+    function trendingScore(id, p){
+      const t = totalVotesFor(id);
+      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
+      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5)));
+      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5;
+    }
+
+    // ---------- State ----------
+    const params = new URLSearchParams(location.search);
+    const state = {
+      q: params.get('q') || '',
+      category: params.get('category') || ''
+    };
+
+    // ---------- DOM ----------
+    const gridEl = document.getElementById('grid');
+    const emptyEl = document.getElementById('empty');
+    const metaCountEl = document.getElementById('metaCount');
+    const searchEl = document.getElementById('search');
+    const searchBtn = document.getElementById('searchBtn');
+    const fCategory = document.getElementById('fCategory');
+
+    searchEl.value = state.q;
+    if (state.category) fCategory.value = state.category;
+
+    function applyState(){
+      const p = new URLSearchParams();
+      if (state.q) p.set('q', state.q);
+      if (state.category) p.set('category', state.category);
+      history.replaceState(null, '', location.pathname + (p.toString()?('?'+p.toString()):''));
+      render();
+    }
+
+    searchBtn.addEventListener('click', ()=>{ state.q = searchEl.value.trim(); applyState(); });
+    searchEl.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); state.q = searchEl.value.trim(); applyState(); }});
+    fCategory.addEventListener('change', ()=>{ state.category = fCategory.value; applyState(); });
+
+    // ---------- Render ----------
+    function cardHTML(id, p){
+      const end = new Date(p.endTime);
+      const closed = !isNaN(end) && Date.now() > end.getTime();
+      const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+      const votes = totalVotesFor(id);
+      const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+      return `
+        <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
+          <div class="h-36 w-full overflow-hidden">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+          </div>
+          <div class="p-4 flex-1 flex flex-col">
+            <div class="flex items-center gap-2 text-xs mb-1">
+              <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+              <span class="text-gray-500">${esc(p.category || 'General')}</span>
+              ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
+            </div>
+            <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+            <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
+          </div>
+        </article>
+      `;
+    }
+
+    function render(){
+      const polls = getPolls();
+      let rows = Object.entries(polls).filter(([id,p])=> p && !p.hidden);
+
+      // Filter
+      const q = state.q.toLowerCase();
+      if (q) rows = rows.filter(([id,p]) => (p.title||'').toLowerCase().includes(q));
+      if (state.category) rows = rows.filter(([id,p]) => (p.category === state.category));
+
+      // Sort by trending descending
+      rows.sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]));
+
+      metaCountEl.textContent = rows.length;
+
+      if (!rows.length){
+        gridEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+
+      // Show top 12
+      gridEl.innerHTML = rows.slice(0,12).map(([id,p]) => cardHTML(id,p)).join('');
+    }
+
+    // Demo fallback (so the page isn’t empty in a fresh browser)
+    (function maybeDemo(){
+      const polls = getPolls();
+      if (Object.keys(polls).length) return;
+      const demo = {
+        demo1:{title:'Should remote work remain permanent?', category:'Startups', endTime:new Date(Date.now()+3*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1529336953121-adb1181a7d3b?q=80&w=1200&auto=format&fit=crop'},
+        demo2:{title:'Which EV brand leads the future?', category:'Brands', endTime:new Date(Date.now()+5*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=1200&auto=format&fit=crop'},
+        demo3:{title:'Best investment in 2025?', category:'Finance', endTime:new Date(Date.now()+2*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=1200&auto=format&fit=crop'},
+        demo4:{title:'Do you trust AI-generated news?', category:'Entertainment', endTime:new Date(Date.now()+1*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop'}
+      };
+      localStorage.setItem('customPolls', JSON.stringify(demo));
+    })();
+
+    render();
   </script>
 </body>
 </html>

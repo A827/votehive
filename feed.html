@@ -3,22 +3,30 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Feed – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
   <div id="vh-header"></div>
+  <!-- Keep order: auth -> guard -> header -->
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
   <main class="max-w-7xl mx-auto px-4 py-10 grid gap-6 md:grid-cols-3">
     <aside class="bg-white border border-gray-100 shadow rounded p-4">
       <h2 class="text-lg font-semibold mb-2">Filters</h2>
-      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="vote" checked>Votes</label>
-      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="share" checked>Shares</label>
-      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="comment" checked>Comments</label>
-      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="create" checked>Created</label>
-      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="approve" checked>Approved</label>
-      <input id="q" class="mt-4 w-full border rounded px-3 py-2 text-sm" placeholder="Search…"/>
+      <div class="space-y-2">
+        <label class="flex items-center gap-2"><input type="checkbox" class="f" value="vote" checked>Votes</label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="f" value="share" checked>Shares</label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="f" value="comment" checked>Comments</label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="f" value="create" checked>Created</label>
+        <label class="flex items-center gap-2"><input type="checkbox" class="f" value="approve" checked>Approved</label>
+      </div>
+      <input id="q" class="mt-4 w-full border rounded px-3 py-2 text-sm" placeholder="Search by user or title…" aria-label="Search feed"/>
     </aside>
+
     <section class="md:col-span-2">
       <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No activity yet.</div>
       <div id="feed" class="space-y-3"></div>
@@ -26,62 +34,141 @@
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+    </div>
   </footer>
 
   <script>
-    const feedEl=document.getElementById('feed'), empty=document.getElementById('empty'), q=document.getElementById('q'), filters=[...document.querySelectorAll('.f')];
-    const getEarned = ()=> JSON.parse(localStorage.getItem('vh_pointsEarned')||'{}');
-    const getComments = ()=> JSON.parse(localStorage.getItem('pollComments')||'{}');
-    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
-    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
-
-    function items(){
-      const out=[]; const polls=getPolls(); const earned=getEarned(); const comments=getComments(); const logs=getLog();
-      Object.keys(earned).forEach(k=>{
-        const [type,user,pid]=k.split(':'); if(!polls[pid]) return;
-        if(type==='vote') out.push({type,user,title:polls[pid].title,pid,ts: polls[pid].createdAt});
-        if(type==='share') out.push({type,user,title:polls[pid].title,pid,ts: polls[pid].createdAt});
-      });
-      Object.entries(comments).forEach(([pid,list])=>{
-        const poll=polls[pid]; if(!poll) return;
-        list.forEach(c=> out.push({type:'comment', user:c.user, title:poll.title, pid, ts:c.ts}));
-      });
-      logs.forEach(l=>{
-        if(l.status==='approved') out.push({type:'approve', user:l.applicant, title:l.title, pid:'-', ts:l.updatedAt||l.createdAt});
-        else out.push({type:'create', user:l.applicant, title:l.title, pid:'-', ts:l.createdAt});
-      });
-      return out.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+    // ------- Safe getters -------
+    function get(key, fallback){
+      try { const v = JSON.parse(localStorage.getItem(key)); return (v===undefined||v===null)?fallback:v; }
+      catch { return fallback; }
     }
-    function color(t){ if(t==='vote')return'bg-purple-100 text-purple-800'; if(t==='share')return'bg-blue-100 text-blue-800'; if(t==='comment')return'bg-green-100 text-green-800'; if(t==='create')return'bg-yellow-100 text-yellow-800'; if(t==='approve')return'bg-indigo-100 text-indigo-800'; return'bg-gray-100 text-gray-800'; }
-    function icon(t){ return t==='vote'?'🗳️':t==='share'?'🔗':t==='comment'?'💬':t==='create'?'📝':t==='approve'?'✅':'•'; }
+    function toTime(v){
+      if (typeof v === 'number') return v;
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : 0;
+    }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\'':'&#39;'}[m])); }
+
+    // ------- DOM -------
+    const feedEl  = document.getElementById('feed');
+    const emptyEl = document.getElementById('empty');
+    const qEl     = document.getElementById('q');
+    const filterCbs = [...document.querySelectorAll('.f')];
+
+    // ------- Data sources -------
+    const pollsObj = get('customPolls', {});     // {pollId: {title,...}}
+    const activity = (get('activityLog', [])||[]) // [{type:'vote'|'share'|'comment', user, ts, pid, meta}]
+      .filter(e => e && e.type && e.user && (e.ts!==undefined));
+    const appsLog  = get('applicationLog', []);  // [{status, applicant, title, createdAt, updatedAt, pollId?}]
+
+    // ------- Build feed items -------
+    function buildItems(){
+      const out = [];
+
+      // Real-time actions (vote/share/comment) — timestamp from event
+      for (const e of activity){
+        // only include items where we can resolve title (except comments can still show poll linkless if missing)
+        const p = pollsObj[e.pid] || null;
+        const title = p?.title || (e.type==='comment' ? '(deleted poll)' : null);
+        if (!title) continue;
+
+        out.push({
+          type: e.type, user: e.user, pid: e.pid,
+          title, ts: toTime(e.ts)
+        });
+      }
+
+      // Applications history
+      for (const l of appsLog){
+        const base = {
+          user: l.applicant || 'guest',
+          title: l.title || '(untitled)',
+        };
+        if (l.status === 'approved'){
+          out.push({ type:'approve', pid: l.pollId || '-', ts: toTime(l.decidedAt || l.updatedAt || l.createdAt), ...base });
+        } else if (l.status === 'pending'){
+          out.push({ type:'create', pid: '-', ts: toTime(l.createdAt), ...base });
+        } else if (l.status === 'rejected'){
+          // optional: show rejections as "create" or skip entirely; skipping keeps feed positive
+          // out.push({ type:'create', pid:'-', ts: toTime(l.decidedAt || l.updatedAt || l.createdAt), ...base });
+        }
+      }
+
+      // Sort newest first
+      return out.sort((a,b) => (b.ts||0) - (a.ts||0));
+    }
+
+    function color(t){
+      if (t==='vote')    return 'bg-purple-100 text-purple-800';
+      if (t==='share')   return 'bg-blue-100 text-blue-800';
+      if (t==='comment') return 'bg-green-100 text-green-800';
+      if (t==='create')  return 'bg-yellow-100 text-yellow-800';
+      if (t==='approve') return 'bg-indigo-100 text-indigo-800';
+      return 'bg-gray-100 text-gray-800';
+    }
+    function icon(t){
+      return t==='vote' ? '🗳️'
+           : t==='share' ? '🔗'
+           : t==='comment' ? '💬'
+           : t==='create' ? '📝'
+           : t==='approve'? '✅'
+           : '•';
+    }
+
     function applyFilters(arr){
-      const allow=new Set(filters.filter(f=>f.checked).map(f=>f.value));
-      const term=(q.value||'').toLowerCase().trim();
+      const allow = new Set(filterCbs.filter(f=>f.checked).map(f=>f.value));
+      const term  = (qEl.value||'').toLowerCase().trim();
       return arr.filter(i=>{
-        if(!allow.has(i.type)) return false;
-        if(!term) return true;
+        if (!allow.has(i.type)) return false;
+        if (!term) return true;
         return (i.user||'').toLowerCase().includes(term) || (i.title||'').toLowerCase().includes(term);
       });
     }
-    function render(){
-      const arr=applyFilters(items());
-      if(!arr.length){ empty.classList.remove('hidden'); feedEl.innerHTML=''; return; }
-      empty.classList.add('hidden');
-      feedEl.innerHTML = arr.map(i=>`
+
+    function rowHTML(i){
+      const link = (i.pid && i.pid !== '-' && pollsObj[i.pid])
+        ? `<a href="poll.html?id=${encodeURIComponent(i.pid)}" class="text-sm text-indigo-600 hover:underline">Open</a>`
+        : '';
+      // user profile link
+      const userLink = `<a class="text-indigo-700 hover:underline" href="profile.html?u=${encodeURIComponent(i.user)}">${esc(i.user)}</a>`;
+      const when = i.ts ? new Date(i.ts).toLocaleString() : '—';
+      return `
         <article class="bg-white border border-gray-100 shadow rounded p-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="px-2 py-1 rounded-full text-xs ${color(i.type)}">${icon(i.type)} ${i.type}</span>
-              <span class="text-xs text-gray-500">${new Date(i.ts).toLocaleString()}</span>
+              <span class="text-xs text-gray-500">${when}</span>
             </div>
-            ${i.pid && i.pid!=='-' ? `<a href="poll.html?id=${encodeURIComponent(i.pid)}" class="text-sm text-indigo-600 hover:underline">Open</a>`:''}
+            ${link}
           </div>
-          <div class="mt-2 text-sm"><span class="font-semibold">${i.user}</span> — ${i.title}</div>
-        </article>`).join('');
+          <div class="mt-2 text-sm"><span class="font-semibold">${userLink}</span> — ${esc(i.title)}</div>
+        </article>
+      `;
     }
-    q.addEventListener('input', render); filters.forEach(f=>f.addEventListener('change', render)); render();
-    setInterval(render, 5000);
+
+    function render(){
+      const arr = applyFilters(buildItems());
+      if (!arr.length){
+        emptyEl.classList.remove('hidden');
+        feedEl.innerHTML = '';
+        return;
+      }
+      emptyEl.classList.add('hidden');
+      feedEl.innerHTML = arr.map(rowHTML).join('');
+    }
+
+    // Wire up filters
+    qEl.addEventListener('input', render);
+    filterCbs.forEach(f => f.addEventListener('change', render));
+
+    // Initial + refresh every 5s
+    render();
+    const timer = setInterval(render, 5000);
+    window.addEventListener('beforeunload', ()=> clearInterval(timer));
   </script>
 </body>
 </html>

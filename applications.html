@@ -1,42 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Your Applications – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
   </style>
+
+  <!-- Auth & guards (order matters) -->
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
-      </nav>
-    </div>
-  </header>
+
+  <!-- Shared header -->
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
   <main class="max-w-5xl mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-2">Your Applications</h1>
-    <p class="text-gray-600 mb-6">Track the status of your poll applications.</p>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">Your Applications</h1>
+        <p class="text-gray-600">Track the status of your poll applications and approvals.</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="create.html" class="inline-flex items-center justify-center px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Apply to Create</a>
+        <a href="browse.html" class="inline-flex items-center justify-center px-4 py-2 rounded text-sm bg-gray-100 text-gray-800 hover:bg-gray-200">Browse Polls</a>
+      </div>
+    </div>
 
-    <div id="empty" class="hidden text-center bg-gray-50 rounded p-10 text-gray-600">No applications yet.</div>
-    <div id="list" class="space-y-4"></div>
+    <div id="empty" class="hidden text-center bg-gray-50 rounded p-10 text-gray-600 mt-8">
+      <div class="text-lg font-semibold mb-2">No applications yet</div>
+      <p>When you apply to create a poll, it will appear here for tracking.</p>
+      <a href="create.html" class="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Apply to Create</a>
+    </div>
+
+    <div id="wrap" class="space-y-8 mt-8">
+      <section id="pendingWrap" class="hidden">
+        <h2 class="text-xl font-semibold mb-2">Pending</h2>
+        <div id="pendingList" class="space-y-3"></div>
+      </section>
+
+      <section id="historyWrap" class="hidden">
+        <h2 class="text-xl font-semibold mb-2">History</h2>
+        <div id="historyList" class="space-y-3"></div>
+      </section>
+    </div>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
@@ -50,60 +62,86 @@
   </footer>
 
   <script>
-    const me = (window.VHAuth?.current?.() || {username:'guest'}).username;
+    // -------- helpers / storage --------
+    function me(){ try { return window.VHAuth?.current?.() || JSON.parse(localStorage.getItem('currentUser')||'null'); } catch { return null; } }
+    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
 
-    function getPending(){ try{return JSON.parse(localStorage.getItem('pendingPolls')||'{}');}catch{return {};} }
-    function getLog(){ try{return JSON.parse(localStorage.getItem('applicationLog')||'[]');}catch{return [];} }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 
     function render(){
-      const container = document.getElementById('list');
-      container.innerHTML = '';
+      const user = me();
+      const username = user?.username || 'guest';
+
+      const pWrap = document.getElementById('pendingWrap');
+      const hWrap = document.getElementById('historyWrap');
+      const pList = document.getElementById('pendingList');
+      const hList = document.getElementById('historyList');
+      const empty = document.getElementById('empty');
+
+      pList.innerHTML = '';
+      hList.innerHTML = '';
+
       const pending = Object.entries(getPending())
-        .filter(([id,p]) => (p.applicant||'guest') === me)
-        .sort((a,b)=> new Date(b[1].submittedAt)-new Date(a[1].submittedAt));
+        .filter(([id,p]) => (p.applicant || 'guest') === username)
+        .sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
 
-      const history = getLog().filter(x => (x.applicant||'guest') === me).reverse();
+      const history = getLog()
+        .filter(x => (x.applicant || 'guest') === username)
+        .sort((a,b)=> new Date(b.decidedAt || 0) - new Date(a.decidedAt || 0));
 
-      if (pending.length === 0 && history.length === 0){
-        document.getElementById('empty').classList.remove('hidden');
-        return;
-      }
-      document.getElementById('empty').classList.add('hidden');
+      // Visibility toggles
+      const hasPending = pending.length > 0;
+      const hasHistory = history.length > 0;
+      pWrap.classList.toggle('hidden', !hasPending);
+      hWrap.classList.toggle('hidden', !hasHistory);
+      empty.classList.toggle('hidden', hasPending || hasHistory);
 
-      if (pending.length){
-        container.insertAdjacentHTML('beforeend', '<h2 class="text-xl font-semibold mt-6 mb-2">Pending</h2>');
+      // Pending cards
+      if (hasPending){
         pending.forEach(([id,p])=>{
-          container.insertAdjacentHTML('beforeend', `
-            <div class="vh-card border rounded p-4">
+          const opts = (p.options || []).map(esc).join(', ');
+          pList.insertAdjacentHTML('beforeend', `
+            <article class="bg-white border border-gray-100 shadow rounded p-4">
               <div class="text-sm text-gray-500 mb-1">Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
-              <div class="font-semibold">${p.title}</div>
-              <div class="text-sm text-gray-600">Category: ${p.category||'General'} • Requested: ${p.requestedDays||7} days</div>
-              <div class="text-sm text-gray-600">Options: ${(p.options||[]).join(', ')}</div>
-              ${p.context?`<p class="text-sm text-gray-500 mt-2">${p.context}</p>`:''}
-            </div>
+              <h3 class="font-semibold">${esc(p.title)}</h3>
+              <div class="text-sm text-gray-600">Category: ${esc(p.category||'General')} • Requested: ${p.requestedDays||7} days</div>
+              <div class="text-sm text-gray-600">Options: ${opts || '—'}</div>
+              ${p.context ? `<p class="text-sm text-gray-500 mt-2">${esc(p.context)}</p>` : ''}
+              <div class="mt-2 text-xs"><span class="chip bg-yellow-100 text-yellow-700">Pending review</span></div>
+            </article>
           `);
         });
       }
 
-      if (history.length){
-        container.insertAdjacentHTML('beforeend', '<h2 class="text-xl font-semibold mt-8 mb-2">History</h2>');
+      // History cards
+      if (hasHistory){
         history.forEach(item=>{
+          const statusOk = item.status === 'approved';
+          const badge = statusOk ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
           const link = item.pollId ? `<a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(item.pollId)}">Open poll</a>` : '';
-          container.insertAdjacentHTML('beforeend', `
-            <div class="vh-card border rounded p-4">
-              <div class="flex justify-between">
-                <div class="font-semibold">${item.title}</div>
-                <span class="px-2 py-0.5 rounded-full text-xs ${item.status==='approved'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${item.status}</span>
+          hList.insertAdjacentHTML('beforeend', `
+            <article class="bg-white border border-gray-100 shadow rounded p-4">
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="font-semibold">${esc(item.title)}</h3>
+                <span class="chip ${badge}">${esc(item.status)}</span>
               </div>
-              <div class="text-sm text-gray-600">Category: ${item.category||'General'}</div>
-              <div class="text-sm text-gray-500">Decided: ${new Date(item.decidedAt).toLocaleString()}</div>
-              ${link?`<div class="mt-2">${link}</div>`:''}
-            </div>
+              <div class="text-sm text-gray-600">Category: ${esc(item.category||'General')}</div>
+              <div class="text-sm text-gray-500">Decided: ${item.decidedAt ? new Date(item.decidedAt).toLocaleString() : '—'}</div>
+              ${link ? `<div class="mt-2">${link}</div>` : ''}
+            </article>
           `);
         });
       }
     }
+
+    // Initial
     render();
+
+    // Re-render if auth state changes (e.g., user logs in/out in another tab)
+    window.addEventListener('storage', (e)=>{
+      if (e.key === 'currentUser' || e.key === '__vh_emit__') render();
+    });
   </script>
 </body>
 </html>

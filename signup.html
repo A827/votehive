@@ -11,14 +11,24 @@
   <!-- Header -->
   <div id="vh-header"></div>
 
-  <!-- Auth first -->
+  <!-- IMPORTANT: order -->
   <script src="auth.js"></script>
-  <!-- Then your guards & header -->
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
   <main class="min-h-[80vh] flex items-center justify-center px-4">
     <div class="w-full max-w-md">
+      <!-- Already logged-in banner (if any) -->
+      <div id="already" class="hidden mb-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl p-4">
+        <div class="text-sm">
+          You’re already logged in as <strong id="meName">—</strong>.
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="goNext" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded text-sm">Continue</button>
+          <button id="switchAcc" class="bg-white border border-emerald-300 text-emerald-800 px-3 py-2 rounded text-sm">Log out & switch</button>
+        </div>
+      </div>
+
       <div class="bg-white border border-gray-100 shadow rounded-2xl p-6">
         <div class="text-center mb-5">
           <img src="/logo.svg" class="w-10 h-10 mx-auto mb-2" alt="VoteHive">
@@ -26,20 +36,34 @@
           <p class="text-sm text-gray-600">Join to vote, discuss, and climb the leaderboard.</p>
         </div>
 
-        <form id="form" class="space-y-4">
+        <form id="form" class="space-y-4" novalidate>
           <div>
-            <label class="block text-sm font-medium">Username</label>
-            <input id="username" class="w-full border rounded px-3 py-2" placeholder="3–24 letters/numbers/_" required/>
+            <label class="block text-sm font-medium" for="username">Username</label>
+            <input id="username" class="w-full border rounded px-3 py-2" placeholder="3–24 letters / numbers / _" required autofocus/>
+            <p id="uHelp" class="mt-1 text-xs text-gray-500">Allowed: a–z, 0–9, underscore. 3–24 chars.</p>
           </div>
+
           <div>
-            <label class="block text-sm font-medium">Password</label>
-            <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="At least 6 characters" required/>
+            <label class="block text-sm font-medium" for="password">Password</label>
+            <div class="relative">
+              <input id="password" type="password" class="w-full border rounded px-3 py-2 pr-12" placeholder="At least 6 characters" required/>
+              <button type="button" id="togglePw" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-600 px-2 py-1 rounded hover:bg-gray-100">Show</button>
+            </div>
+            <div id="caps" class="hidden text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mt-2">Caps Lock is ON</div>
+            <div class="mt-2">
+              <div class="h-2 bg-gray-100 rounded">
+                <div id="pwBar" class="h-2 rounded w-0"></div>
+              </div>
+              <div id="pwTxt" class="text-xs mt-1 text-gray-500">Strength: —</div>
+            </div>
           </div>
+
           <div>
-            <label class="block text-sm font-medium">Confirm Password</label>
+            <label class="block text-sm font-medium" for="confirm">Confirm Password</label>
             <input id="confirm" type="password" class="w-full border rounded px-3 py-2" placeholder="Repeat password" required/>
           </div>
-          <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Create account</button>
+
+          <button id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Create account</button>
         </form>
 
         <p id="err" class="text-sm text-red-600 mt-3 hidden"></p>
@@ -54,43 +78,126 @@
   </main>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const nextUrl = params.get('next') || 'index.html';
+    const params   = new URLSearchParams(location.search);
+    const nextUrl  = params.get('next') || 'index.html';
+    const userEl   = document.getElementById('username');
+    const passEl   = document.getElementById('password');
+    const confEl   = document.getElementById('confirm');
+    const uHelp    = document.getElementById('uHelp');
+    const errEl    = document.getElementById('err');
+    const okEl     = document.getElementById('ok');
+    const btn      = document.getElementById('submitBtn');
+    const capsEl   = document.getElementById('caps');
+    const pwBar    = document.getElementById('pwBar');
+    const pwTxt    = document.getElementById('pwTxt');
+    const togglePw = document.getElementById('togglePw');
 
-    // If already logged in, bounce
-    (function(){
+    // Bounce if already logged in (but allow switching)
+    (async function(){
+      try { if (window.VHAuth?.ready) await VHAuth.ready(); } catch(e){}
       const me = window.VHAuth?.current?.();
-      if (me) location.replace(nextUrl);
+      if (me) {
+        document.getElementById('already').classList.remove('hidden');
+        document.getElementById('meName').textContent = me.username;
+      }
     })();
 
+    document.getElementById('goNext').addEventListener('click', ()=> location.href = nextUrl);
+    document.getElementById('switchAcc').addEventListener('click', ()=>{
+      try { window.VHAuth?.logout?.(); } catch(e){}
+      try { localStorage.setItem('__vh_emit__', 'logout:'+Date.now()); } catch(e){}
+      document.getElementById('already').classList.add('hidden');
+      userEl.focus();
+    });
+
+    // Username validation
+    function validUsername(u){ return /^[a-zA-Z0-9_]{3,24}$/.test(u); }
+    userEl.addEventListener('input', ()=>{
+      const u = userEl.value.trim();
+      if (!u) { uHelp.textContent = 'Allowed: a–z, 0–9, underscore. 3–24 chars.'; uHelp.className='mt-1 text-xs text-gray-500'; return; }
+      if (!validUsername(u)) { uHelp.textContent = 'Invalid format.'; uHelp.className='mt-1 text-xs text-red-600'; }
+      else { uHelp.textContent = 'Looks good.'; uHelp.className='mt-1 text-xs text-emerald-700'; }
+    });
+
+    // Password strength
+    function scorePw(p){
+      let s = 0;
+      if (p.length >= 6) s+=1;
+      if (p.length >= 10) s+=1;
+      if (/[A-Z]/.test(p)) s+=1;
+      if (/[a-z]/.test(p)) s+=1;
+      if (/\d/.test(p)) s+=1;
+      if (/[^A-Za-z0-9]/.test(p)) s+=1;
+      return Math.min(s, 5); // 0..5
+    }
+    function renderStrength(){
+      const p = passEl.value;
+      const s = scorePw(p);
+      const pct = (s/5)*100;
+      pwBar.style.width = pct + '%';
+      pwBar.className = 'h-2 rounded ' + (s<=2 ? 'bg-red-400' : s<=3 ? 'bg-yellow-400' : 'bg-green-500');
+      const label = ['Very weak','Weak','Okay','Good','Strong','Strong'][s] || '—';
+      pwTxt.textContent = 'Strength: ' + label;
+    }
+    passEl.addEventListener('input', renderStrength);
+    passEl.addEventListener('focus', renderStrength);
+
+    // Caps Lock indicator
+    function capsCheck(e){
+      const on = e.getModifierState && e.getModifierState('CapsLock');
+      capsEl.classList.toggle('hidden', !on);
+    }
+    passEl.addEventListener('keyup', capsCheck);
+    passEl.addEventListener('keydown', capsCheck);
+
+    // Show/hide password
+    togglePw.addEventListener('click', ()=>{
+      const isPw = passEl.type === 'password';
+      passEl.type = isPw ? 'text' : 'password';
+      togglePw.textContent = isPw ? 'Hide' : 'Show';
+      passEl.focus();
+    });
+
+    // Submit
     document.getElementById('form').addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value;
-      const c = document.getElementById('confirm').value;
+      errEl.classList.add('hidden'); okEl.classList.add('hidden');
 
-      const err = document.getElementById('err');
-      const ok = document.getElementById('ok');
-      err.classList.add('hidden'); ok.classList.add('hidden');
+      const u = userEl.value.trim();
+      const p = passEl.value;
+      const c = confEl.value;
 
-      if (p !== c){ err.textContent = 'Passwords do not match'; err.classList.remove('hidden'); return; }
+      if (!validUsername(u)){ errEl.textContent = 'Username must be 3–24 letters/numbers/underscore.'; errEl.classList.remove('hidden'); return; }
+      if (p.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.remove('hidden'); return; }
+      if (p !== c){ errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
 
-      const out = await window.VHAuth.register({username:u, password:p});
-      if (!out.ok){
-        err.textContent = out.error || 'Sign up failed';
-        err.classList.remove('hidden');
-        return;
+      if (!window.VHAuth?.register){ errEl.textContent = 'Auth not initialized. Ensure: auth.js → guard.js → header.js'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true; btn.textContent = 'Creating…';
+      try{
+        // Optional pre-check for taken usernames (localStorage), still rely on register() for truth
+        try {
+          const db = JSON.parse(localStorage.getItem('vh_users') || '{}');
+          if (db[u]) { throw {pre:true, msg:'Username already taken'}; }
+        } catch(pre){ if (pre?.pre){ throw pre; } }
+
+        const out = await window.VHAuth.register({username:u, password:p});
+        if (!out?.ok){ throw {msg: out?.error || 'Sign up failed'}; }
+
+        try { localStorage.setItem('__vh_emit__', 'login:'+Date.now()); } catch(e){}
+        okEl.classList.remove('hidden');
+        setTimeout(()=> location.href = nextUrl, 350);
+      }catch(ex){
+        errEl.textContent = ex?.msg || 'Unexpected error. Try again.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Create account';
       }
-      ok.classList.remove('hidden');
-      setTimeout(()=> location.href = nextUrl, 400);
     });
 
     // Preserve ?next when jumping to login
     (function(){
       const l = document.getElementById('loginLink');
-      if (params.has('next')){
-        l.href = 'login.html?next=' + encodeURIComponent(nextUrl);
-      }
+      if (params.has('next')) l.href = 'login.html?next=' + encodeURIComponent(nextUrl);
     })();
   </script>
 </body>

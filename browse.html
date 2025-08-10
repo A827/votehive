@@ -11,12 +11,16 @@
     .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
     .scrollhide::-webkit-scrollbar{display:none}
     .img-thumb{object-fit:cover}
+    /* 2-line clamp helper to match index */
+    .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
   <!-- Header -->
   <div id="vh-header"></div>
+  <!-- IMPORTANT ORDER -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -29,12 +33,12 @@
       <div class="grid md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
           <div class="flex gap-2">
-            <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search by title…"/>
+            <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search by title…" aria-label="Search by title"/>
             <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Search</button>
           </div>
         </div>
         <div class="md:col-span-1">
-          <div class="flex gap-2 overflow-x-auto scrollhide">
+          <div class="flex gap-2 overflow-x-auto scrollhide" aria-label="Quick category chips">
             <a data-cat="Startups" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Startups</a>
             <a data-cat="Brands" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Brands</a>
             <a data-cat="Politics" class="chip bg-indigo-50 text-indigo-700 cursor-pointer">Politics</a>
@@ -53,7 +57,7 @@
   <section>
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Category</label>
+        <label class="text-sm text-gray-600" for="fCategory">Category</label>
         <select id="fCategory" class="border rounded px-2 py-1 text-sm">
           <option value="">All</option>
           <option>Startups</option><option>Brands</option><option>Politics</option>
@@ -62,7 +66,7 @@
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Sort</label>
+        <label class="text-sm text-gray-600" for="fSort">Sort</label>
         <select id="fSort" class="border rounded px-2 py-1 text-sm">
           <option value="trending">Trending</option>
           <option value="new">New</option>
@@ -71,7 +75,7 @@
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-600">Status</label>
+        <label class="text-sm text-gray-600" for="fStatus">Status</label>
         <select id="fStatus" class="border rounded px-2 py-1 text-sm">
           <option value="open">Open</option>
           <option value="closed">Closed</option>
@@ -97,7 +101,7 @@
   <footer class="bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
       <div class="flex items-center gap-2">
-        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6" loading="lazy" decoding="async">
         <span class="font-semibold">VoteHive</span>
       </div>
       <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
@@ -108,16 +112,18 @@
     // ---------- Data helpers ----------
     const getPolls  = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
     const getVotes  = () => { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } };
-    const pollsObj  = getPolls();
-    const votesObj  = getVotes();
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-    function totalVotesFor(id){ const v = votesObj[id] || {}; return Object.values(v).reduce((a,b)=>a+(+b||0),0); }
+    function totalVotesFor(id){
+      // live each time so changes in other tabs reflect
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=>a+(+b||0),0);
+    }
 
     // ---------- Query state ----------
     const params = new URLSearchParams(location.search);
     const state = {
-      q: params.get('q') || '',
+      q: (params.get('q') || '').trim(),
       category: params.get('category') || '',
       sort: params.get('sort') || 'trending',
       status: params.get('status') || 'open'
@@ -190,6 +196,7 @@
     }
 
     function filterAndSort(){
+      const pollsObj = getPolls(); // fresh each time
       const rows = Object.entries(pollsObj).filter(([id,p]) => p && !p.hidden);
       const q = state.q.toLowerCase();
       let out = rows.filter(([id,p])=>{
@@ -224,7 +231,7 @@
       return `
         <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
           <div class="h-36 w-full overflow-hidden">
-            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="" loading="lazy" decoding="async">
           </div>
           <div class="p-4 flex-1 flex flex-col">
             <div class="flex items-center gap-2 text-xs mb-1">
@@ -232,7 +239,7 @@
               <span class="text-gray-500">${esc(p.category || 'General')}</span>
               ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
             </div>
-            <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+            <h3 class="font-semibold mb-1 clamp-2">${esc(p.title||'Untitled')}</h3>
             <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
             <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
           </div>
@@ -270,6 +277,7 @@
 
     // ---------- Demo fallback ----------
     (function maybeDemo(){
+      const pollsObj = getPolls();
       if (Object.keys(pollsObj).length) return;
       const demo = {
         demo1:{title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), createdAt:new Date().toISOString(), thumbnail:'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop'},
@@ -279,6 +287,14 @@
       localStorage.setItem('customPolls', JSON.stringify(demo));
       location.reload();
     })();
+
+    // Live updates from other tabs/actions
+    window.addEventListener('storage', (e)=>{
+      if (['customPolls','pollVotes'].includes(e.key)) {
+        shown = 0;
+        render();
+      }
+    });
 
     // Initial render
     render();

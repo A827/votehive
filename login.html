@@ -38,12 +38,16 @@
 
         <form id="form" class="space-y-4" autocomplete="on" novalidate>
           <div>
-            <label class="block text-sm font-medium">Username</label>
-            <input id="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required autofocus/>
+            <label class="block text-sm font-medium" for="username">Username</label>
+            <input id="username" name="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required autofocus/>
           </div>
           <div>
-            <label class="block text-sm font-medium">Password</label>
-            <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="••••••••" required/>
+            <label class="block text-sm font-medium" for="password">Password</label>
+            <div class="relative">
+              <input id="password" name="password" type="password" class="w-full border rounded px-3 py-2 pr-10" placeholder="••••••••" required/>
+              <button type="button" id="togglePw" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-600 px-2 py-1 rounded hover:bg-gray-100">Show</button>
+            </div>
+            <div id="caps" class="hidden text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mt-2">Caps Lock is ON</div>
           </div>
           <button id="submitBtn" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Log in</button>
         </form>
@@ -62,7 +66,6 @@
   </main>
 
   <script>
-    // Read redirect target (optional)
     const params = new URLSearchParams(location.search);
     const nextUrl = params.get('next') || 'index.html';
 
@@ -70,15 +73,19 @@
     const ok   = document.getElementById('ok');
     const form = document.getElementById('form');
     const btn  = document.getElementById('submitBtn');
+    const userEl = document.getElementById('username');
+    const passEl = document.getElementById('password');
+    const capsEl = document.getElementById('caps');
+    const togglePw = document.getElementById('togglePw');
 
-    // If a session exists, show banner instead of auto-redirecting
-    (function showIfLoggedIn(){
+    // Wait for auth to be ready (safe if not implemented)
+    (async function initAuthBanner(){
+      try { if (window.VHAuth?.ready) await VHAuth.ready(); } catch(e){}
       try{
         const me = window.VHAuth?.current?.();
         if (me) {
           document.getElementById('already').classList.remove('hidden');
           document.getElementById('meName').textContent = me.username;
-          // Still let them log in as someone else if they want — no redirect.
         }
       }catch(e){}
     })();
@@ -91,10 +98,35 @@
     // Log out & switch
     document.getElementById('switchAcc').addEventListener('click', ()=> {
       try { window.VHAuth?.logout?.(); } catch(e){}
-      // Minimal UI reset
+      // Broadcast for header update and other tabs
+      try { localStorage.setItem('__vh_emit__', 'logout:'+Date.now()); } catch(e){}
       document.getElementById('already').classList.add('hidden');
       err.classList.add('hidden'); ok.classList.add('hidden');
-      document.getElementById('username').focus();
+      userEl.value = ''; passEl.value = '';
+      userEl.focus();
+    });
+
+    // Show/hide password
+    togglePw.addEventListener('click', ()=>{
+      const isPw = passEl.getAttribute('type') === 'password';
+      passEl.setAttribute('type', isPw ? 'text' : 'password');
+      togglePw.textContent = isPw ? 'Hide' : 'Show';
+      passEl.focus();
+    });
+
+    // Caps Lock indicator
+    function capsCheck(e){
+      const on = e.getModifierState && e.getModifierState('CapsLock');
+      capsEl.classList.toggle('hidden', !on);
+    }
+    passEl.addEventListener('keyup', capsCheck);
+    passEl.addEventListener('keydown', capsCheck);
+
+    // Submit on Enter for both fields
+    [userEl, passEl].forEach(el=>{
+      el.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter') form.dispatchEvent(new Event('submit', {cancelable:true}));
+      });
     });
 
     // Login handler
@@ -102,8 +134,11 @@
       e.preventDefault();
       err.classList.add('hidden'); ok.classList.add('hidden');
 
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value;
+      const u = userEl.value.trim();
+      const p = passEl.value;
+
+      if (!u){ err.textContent = 'Please enter a username.'; err.classList.remove('hidden'); return; }
+      if (!p){ err.textContent = 'Please enter a password.'; err.classList.remove('hidden'); return; }
 
       if (!window.VHAuth || !window.VHAuth.login){
         err.textContent = 'Auth not initialized. Ensure: auth.js → guard.js → header.js';
@@ -120,6 +155,8 @@
           btn.disabled = false; btn.textContent = 'Log in';
           return;
         }
+        // Nudge header to refresh immediately
+        try { localStorage.setItem('__vh_emit__', 'login:'+Date.now()); } catch(e){}
         ok.classList.remove('hidden');
         setTimeout(()=> location.href = nextUrl, 300);
       }catch(ex){

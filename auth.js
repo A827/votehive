@@ -1,25 +1,44 @@
 /*
-  VoteHive Auth (Local Demo) — robust version
+  VoteHive Auth (Local Demo) — robust version (+ready +events)
   - Users in localStorage: 'vh_users'
   - Session in 'currentUser'  ({ username, role })
   - Seeds admin: superadmin / admin123
-  - Safe hashing with crypto.subtle, with a fallback if unavailable
+  - Hashing via SubtleCrypto with safe fallback
+  - Adds: VHAuth.ready(), cross-tab events on auth changes
 */
 (function () {
-  if (window.VHAuth) return; // don't override existing implementation
+  if (window.VHAuth) return; // don't override an existing implementation
 
-  const LS_USERS = 'vh_users';
+  const LS_USERS   = 'vh_users';
   const LS_SESSION = 'currentUser';
+  const LS_EMIT    = '__vh_emit__'; // cross-tab ping
 
+  // -------- storage helpers --------
   function loadUsers() {
-    try { return JSON.parse(localStorage.getItem(LS_USERS) || '{}'); }
-    catch { return {}; }
+    try {
+      const raw = localStorage.getItem(LS_USERS);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
   }
   function saveUsers(db) {
-    localStorage.setItem(LS_USERS, JSON.stringify(db));
+    try { localStorage.setItem(LS_USERS, JSON.stringify(db)); }
+    catch { /* ignore quota errors in demo */ }
+  }
+  function setSession(sess) {
+    try { localStorage.setItem(LS_SESSION, JSON.stringify(sess)); }
+    catch { /* ignore */ }
+  }
+  function clearSession() {
+    try { localStorage.removeItem(LS_SESSION); }
+    catch { /* ignore */ }
+  }
+  function emit(type) {
+    // helpful for header.js to re-render on login/logout/register across tabs
+    try { localStorage.setItem(LS_EMIT, type + ':' + Date.now()); }
+    catch { /* ignore */ }
   }
 
-  // Hash with SubtleCrypto if available; otherwise a simple fallback so the demo works everywhere.
+  // -------- hashing --------
   async function sha256(txt) {
     try {
       if (window.crypto && window.crypto.subtle && window.TextEncoder) {
@@ -27,14 +46,18 @@
         const buf = await window.crypto.subtle.digest('SHA-256', enc);
         return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
       }
-    } catch (e) {}
-    // Fallback (not secure, demo only)
+    } catch {}
+    // Fallback (not secure; demo only)
     let h = 5381;
     for (let i = 0; i < txt.length; i++) h = ((h << 5) + h) ^ txt.charCodeAt(i);
     return ('00000000' + (h >>> 0).toString(16)).slice(-8);
   }
 
-  async function seed() {
+  // -------- seed admin (deterministic) --------
+  let _seedDoneResolve;
+  const seedDone = new Promise(res => { _seedDoneResolve = res; });
+
+  (async function seed() {
     const db = loadUsers();
     if (!Object.keys(db).length) {
       db['superadmin'] = {
@@ -44,31 +67,46 @@
       };
       saveUsers(db);
     }
-  }
-  // Fire seed, non-blocking
-  seed();
+    _seedDoneResolve();
+  })();
 
+  // -------- API --------
   window.VHAuth = {
+    // wait for seeding to finish (useful if logging in immediately on first load)
+    ready: () => seedDone,
+
     current() {
-      try { return JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); }
-      catch { return null; }
+      try {
+        const raw = localStorage.getItem(LS_SESSION);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
     },
+
     async login(username, password) {
+      await seedDone;
       username = (username || '').trim();
       const db = loadUsers();
       if (!db[username]) return { ok: false, error: 'User not found' };
+
       const hash = await sha256(password || '');
       if (db[username].passHash !== hash) return { ok: false, error: 'Incorrect password' };
+
       const session = { username, role: db[username].role || 'user' };
-      localStorage.setItem(LS_SESSION, JSON.stringify(session));
-      return { ok: true };
+      setSession(session);
+      emit('login');
+      return { ok: true, user: session };
     },
+
     logout() {
-      localStorage.removeItem(LS_SESSION);
+      clearSession();
+      emit('logout');
       return { ok: true };
     },
+
     async register({ username, password }) {
+      await seedDone;
       username = (username || '').trim();
+
       if (!/^[a-zA-Z0-9_]{3,24}$/.test(username))
         return { ok: false, error: 'Username must be 3–24 letters/numbers/underscore' };
       if ((password || '').length < 6)
@@ -84,8 +122,10 @@
       };
       saveUsers(db);
 
-      localStorage.setItem(LS_SESSION, JSON.stringify({ username, role: 'user' }));
-      return { ok: true };
+      const session = { username, role: 'user' };
+      setSession(session);
+      emit('register');
+      return { ok: true, user: session };
     }
   };
 })();

@@ -3,45 +3,145 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>My Polls – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <script src="guard.js"></script>
-  <script>requireLogin();</script>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header mount -->
   <div id="vh-header"></div>
+  <!-- IMPORTANT: load in this order -->
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
   <script src="header.js"></script>
 
   <main class="max-w-6xl mx-auto px-4 py-10">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
       <h1 class="text-2xl md:text-3xl font-bold">My Polls</h1>
-      <a href="create.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Apply to Create</a>
+      <a href="create.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start md:self-auto">
+        Apply to Create
+      </a>
     </div>
+
+    <div id="controls" class="flex items-center gap-3 mb-4">
+      <label class="text-sm text-gray-600">Sort</label>
+      <select id="sort" class="border rounded px-2 py-1 text-sm">
+        <option value="newest">Newest</option>
+        <option value="ending">Ending Soon</option>
+        <option value="votes">Most Votes</option>
+        <option value="open">Open First</option>
+      </select>
+    </div>
+
     <div id="list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">You haven’t created any polls yet.</div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">
+      You haven’t created any polls yet. When one of your applications is approved, it will appear here.
+      <div class="mt-4">
+        <a href="create.html" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Apply to Create</a>
+      </div>
+    </div>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
   </footer>
 
   <script>
-    const me = VHAuth.current().username;
-    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
+    // --- helpers & data ---
+    function safeSession() {
+      try { return window.VHAuth?.current?.() || null; } catch { return null; }
+    }
+    function getPolls()  { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } }
+    function getVotes()  { try { return JSON.parse(localStorage.getItem('pollVotes')||'{}'); } catch { return {}; } }
+    function totalVotesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=> a + (Number(b)||0), 0);
+    }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]); }
+
+    const sortEl = document.getElementById('sort');
+    sortEl.addEventListener('change', render);
 
     function render(){
-      const rows = Object.entries(getPolls()).filter(([id,p])=> (p?.createdBy||'')===me);
-      document.getElementById('list').innerHTML = rows.map(([id,p])=>{
-        const end=new Date(p.endTime); const closed=Date.now()>end; const badge=closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-        return `<article class="bg-white border border-gray-100 shadow rounded p-4">
-          <div class="flex items-center gap-2 text-xs mb-2"><span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span><span class="text-gray-500">${p.category||'General'}</span></div>
-          <h3 class="font-semibold mb-2">${p.title}</h3>
-          <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-          <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
-        </article>`;
+      const me = safeSession();
+      const username = me?.username;
+      const container = document.getElementById('list');
+      const empty = document.getElementById('empty');
+      const polls = Object.entries(getPolls())
+        .filter(([id,p]) => p && (p.createdBy||'') === username);
+
+      // Sort
+      const sort = sortEl.value;
+      polls.sort((a,b)=>{
+        const pa=a[1], pb=b[1];
+        if (sort === 'ending') {
+          return new Date(pa.endTime||0) - new Date(pb.endTime||0);
+        }
+        if (sort === 'votes') {
+          return totalVotesFor(b[0]) - totalVotesFor(a[0]);
+        }
+        if (sort === 'open') {
+          const aOpen = Date.now() < new Date(pa.endTime||0).getTime();
+          const bOpen = Date.now() < new Date(pb.endTime||0).getTime();
+          if (aOpen !== bOpen) return aOpen ? -1 : 1;
+          // then newest
+          return new Date(pb.createdAt||0) - new Date(pa.createdAt||0);
+        }
+        // default newest
+        return new Date(pb.createdAt||0) - new Date(pa.createdAt||0);
+      });
+
+      if (!polls.length){
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      container.innerHTML = polls.map(([id,p])=>{
+        const end = new Date(p.endTime);
+        const closed = !isNaN(end) ? (Date.now() > end.getTime()) : false;
+        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        const votes = totalVotesFor(id);
+        const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+        return `
+          <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
+            <div class="h-36 w-full overflow-hidden">
+              <img class="w-full h-full object-cover" src="${thumb}" alt="">
+            </div>
+            <div class="p-4 flex-1 flex flex-col">
+              <div class="flex items-center gap-2 text-xs mb-1">
+                <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
+                <span class="text-gray-500">${esc(p.category||'General')}</span>
+              </div>
+              <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+              <div class="text-xs text-gray-500">
+                Votes: <strong>${votes}</strong>
+                • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}
+              </div>
+              <div class="mt-3 flex gap-2">
+                <a href="poll.html?id=${encodeURIComponent(id)}" class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-sm">Open</a>
+                <a href="admin.html" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Manage</a>
+              </div>
+            </div>
+          </article>
+        `;
       }).join('');
-      document.getElementById('empty').classList.toggle('hidden', rows.length>0);
     }
+
+    // First paint
     render();
+    // Re-render if other tabs change polls
+    window.addEventListener('storage', (e)=> {
+      if (['customPolls','pollVotes'].includes(e.key)) render();
+    });
   </script>
 </body>
 </html>

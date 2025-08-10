@@ -13,14 +13,19 @@
     .ticker{white-space:nowrap;overflow:hidden}
     .ticker > div{display:inline-block;padding-left:100%;animation:marquee 18s linear infinite}
     @keyframes marquee {0%{transform:translate(0,0)}100%{transform:translate(-100%,0)}}
+    @media (prefers-reduced-motion: reduce){ .ticker > div{animation:none; padding-left:0} }
     .countdown{font-variant-numeric:tabular-nums}
     .img-thumb{object-fit:cover}
+    /* 2-line clamp helper (no plugin needed) */
+    .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
   <!-- Role-aware header -->
   <div id="vh-header"></div>
+  <!-- IMPORTANT: load order -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -60,7 +65,7 @@
         <div class="md:col-span-1">
           <div class="rounded-2xl shadow-2xl bg-white/10 border border-white/10 p-4 h-full">
             <div class="text-sm text-white/90 mb-2">Live Activity</div>
-            <div class="ticker bg-white/10 rounded-lg">
+            <div class="ticker bg-white/10 rounded-lg" aria-live="polite">
               <div id="tickerInner" class="py-3 text-sm">
                 <!-- Items injected by JS -->
               </div>
@@ -77,7 +82,7 @@
     <div class="grid md:grid-cols-3 gap-4">
       <div class="md:col-span-2">
         <div class="flex gap-2">
-          <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search polls by title…"/>
+          <input id="search" class="w-full border rounded px-3 py-3" placeholder="Search polls by title…" aria-label="Search polls by title"/>
           <a id="searchBtn" href="browse.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Search</a>
         </div>
       </div>
@@ -135,7 +140,7 @@
   <footer class="bg-gray-50 mt-12">
     <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
       <div class="flex items-center gap-2">
-        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6" loading="lazy" decoding="async">
         <span class="font-semibold">VoteHive</span>
       </div>
       <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
@@ -157,7 +162,7 @@
       const t = totalVotesFor(id);
       const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
       const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5))); // ~3 days
-      const commentsWeight = 0; // hook for future (if we store per-poll comment counts)
+      const commentsWeight = 0;
       return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5 + commentsWeight;
     }
 
@@ -167,12 +172,10 @@
       const keys = Object.keys(polls);
       let pick = null;
       if (keys.length){
-        // choose highest trending, fallback random
         pick = keys.map(id => [id, polls[id]]).sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]))[0];
       }
       const el = document.getElementById('spotlight');
       if (!pick){
-        // demo spotlight
         const demo = {
           id:'demo1',
           title:'Which coffee chain wins in 2025?',
@@ -195,7 +198,7 @@
       return `
         <div class="grid grid-cols-3 gap-0">
           <div class="col-span-3 h-40 md:h-44 overflow-hidden">
-            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="" loading="lazy" decoding="async">
           </div>
           <div class="col-span-3 p-4">
             <div class="flex items-center gap-2 text-xs mb-1">
@@ -235,7 +238,7 @@
       return `
         <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden flex flex-col">
           <div class="h-36 w-full overflow-hidden">
-            <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+            <img class="w-full h-full img-thumb" src="${thumb}" alt="" loading="lazy" decoding="async">
           </div>
           <div class="p-4 flex-1 flex flex-col">
             <div class="flex items-center gap-2 text-xs mb-1">
@@ -243,7 +246,7 @@
               <span class="text-gray-500">${esc(p.category || 'General')}</span>
               ${p.featured ? '<span class="chip bg-yellow-100 text-yellow-800">Featured</span>' : ''}
             </div>
-            <h3 class="font-semibold mb-1 line-clamp-2">${esc(p.title||'Untitled')}</h3>
+            <h3 class="font-semibold mb-1 clamp-2">${esc(p.title||'Untitled')}</h3>
             <div class="text-xs text-gray-500">Votes: <strong>${votes}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
             <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-3 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm self-start">Open</a>
           </div>
@@ -262,7 +265,6 @@
       const meta = document.getElementById('trendingMeta');
 
       if (!rows.length){
-        // demo cards
         const demo = [
           {id:'demo1', title:'Which coffee chain wins in 2025?', category:'Brands', endTime:new Date(Date.now()+2*864e5).toISOString(), thumbnail:'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=1200&auto=format&fit=crop'},
           {id:'demo2', title:'Should office-first return in tech?', category:'Startups', endTime:new Date(Date.now()+4*864e5).toISOString(), thumbnail:'https://images.unsplash.com/photo-1529336953121-adb1181a7d3b?q=80&w=1200&auto=format&fit=crop'},
@@ -312,6 +314,16 @@
         if (e.key === 'Enter'){ e.preventDefault(); btn.click(); }
       });
     })();
+
+    // Live update sections if other tabs create polls / vote / etc.
+    window.addEventListener('storage', (e)=>{
+      if (['customPolls','pollVotes','activityLog','userPoints'].includes(e.key)) {
+        spotlightPoll();
+        renderTrending();
+        renderTicker();
+        renderTopVoters();
+      }
+    });
 
     // ------- Init all -------
     spotlightPoll();

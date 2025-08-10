@@ -3,54 +3,174 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Rewards – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <!-- Auth must load BEFORE guard/header -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+  <!-- Header -->
   <div id="vh-header"></div>
   <script src="header.js"></script>
 
   <main class="max-w-7xl mx-auto px-4 py-10 grid gap-6 md:grid-cols-3">
+    <!-- Summary / Points -->
     <section class="bg-white border border-gray-100 shadow rounded p-6">
-      <h1 class="text-2xl font-bold mb-2">Rewards</h1>
-      <p class="text-gray-600">Earn points for voting, sharing and contributing.</p>
+      <div class="flex items-start justify-between">
+        <div>
+          <h1 class="text-2xl font-bold mb-1">Rewards</h1>
+          <p class="text-gray-600">Earn points for voting, sharing and contributing.</p>
+        </div>
+        <!-- Optional streak badge target (if streak.js is included) -->
+        <div id="streakBadge" data-streak-badge></div>
+      </div>
+
       <div class="mt-6">
         <h3 class="text-sm font-semibold">Your Points</h3>
         <div id="pts" class="text-4xl font-extrabold text-indigo-700">0</div>
+        <div id="level" class="mt-1 text-xs text-gray-500"></div>
+
+        <h3 class="text-sm font-semibold mt-5">Badges</h3>
         <div id="badges" class="flex flex-wrap gap-2 mt-2"></div>
+
+        <div class="mt-6 text-xs text-gray-500">
+          <div class="font-semibold mb-1">How points work</div>
+          <ul class="list-disc pl-4 space-y-0.5">
+            <li>Vote on a poll: +2</li>
+            <li>Comment on a poll: +1</li>
+            <li>Share a poll (first time per poll): +1</li>
+            <li>Approved poll you submitted: +10</li>
+          </ul>
+        </div>
       </div>
     </section>
+
+    <!-- Recent Activity -->
     <section class="bg-white border border-gray-100 shadow rounded p-6 md:col-span-2">
-      <h2 class="text-lg font-semibold mb-2">Recent Activity</h2>
-      <div id="activity" class="text-sm text-gray-700 space-y-2"></div>
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Recent Activity</h2>
+        <div class="text-xs text-gray-400">Newest first</div>
+      </div>
+      <div id="activity" class="mt-3 text-sm text-gray-800 space-y-2"></div>
+      <div id="activityEmpty" class="mt-3 text-sm text-gray-500 hidden">No activity yet.</div>
     </section>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+    </div>
   </footer>
 
   <script>
-    const me = usernameOrGuest();
-    const getPts = ()=> JSON.parse(localStorage.getItem('userPoints')||'{}')[me]||0;
-    const getEarned = ()=> JSON.parse(localStorage.getItem('vh_pointsEarned')||'{}');
-    function badges(n){ const b=[]; if(n>=1)b.push('Starter'); if(n>=10)b.push('Supporter'); if(n>=25)b.push('Contributor'); if(n>=50)b.push('Influencer'); if(n>=100)b.push('Trendsetter'); return b; }
-    function render(){
-      const pts = getPts(); document.getElementById('pts').textContent = pts;
-      const bd = badges(pts).map(x=>`<span class="px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">${x}</span>`).join('') || '<span class="text-sm text-gray-500">No badges yet.</span>';
-      document.getElementById('badges').innerHTML = bd;
-
-      const earned = getEarned(); const feed=[];
-      Object.keys(earned).forEach(k=>{
-        const parts=k.split(':'); if(parts[1]!==me) return;
-        if(k.startsWith('vote:')) feed.push('Voted on a poll (+2)');
-        if(k.startsWith('share:')) feed.push('Shared a poll (+1)');
-        if(k.startsWith('comment:')) feed.push('Commented on a poll (+1)');
-      });
-      document.getElementById('activity').innerHTML = feed.length? feed.slice(-15).reverse().map(x=>`<div>• ${x}</div>`).join('') : '<div class="text-gray-500">No activity yet.</div>';
+    // ------- helpers -------
+    function session(){
+      try { return window.VHAuth?.current?.() || null; } catch { return null; }
     }
+    function meName(){
+      const s = session(); return (s && s.username) ? s.username : null;
+    }
+    function getJSON(k, fb){ try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } }
+    function setJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]); }
+    function fmtTime(ts){ try{ return new Date(ts).toLocaleString(); } catch { return String(ts); } }
+
+    // ------- storage -------
+    function getPointsMap(){ return getJSON('userPoints', {}); }
+    function getEarned(){ return getJSON('vh_pointsEarned', {}); } // keys like vote:USER:PID, share:USER:PID, comment:USER:PID, approval:USER:pollId
+    function getActivity(){ return getJSON('activityLog', []); }   // [{type:'vote'|'comment'|'share', user, pid, ts, meta?}]
+
+    // ------- badges & levels -------
+    function badgeList(totalPoints){
+      const out = [];
+      if (totalPoints >= 1)   out.push({label:'Starter',      cls:'bg-indigo-100 text-indigo-800'});
+      if (totalPoints >= 10)  out.push({label:'Supporter',    cls:'bg-emerald-100 text-emerald-800'});
+      if (totalPoints >= 25)  out.push({label:'Contributor',  cls:'bg-amber-100 text-amber-800'});
+      if (totalPoints >= 50)  out.push({label:'Influencer',   cls:'bg-pink-100 text-pink-800'});
+      if (totalPoints >= 100) out.push({label:'Trendsetter',  cls:'bg-purple-100 text-purple-800'});
+      return out;
+    }
+    function levelFromPoints(n){
+      if (n >= 250) return 'Level 5';
+      if (n >= 100) return 'Level 4';
+      if (n >= 50)  return 'Level 3';
+      if (n >= 20)  return 'Level 2';
+      return 'Level 1';
+    }
+
+    // ------- render -------
+    function render(){
+      const me = meName();
+      if (!me) return; // guarded by requireLogin, but be safe
+
+      const ptsMap = getPointsMap();
+      const total = ptsMap[me] || 0;
+
+      // Points + level
+      document.getElementById('pts').textContent = total;
+      document.getElementById('level').textContent = levelFromPoints(total);
+
+      // Badges
+      const bd = badgeList(total);
+      document.getElementById('badges').innerHTML =
+        bd.length ? bd.map(b => `<span class="px-2 py-1 rounded-full text-xs ${b.cls}">${b.label}</span>`).join(' ')
+                  : '<span class="text-sm text-gray-500">No badges yet.</span>';
+
+      // Activity feed (prefer activityLog; fall back to earned map)
+      const log = (getActivity() || []).filter(ev => ev && ev.user === me).sort((a,b)=> (b.ts||0)-(a.ts||0));
+      const list = document.getElementById('activity');
+      const empty = document.getElementById('activityEmpty');
+
+      if (log.length){
+        empty.classList.add('hidden');
+        list.innerHTML = log.slice(0, 40).map(ev => {
+          const icon = ev.type === 'vote' ? '🗳️' : ev.type === 'comment' ? '💬' : ev.type === 'share' ? '🔗' : '⭐';
+          const text = ev.type === 'vote'    ? 'Voted on a poll (+2)'
+                      : ev.type === 'comment' ? 'Commented on a poll (+1)'
+                      : ev.type === 'share'   ? 'Shared a poll (+1)'
+                      : 'Activity';
+          const link = ev.pid ? ` — <a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(ev.pid)}">Open</a>` : '';
+          return `<div>• ${icon} ${text}${link} <span class="text-xs text-gray-500">(${fmtTime(ev.ts)})</span></div>`;
+        }).join('');
+      } else {
+        // fallback from earned keys if no activityLog present
+        const earned = getEarned();
+        const feed = [];
+        Object.keys(earned).forEach(k=>{
+          const parts = k.split(':'); // e.g., vote:USERNAME:pid
+          if (parts[1] !== me) return;
+          if (k.startsWith('vote:'))    feed.push({t:'🗳️ Voted on a poll (+2)', ts: earned[k]});
+          if (k.startsWith('share:'))   feed.push({t:'🔗 Shared a poll (+1)',  ts: earned[k]});
+          if (k.startsWith('comment:')) feed.push({t:'💬 Commented on a poll (+1)', ts: earned[k]});
+          if (k.startsWith('approval:'))feed.push({t:'✅ Poll approved (+10)', ts: earned[k]});
+        });
+        if (feed.length){
+          empty.classList.add('hidden');
+          feed.sort((a,b)=> (new Date(b.ts)) - (new Date(a.ts)));
+          list.innerHTML = feed.slice(0,40).map(x=>`<div>• ${x.t} <span class="text-xs text-gray-500">(${fmtTime(x.ts)})</span></div>`).join('');
+        } else {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        }
+      }
+
+      // Optional: render streak badge if streak.js is present
+      if (typeof window.renderStreakBadge === 'function'){
+        try { window.renderStreakBadge('#streakBadge'); } catch {}
+      }
+    }
+
+    // Render now + when auth changes (cross-tab safe)
     render();
+    window.addEventListener('storage', (e)=>{
+      if (e.key === 'currentUser' || e.key === '__vh_emit__' || e.key === 'userPoints' || e.key === 'activityLog') {
+        render();
+      }
+    });
   </script>
 </body>
 </html>

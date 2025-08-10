@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Admin Dashboard – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <style>
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
     .vh-card { background:#fff; transition: box-shadow .2s ease, transform .06s ease; }
@@ -20,42 +20,42 @@
     .vh-input { background:#fff; }
     html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
   </style>
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
 </head>
-<body class="bg-gray-50">
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive Admin</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="applications.html" class="hover:underline">Applications</a>
-        <a href="moderation.html" class="hover:underline">Moderation</a>
-        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
-      </nav>
-    </div>
-  </header>
+<body class="bg-gray-50 text-gray-800 font-sans">
 
-  <!-- Guard: superadmin only -->
+  <!-- Shared header (role-aware) -->
+  <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script src="header.js"></script>
   <script>
-    try {
-      const s = JSON.parse(localStorage.getItem('session')||'null');
-      if (!s || s.role !== 'superadmin') location.href = 'login.html';
-    } catch { location.href = 'login.html'; }
+    // Admin-only guard (uses our shared guard)
+    requireAdmin();
+    // Simple theme toggle (no external theme.js)
+    (function initTheme(){
+      const t = localStorage.getItem('vh_theme') || 'light';
+      document.documentElement.classList.toggle('vh-dark', t === 'dark');
+      window.toggleTheme = function(){
+        const dark = !document.documentElement.classList.contains('vh-dark');
+        document.documentElement.classList.toggle('vh-dark', dark);
+        localStorage.setItem('vh_theme', dark ? 'dark' : 'light');
+      }
+    })();
   </script>
 
-  <main class="max-w-7xl mx-auto px-4 py-10">
+  <main class="max-w-7xl mx-auto px-4 py-8">
     <div class="flex items-start justify-between gap-6 flex-wrap">
-      <h1 class="text-3xl font-bold">Superadmin Dashboard</h1>
-      <div class="text-sm text-gray-600">
-        Review applications → publish polls → manage visibility.  
+      <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+      <div class="flex items-center gap-2">
+        <a href="applications.html" class="vh-link text-sm">Applications</a>
+        <span class="text-gray-400">•</span>
+        <a href="moderation.html" class="vh-link text-sm">Moderation</a>
+        <span class="text-gray-400">•</span>
+        <button onclick="toggleTheme()" class="vh-btn px-3 py-1 rounded text-sm">Toggle Theme</button>
       </div>
     </div>
+
+    <p class="text-sm text-gray-600 mt-1">Review applications → publish polls → manage visibility.</p>
 
     <!-- Pending applications -->
     <section class="vh-card border border-gray-100 shadow rounded p-6 mb-8 mt-6">
@@ -90,13 +90,16 @@
   </footer>
 
   <script>
-    // ---- storage helpers ----
-    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
-    const setPending = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
+    // ----- Storage helpers (shared keys) -----
     const getPolls   = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
     const setPolls   = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
     const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
     const setLog     = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+
+    // Legacy/optional pending store (if you later use it)
+    const getPendingObj = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
+    const setPendingObj = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
+
     const getPoints  = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
     const setPoints  = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
     const getEarned  = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
@@ -113,14 +116,59 @@
       return true;
     }
 
-    // ---- pending render/actions ----
+    // ----- Pending applications (merge sources) -----
+    function getPendingMerged(){
+      const out = [];
+      // Source A: applicationLog entries with status "pending"
+      const log = getLog();
+      log.filter(x => x && x.status === 'pending').forEach(x => {
+        out.push({
+          pid: x.id || ('app-' + Math.random().toString(36).slice(2)),
+          title: x.title,
+          category: x.category,
+          options: x.options || [],
+          requestedDays: x.requestedDays || 7,
+          submittedAt: x.createdAt || x.submittedAt || new Date().toISOString(),
+          applicant: x.applicant || x.user || 'guest',
+          context: x.reason || x.context || ''
+        });
+      });
+
+      // Source B: pendingPolls object (if present)
+      const pendObj = getPendingObj();
+      Object.entries(pendObj).forEach(([pid, p])=>{
+        out.push({
+          pid,
+          title: p.title,
+          category: p.category,
+          options: p.options || [],
+          requestedDays: p.requestedDays || 7,
+          submittedAt: p.submittedAt || p.createdAt || new Date().toISOString(),
+          applicant: p.applicant || 'guest',
+          context: p.context || ''
+        });
+      });
+
+      // Deduplicate by (title+applicant+submittedAt) heuristic
+      const seen = new Set();
+      const unique = [];
+      out.forEach(item=>{
+        const key = (item.title||'')+'|'+(item.applicant||'')+'|'+(item.submittedAt||'');
+        if (!seen.has(key)) { seen.add(key); unique.push(item); }
+      });
+
+      // Sort newest first
+      unique.sort((a,b)=> new Date(b.submittedAt) - new Date(a.submittedAt));
+      return unique;
+    }
+
     function renderPending(){
       const el = document.getElementById('pendingList');
-      const pending = Object.entries(getPending()).sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
-      document.getElementById('pendingHint').textContent = pending.length ? '' : 'No applications pending.';
+      const items = getPendingMerged();
+      document.getElementById('pendingHint').textContent = items.length ? '' : 'No applications pending.';
       el.innerHTML = '';
 
-      pending.forEach(([pid, p])=>{
+      items.forEach(p=>{
         const card = document.createElement('div');
         card.className = 'py-4';
         card.innerHTML = `
@@ -134,15 +182,15 @@
             </div>
             <div class="w-64 shrink-0 space-y-2">
               <label class="block text-sm font-medium">Approve with duration</label>
-              <select data-pid="${pid}" class="dur vh-input border rounded px-2 py-1 w-full">
+              <select data-key="${encodeURIComponent(p.pid)}" class="dur vh-input border rounded px-2 py-1 w-full">
                 <option value="1">1 day</option>
                 <option value="3">3 days</option>
                 <option value="7" selected>7 days</option>
                 <option value="30">30 days</option>
               </select>
               <div class="flex gap-2">
-                <button data-pid="${pid}" class="approve vh-cta px-3 py-1 rounded text-sm">Approve</button>
-                <button data-pid="${pid}" class="reject vh-btn px-3 py-1 rounded text-sm">Reject</button>
+                <button data-key="${encodeURIComponent(p.pid)}" class="approve vh-cta px-3 py-1 rounded text-sm">Approve</button>
+                <button data-key="${encodeURIComponent(p.pid)}" class="reject vh-btn px-3 py-1 rounded text-sm">Reject</button>
               </div>
             </div>
           </div>
@@ -153,68 +201,100 @@
       // Bind actions
       el.querySelectorAll('.approve').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          const pid = btn.getAttribute('data-pid');
-          const sel = el.querySelector(`.dur[data-pid="${pid}"]`);
-          const days = parseInt(sel?.value || (getPending()[pid]?.requestedDays || 7), 10);
-          approve(pid, days);
+          const key = decodeURIComponent(btn.getAttribute('data-key'));
+          const sel = el.querySelector(`.dur[data-key="${btn.getAttribute('data-key')}"]`);
+          const days = parseInt(sel?.value || '7', 10);
+          approveApp(key, days);
         });
       });
       el.querySelectorAll('.reject').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          const pid = btn.getAttribute('data-pid');
+          const key = decodeURIComponent(btn.getAttribute('data-key'));
           if (!confirm('Reject this application?')) return;
-          const pend = getPending(); const app = pend[pid]; if (!app) return;
-          const log = getLog();
-          log.push({ id: pid, status: 'rejected', title: app.title, category: app.category, applicant: app.applicant || 'guest', decidedAt: new Date().toISOString() });
-          setLog(log);
-          delete pend[pid]; setPending(pend); renderAll();
+          rejectApp(key);
         });
       });
     }
 
-    function approve(pid, days){
-      const pend = getPending(); const app = pend[pid]; if (!app) return;
+    function findAndRemovePendingByKey(key){
+      // Remove from pendingPolls if present
+      const pend = getPendingObj();
+      if (pend[key]) { delete pend[key]; setPendingObj(pend); }
 
-      // unique poll id from title
+      // Mark matching applicationLog entry as not pending if we can match on title+applicant
+      const log = getLog();
+      const idx = log.findIndex(x => x && (x.id === key || encodeURIComponent(x.id||'') === encodeURIComponent(key)));
+      if (idx >= 0) return { log, idx }; // direct match
+      return { log, idx: -1 };
+    }
+
+    function approveApp(key, days){
+      // 1) Locate the app in merged sources (by key) to get details
+      const items = getPendingMerged();
+      const app = items.find(x => x.pid === key);
+      if (!app){ alert('Application not found.'); renderAll(); return; }
+
+      // 2) Create unique poll id from title
       let id = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
       if (!id) id = 'poll-' + Date.now();
       const polls = getPolls();
       if (polls[id]) id = id + '-' + Date.now();
 
+      // 3) Publish poll
       const nowIso = new Date().toISOString();
-      const endTime = new Date(Date.now() + days*24*60*60*1000).toISOString();
+      const endTime = new Date(Date.now() + (days || 7)*24*60*60*1000).toISOString();
       polls[id] = {
         title: app.title,
         category: app.category,
         options: app.options,
         endTime,
-        createdAt: nowIso,              /* NEW: stored for trending/newest sorts */
+        createdAt: nowIso,
         createdBy: app.applicant || 'guest',
         featured: false,
         hidden: false
       };
       setPolls(polls);
 
-      // log decision
-      const log = getLog();
-      log.push({
-        id: pid, status: 'approved', title: app.title, category: app.category,
-        applicant: app.applicant || 'guest', decidedAt: nowIso, pollId: id
-      });
+      // 4) Log decision & award points
+      const { log, idx } = findAndRemovePendingByKey(key);
+      if (idx >= 0) {
+        log[idx] = { ...log[idx], status:'approved', decidedAt: nowIso, pollId: id };
+      } else {
+        // If we can’t match, append a decision entry
+        log.push({ id:key, status:'approved', title:app.title, category:app.category, applicant:app.applicant||'guest', decidedAt: nowIso, pollId:id });
+      }
       setLog(log);
 
-      // award +10 points to applicant (once per approved poll)
       const applicant = app.applicant || 'guest';
-      const awardKey = `approval:${applicant}:${id}`;
-      awardOnce(awardKey, applicant, 10);
+      awardOnce(`approval:${applicant}:${id}`, applicant, 10);
 
-      // clean pending + refresh
-      delete pend[pid]; setPending(pend);
-      renderAll();
       alert('Approved and published! ✅ (+10 points to applicant)');
+      renderAll();
     }
 
-    // ---- polls list ----
+    function rejectApp(key){
+      const items = getPendingMerged();
+      const app = items.find(x => x.pid === key);
+      const nowIso = new Date().toISOString();
+
+      // Remove from pending store if present
+      const pend = getPendingObj();
+      if (pend[key]) { delete pend[key]; setPendingObj(pend); }
+
+      // Update or append log
+      const log = getLog();
+      const idx = log.findIndex(x => x && (x.id === key || encodeURIComponent(x.id||'') === encodeURIComponent(key)));
+      if (idx >= 0) {
+        log[idx] = { ...log[idx], status:'rejected', decidedAt: nowIso };
+      } else {
+        log.push({ id:key, status:'rejected', title:app?.title, category:app?.category, applicant:app?.applicant||'guest', decidedAt: nowIso });
+      }
+      setLog(log);
+
+      renderAll();
+    }
+
+    // ----- Published polls list -----
     function renderPolls(){
       const list = document.getElementById('pollList');
       const q = (document.getElementById('search').value || '').toLowerCase();

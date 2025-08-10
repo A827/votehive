@@ -3,71 +3,234 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Moderation – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <script src="guard.js"></script>
-  <script>requireAdmin();</script>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header mount -->
   <div id="vh-header"></div>
+
+  <!-- IMPORTANT: load in this order -->
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script>requireAdmin();</script>
   <script src="header.js"></script>
 
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <h1 class="text-2xl md:text-3xl font-bold mb-6">Moderation Queue</h1>
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold">Moderation Queue</h1>
+      <div class="text-sm text-gray-600">
+        Review applications → approve (pick duration) or reject. Approved items are published as polls.
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div class="bg-white border border-gray-100 shadow rounded p-4">
+        <div class="text-xs text-gray-500">Pending</div>
+        <div id="statPending" class="text-2xl font-extrabold">0</div>
+      </div>
+      <div class="bg-white border border-gray-100 shadow rounded p-4">
+        <div class="text-xs text-gray-500">Approved (all time)</div>
+        <div id="statApproved" class="text-2xl font-extrabold">0</div>
+      </div>
+      <div class="bg-white border border-gray-100 shadow rounded p-4">
+        <div class="text-xs text-gray-500">Rejected (all time)</div>
+        <div id="statRejected" class="text-2xl font-extrabold">0</div>
+      </div>
+    </section>
+
     <div id="list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No applications.</div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">
+      No applications.
+    </div>
   </main>
 
   <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+      <span>© 2025 VoteHive</span>
+      <div class="flex gap-6">
+        <a href="#" class="hover:underline">About</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+    </div>
   </footer>
 
   <script>
-    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
-    const setLog = (d)=> localStorage.setItem('applicationLog', JSON.stringify(d));
-    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
-    const setPolls = (d)=> localStorage.setItem('customPolls', JSON.stringify(d));
+    // ---- storage helpers (robust) ----
+    const getLog    = () => { try { return JSON.parse(localStorage.getItem('applicationLog')||'[]'); } catch { return []; } };
+    const setLog    = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    const getPolls  = () => { try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch { return {}; } };
+    const setPolls  = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
+    const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints')||'{}'); } catch { return {}; } };
+    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+    const getEarned = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned')||'{}'); } catch { return {}; } };
+    const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
 
-    const listEl=document.getElementById('list'), empty=document.getElementById('empty');
+    function awardOnce(key, username, amount){
+      const earned = getEarned();
+      if (earned[key]) return false;
+      const pts = getPoints();
+      pts[username] = (pts[username]||0) + amount;
+      setPoints(pts);
+      earned[key] = true;
+      setEarned(earned);
+      return true;
+    }
+
+    function slugify(s){
+      return (s||'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || ('poll-'+Date.now());
+    }
+
+    // ---- DOM refs ----
+    const listEl   = document.getElementById('list');
+    const emptyEl  = document.getElementById('empty');
+    const statPending  = document.getElementById('statPending');
+    const statApproved = document.getElementById('statApproved');
+    const statRejected = document.getElementById('statRejected');
+
+    function summary(){
+      const log = getLog();
+      const p = log.filter(x=>x.status==='pending').length;
+      const a = log.filter(x=>x.status==='approved').length;
+      const r = log.filter(x=>x.status==='rejected').length;
+      statPending.textContent  = p;
+      statApproved.textContent = a;
+      statRejected.textContent = r;
+    }
 
     function render(){
-      const rows = getLog().filter(x=>x.status==='pending');
-      listEl.innerHTML = rows.map(x=>`
-        <article class="bg-white border border-gray-100 shadow rounded p-5">
-          <div class="text-xs text-gray-500 mb-1">Applicant: <strong>${x.applicant}</strong> • Created: ${new Date(x.createdAt).toLocaleString()}</div>
-          <h3 class="font-semibold text-lg">${x.title}</h3>
-          <div class="text-sm text-gray-600 mb-2">Category: ${x.category}</div>
-          <div class="text-sm mb-3"><strong>Options:</strong> ${x.options.join(', ')}</div>
-          <div class="text-xs text-gray-500 mb-3">Requested close: ${x.closeAt || 'N/A'}</div>
-          <div class="flex gap-2">
-            <button data-id="${x.id}" class="approve bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm">Approve</button>
-            <button data-id="${x.id}" class="reject bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">Reject</button>
-          </div>
-        </article>`).join('');
-      empty.classList.toggle('hidden', rows.length>0);
+      const log = getLog();
+      const rows = log.filter(x => x && x.status === 'pending')
+        .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0));
 
-      // Bind
-      document.querySelectorAll('.approve').forEach(btn=>{
+      summary();
+      emptyEl.classList.toggle('hidden', rows.length>0);
+
+      if (!rows.length){
+        listEl.innerHTML = '';
+        return;
+      }
+
+      listEl.innerHTML = rows.map(x => cardHTML(x)).join('');
+      bindActions();
+    }
+
+    function cardHTML(x){
+      const created = x.createdAt ? new Date(x.createdAt).toLocaleString() : '—';
+      const opts = Array.isArray(x.options) ? x.options.join(', ') : '—';
+      const applicant = x.applicant || 'guest';
+      const cat = x.category || 'General';
+      const reqClose = x.closeAt ? new Date(x.closeAt).toLocaleString() : 'N/A';
+      const reason = x.reason ? `<div class="text-xs text-gray-500 mt-2">${escapeHtml(x.reason)}</div>` : '';
+      return `
+        <article class="bg-white border border-gray-100 shadow rounded p-5">
+          <div class="text-xs text-gray-500 mb-1">
+            Applicant: <strong>${escapeHtml(applicant)}</strong> • Submitted: ${created}
+          </div>
+          <h3 class="font-semibold text-lg">${escapeHtml(x.title || 'Untitled')}</h3>
+          <div class="text-sm text-gray-600 mb-2">Category: ${escapeHtml(cat)}</div>
+          <div class="text-sm mb-2"><strong>Options:</strong> ${escapeHtml(opts)}</div>
+          <div class="text-xs text-gray-500">Requested close: ${reqClose}</div>
+          ${reason}
+          <div class="mt-3 flex items-center gap-2">
+            <label class="text-sm text-gray-600">Approve with:</label>
+            <select class="border rounded px-2 py-1 text-sm" data-approve-days="${x.id}">
+              <option value="1">1 day</option>
+              <option value="3">3 days</option>
+              <option value="7" selected>7 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button data-approve="${x.id}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm">Approve</button>
+            <button data-reject="${x.id}"  class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">Reject</button>
+          </div>
+        </article>
+      `;
+    }
+
+    function bindActions(){
+      // Approve
+      document.querySelectorAll('[data-approve]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          const id=btn.getAttribute('data-id'); const log=getLog(); const app=log.find(a=>a.id===id);
-          if(!app) return;
-          // create poll
-          const pid='poll-'+Date.now()+Math.random().toString(36).slice(2);
-          const polls=getPolls();
-          polls[pid]={ title:app.title, category:app.category, options:app.options, endTime: app.closeAt || new Date(Date.now()+86400000).toISOString(), createdAt:new Date().toISOString(), createdBy: app.applicant, featured:false };
-          setPolls(polls);
-          // mark approved
-          app.status='approved'; app.updatedAt=new Date().toISOString(); localStorage.setItem('applicationLog', JSON.stringify(log));
-          render();
+          const id = btn.getAttribute('data-approve');
+          const sel = document.querySelector(`[data-approve-days="${CSS.escape(id)}"]`);
+          const days = parseInt(sel?.value || '7', 10) || 7;
+          approve(id, days);
         });
       });
-      document.querySelectorAll('.reject').forEach(btn=>{
+      // Reject
+      document.querySelectorAll('[data-reject]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          const id=btn.getAttribute('data-id'); const log=getLog(); const app=log.find(a=>a.id===id);
-          if(!app) return; app.status='rejected'; app.updatedAt=new Date().toISOString(); setLog(log); render();
+          const id = btn.getAttribute('data-reject');
+          reject(id);
         });
       });
     }
+
+    function approve(appId, days){
+      const log = getLog();
+      const app = log.find(a => a && a.id === appId);
+      if (!app){ alert('Application not found.'); return; }
+
+      // Build unique poll id from title
+      let pid = slugify(app.title);
+      const polls = getPolls();
+      if (polls[pid]) pid = `${pid}-${Date.now()}`;
+
+      const now = Date.now();
+      const end = new Date(now + days*24*60*60*1000).toISOString();
+
+      polls[pid] = {
+        title: app.title,
+        category: app.category,
+        options: Array.isArray(app.options) ? app.options : [],
+        endTime: end,
+        createdAt: new Date(now).toISOString(),
+        createdBy: app.applicant || 'guest',
+        featured: false,
+        hidden: false
+      };
+      setPolls(polls);
+
+      // Mark approved in log (keep history)
+      app.status = 'approved';
+      app.updatedAt = new Date().toISOString();
+      app.pollId = pid;
+      setLog(log);
+
+      // Award points once (+10)
+      const awardKey = `approval:${app.applicant||'guest'}:${pid}`;
+      awardOnce(awardKey, app.applicant||'guest', 10);
+
+      alert('Approved and published ✅ (+10 points to applicant)');
+      render();
+    }
+
+    function reject(appId){
+      if (!confirm('Reject this application?')) return;
+      const log = getLog();
+      const app = log.find(a => a && a.id === appId);
+      if (!app){ alert('Application not found.'); return; }
+      app.status = 'rejected';
+      app.updatedAt = new Date().toISOString();
+      setLog(log);
+      render();
+    }
+
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+    }
+
+    // First paint
     render();
+
+    // Re-render if other tabs change the log/polls/points
+    window.addEventListener('storage', (e)=>{
+      if (['applicationLog','customPolls','userPoints','vh_pointsEarned'].includes(e.key)) render();
+    });
   </script>
 </body>
 </html>

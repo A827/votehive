@@ -12,12 +12,15 @@
     .tab{cursor:pointer}
     .tab.active{background:#eef2ff;color:#3730a3}
     .row:hover{background:#fafafa}
+    .me { background: #eef2ff; } /* highlight current user row */
   </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
   <!-- Header -->
   <div id="vh-header"></div>
+  <!-- Consistent order -->
+  <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -34,7 +37,7 @@
     <div class="grid md:grid-cols-3 gap-4">
       <div class="md:col-span-2">
         <div class="inline-flex gap-2 bg-gray-100 rounded-lg p-1">
-          <button class="tab px-4 py-2 rounded-lg text-sm active" data-range="weekly">Weekly</button>
+          <button class="tab px-4 py-2 rounded-lg text-sm" data-range="weekly">Weekly</button>
           <button class="tab px-4 py-2 rounded-lg text-sm" data-range="monthly">Monthly</button>
           <button class="tab px-4 py-2 rounded-lg text-sm" data-range="all">All-time</button>
         </div>
@@ -100,11 +103,25 @@
   </footer>
 
   <script>
+    // ---------- Safe getters ----------
+    function get(key, fallback){
+      try { const v = JSON.parse(localStorage.getItem(key)); return (v===undefined||v===null)?fallback:v; }
+      catch { return fallback; }
+    }
+    function toTime(v){
+      if (typeof v === 'number') return v;
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : 0;
+    }
+
     // ---------- Data ----------
     const me = (window.VHAuth?.current?.() || null);
-    function get(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }catch{ return fallback; } }
+    const params = new URLSearchParams(location.search);
+    const initialRange = ['weekly','monthly','all'].includes(params.get('range')) ? params.get('range') : 'weekly';
 
-    const activity = get('activityLog', []).filter(e => e && e.user && e.ts);
+    // Activity is the source of truth for weekly/monthly
+    // userPoints is used as a floor for all-time points
+    const activity = (get('activityLog', [])||[]).filter(e => e && e.user && e.ts);
     const allTimePoints = get('userPoints', {});
 
     // ---------- Helpers ----------
@@ -115,12 +132,11 @@
     function fmt(n){ return (n||0).toLocaleString(); }
     function userLink(u, content){ const c = content || u; return `<a class="text-indigo-700 hover:underline" href="profile.html?u=${encodeURIComponent(u)}">${c}</a>`; }
 
-    // Time windows
     const now = Date.now();
     const WEEK_MS = 7*24*60*60*1000;
     const MONTH_MS = 30*24*60*60*1000;
     function within(ts, range){
-      const t = typeof ts === 'number' ? ts : new Date(ts).getTime();
+      const t = toTime(ts);
       if (!t) return false;
       if (range === 'weekly')  return (now - t) <= WEEK_MS;
       if (range === 'monthly') return (now - t) <= MONTH_MS;
@@ -128,11 +144,11 @@
     }
 
     function aggregate(range){
-      const rows = {};
+      const rows = Object.create(null);
       for (const e of activity){
         if (!within(e.ts, range)) continue;
         const u = e.user;
-        rows[u] ||= {points:0, votes:0, comments:0, shares:0};
+        if (!rows[u]) rows[u] = {points:0, votes:0, comments:0, shares:0};
         if (e.type === 'vote'){ rows[u].votes++; rows[u].points += 2; }
         if (e.type === 'comment'){ rows[u].comments++; rows[u].points += 1; }
         if (e.type === 'share'){ rows[u].shares++; rows[u].points += 1; }
@@ -147,7 +163,7 @@
         .sort((a,b)=> (b.points||0) - (a.points||0));
     }
 
-    // ---------- Render ----------
+    // ---------- DOM ----------
     const rowsEl = document.getElementById('rows');
     const emptyEl = document.getElementById('empty');
     const podiumEl = document.getElementById('podium');
@@ -159,7 +175,15 @@
     const youRank = document.getElementById('youRank');
     const youAvatar = document.getElementById('youAvatar');
 
+    function setActiveTab(range){
+      document.querySelectorAll('.tab').forEach(b=>{
+        b.classList.toggle('active', b.getAttribute('data-range')===range);
+      });
+    }
+
     function render(range='weekly'){
+      setActiveTab(range);
+
       const list = aggregate(range);
       const totalUsers = list.length;
 
@@ -173,14 +197,28 @@
         rowsEl.innerHTML = '';
         podiumEl.innerHTML = '';
         emptyEl.classList.remove('hidden');
-        renderYou(range, null, null);
+        renderYou(range, null);
         return;
       }
       emptyEl.classList.add('hidden');
 
       rowsEl.innerHTML = list.map((r, i) => rowHTML(i+1, r)).join('');
+      // highlight current user row, if present
+      if (me){
+        const idx = list.findIndex(x => x.user === me.username);
+        if (idx >= 0){
+          const tr = rowsEl.querySelectorAll('tr')[idx];
+          if (tr) tr.classList.add('me');
+        }
+      }
+
       podiumEl.innerHTML = podiumHTML(list);
-      renderYou(range, list, totalUsers);
+      renderYou(range, list);
+
+      // put selected range in URL (shareable)
+      const p = new URLSearchParams(location.search);
+      p.set('range', range);
+      history.replaceState(null, '', location.pathname + '?' + p.toString());
     }
 
     function rowHTML(rank, r){
@@ -238,10 +276,14 @@
 
       let pts = (get('userPoints', {})[me.username] || 0);
       let rank = '—';
+
       if (list && list.length){
         const idx = list.findIndex(x=> x.user === me.username);
         if (idx >= 0) { rank = idx+1; pts = list[idx].points; }
+        // For weekly/monthly, you might have 0 if no activity this period.
+        if ((range==='weekly' || range==='monthly') && idx < 0) { pts = 0; }
       }
+
       youPoints.textContent = `${fmt(pts)} pts`;
       youRank.textContent = `#${rank}`;
     }
@@ -249,14 +291,13 @@
     // Tabs
     document.querySelectorAll('.tab').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.tab').forEach(b=> b.classList.remove('active'));
-        btn.classList.add('active');
-        render(btn.getAttribute('data-range'));
+        const range = btn.getAttribute('data-range');
+        render(range);
       });
     });
 
-    // Initial render
-    render('weekly');
+    // Initial render (from URL if present)
+    render(initialRange);
   </script>
 </body>
 </html>
