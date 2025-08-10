@@ -1,59 +1,55 @@
-<script>
 // header.js — role-aware, mobile-first header for VoteHive
-// Depends on: Tailwind CSS on page, theme.js (toggleTheme), optional streak.js (renderStreakBadge)
-// Uses: window.VHAuth.current() -> { username, role } | null, window.VHAuth.logout()
+// Depends on Tailwind on the page, plus theme.js (toggleTheme), optional streak.js (renderStreakBadge)
+// Uses window.VHAuth.current() -> { username, role } | null, window.VHAuth.logout()
 
 (function () {
   const STATE = {
     getSession() {
       try {
         return window.VHAuth?.current?.() || null;
-      } catch(e){ return null; }
+      } catch (e) { return null; }
     },
-    roleOf(sess){
+    roleOf(sess) {
       if (!sess) return 'guest';
-      const r = (sess.role||'user').toLowerCase();
+      const r = (sess.role || 'user').toLowerCase();
       if (r === 'superadmin' || r === 'admin') return r;
       return 'user';
     }
   };
 
-  function navLinks(role){
-    // Common links
+  function navLinks(role) {
     const common = [
-      { href:'browse.html', label:'Browse' },
-      { href:'leaderboard.html', label:'Leaderboard' },
-      { href:'feed.html', label:'Feed' },
+      { href: 'browse.html', label: 'Browse' },
+      { href: 'leaderboard.html', label: 'Leaderboard' },
+      { href: 'feed.html', label: 'Feed' },
     ];
 
     if (role === 'guest') {
       return [
         ...common,
-        { type:'gap' },
-        { href:'login.html', label:'Log In', btn:'primary' }
+        { type: 'gap' },
+        { href: 'login.html', label: 'Log In', btn: 'primary' }
       ];
     }
 
     const userOnly = [
-      { href:'rewards.html', label:'Rewards' },
-      { href:'profile.html', label:'Profile' },
-      { href:'create.html', label:'Apply to Create', btn:'primary' },
-      { type:'theme' },
-      { type:'logout' }
+      { href: 'rewards.html', label: 'Rewards' },
+      { href: 'profile.html', label: 'Profile' },
+      { href: 'create.html', label: 'Apply to Create', btn: 'primary' },
+      { type: 'theme' },
+      { type: 'logout' }
     ];
 
     const adminOnly = [
-      { href:'moderation.html', label:'Moderation' },
+      { href: 'moderation.html', label: 'Moderation' },
     ];
 
     if (role === 'user') return [...common, ...userOnly];
-    if (role === 'admin' || role === 'superadmin') {
-      return [...common, ...adminOnly, ...userOnly];
-    }
+    if (role === 'admin' || role === 'superadmin') return [...common, ...adminOnly, ...userOnly];
     return common;
   }
 
-  function linkHtml(item, desktop){
+  function linkHtml(item, desktop) {
     if (item.type === 'gap') return desktop ? '<span class="mx-1"></span>' : '';
     if (item.type === 'theme') {
       return desktop
@@ -66,7 +62,7 @@
         : `<button id="vh-logout" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-left">Log Out</button>`;
     }
 
-    const base = `href="${item.href}" class="${item.btn==='primary'
+    const base = `href="${item.href}" class="${item.btn === 'primary'
       ? (desktop
         ? 'ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700'
         : 'flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700')
@@ -111,36 +107,32 @@
       </header>
     `;
 
-    // Hook up burger + mobile menu
     const burger = document.getElementById('vh-burger');
     const menu   = document.getElementById('vh-mobileMenu');
     burger?.addEventListener('click', () => menu.classList.toggle('open'));
 
-    // Streak (optional)
-    try { renderStreakBadge?.(document.getElementById('streakBadge')); } catch(e){}
+    try { window.renderStreakBadge?.(document.getElementById('streakBadge')); } catch(e){}
 
-    // Logout
     const logoutBtn = document.getElementById('vh-logout');
-    logoutBtn?.addEventListener('click', (e)=>{
+    logoutBtn?.addEventListener('click', (e) => {
       e.preventDefault();
-      try { window.VHAuth?.logout?.(); } catch(e){}
-      // Re-render header after logout
+      try { window.VHAuth?.logout?.(); } catch (err) {}
       renderHeader();
     });
   }
 
   // Initial render
-  document.addEventListener('DOMContentLoaded', renderHeader);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderHeader);
+  } else {
+    renderHeader();
+  }
 
-  // Re-render on visibility change or storage changes (e.g., login in another tab)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) renderHeader();
-  });
+  // Refresh on tab focus or auth changes
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderHeader(); });
   window.addEventListener('storage', (e) => {
-    if (e.key && e.key.includes('VHAuth')) renderHeader();
+    if (e.key && e.key.toLowerCase().includes('vhauth')) renderHeader();
   });
 
-  // Expose a manual refresh if needed
   window.VHHeader = { refresh: renderHeader };
 })();
-</script>
