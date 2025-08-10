@@ -1,208 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Profile – VoteHive</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <style>
-    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; transition:box-shadow .2s ease; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-card:hover { box-shadow:0 10px 30px rgba(2,6,23,.08); }
-    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
-    .menu-enter.open { max-height:420px; }
-    .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
-  </style>
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
+  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
-      </a>
-      <nav class="hidden md:flex items-center gap-3 text-sm">
-        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
-      </nav>
-      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
-          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div class="px-4 py-2 grid gap-1">
-        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <div class="flex gap-2 mt-1">
-          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
-        </div>
-      </div>
-    </div>
-  </header>
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
-  <!-- Hero -->
-  <section class="text-center py-10 md:py-12 bg-gray-50 dark:bg-gray-900">
-    <h1 class="text-2xl md:text-3xl font-bold mb-2">Your Profile</h1>
-    <p class="text-gray-600 dark:text-gray-300">Customize your public info and see your activity.</p>
-  </section>
-
-  <main class="max-w-7xl mx-auto px-4 py-8 md:py-12 grid gap-6 md:grid-cols-3">
-    <!-- Profile Card -->
-    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-6">
-      <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center text-xl font-bold" id="avatar">U</div>
-        <div>
-          <div class="text-lg font-semibold" id="username">guest</div>
-          <div class="text-xs text-gray-500" id="role">user</div>
-        </div>
-      </div>
-
-      <label class="block text-sm font-medium mt-6">Display Name</label>
-      <input id="displayName" type="text" class="w-full border rounded px-3 py-2" placeholder="Your name">
-
-      <label class="block text-sm font-medium mt-4">Bio</label>
-      <textarea id="bio" rows="3" class="w-full border rounded px-3 py-2" placeholder="Say something about you"></textarea>
-
-      <button id="saveProfile" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Save Profile</button>
-
+  <main class="max-w-7xl mx-auto px-4 py-10 grid gap-6 md:grid-cols-3">
+    <section class="bg-white border border-gray-100 shadow rounded p-6">
+      <h1 class="text-2xl font-bold mb-2">Your Profile</h1>
+      <label class="block text-sm font-medium mt-2">Display Name</label>
+      <input id="name" class="w-full border rounded px-3 py-2" />
+      <label class="block text-sm font-medium mt-3">Bio</label>
+      <textarea id="bio" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+      <button id="save" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Save</button>
       <div class="mt-6">
-        <h3 class="text-sm font-semibold">Your Points</h3>
-        <div class="text-3xl font-extrabold text-indigo-700 dark:text-indigo-300" id="points">0</div>
-        <div id="badges" class="flex flex-wrap gap-2 mt-2"></div>
+        <h3 class="text-sm font-semibold">Points</h3>
+        <div id="pts" class="text-3xl font-extrabold text-indigo-700">0</div>
       </div>
     </section>
 
-    <!-- Activity / Polls -->
-    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-6 md:col-span-2">
-      <h2 class="text-lg font-semibold mb-3">Your Polls</h2>
-      <div id="myPolls" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-
-      <h2 class="text-lg font-semibold mt-8 mb-3">Recent Activity</h2>
-      <div id="activity" class="text-sm text-gray-700 dark:text-gray-300 space-y-2"></div>
+    <section class="bg-white border border-gray-100 shadow rounded p-6 md:col-span-2">
+      <h2 class="text-lg font-semibold mb-2">Your Polls</h2>
+      <div id="mypolls" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
     </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
   </footer>
 
   <script>
-    // Mobile nav
-    const burger = document.getElementById('burger');
-    const mobileMenu = document.getElementById('mobileMenu');
-    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
-
-    // Storage
-    const session    = (window.VHAuth?.current?.() || {username:'guest', role:'user'});
-    const me         = session.username;
-    const role       = session.role || 'user';
-
-    const getProfile = () => JSON.parse(localStorage.getItem('vh_profiles') || '{}');
-    const setProfile = (d) => localStorage.setItem('vh_profiles', JSON.stringify(d));
-    const getPoints  = () => JSON.parse(localStorage.getItem('userPoints') || '{}');
-    const getEarned  = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
-    const getPolls   = () => JSON.parse(localStorage.getItem('customPolls') || '{}');
-    const getLog     = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
-
-    // DOM
-    const avatarEl = document.getElementById('avatar');
-    const userEl   = document.getElementById('username');
-    const roleEl   = document.getElementById('role');
-    const nameEl   = document.getElementById('displayName');
-    const bioEl    = document.getElementById('bio');
-    const saveBtn  = document.getElementById('saveProfile');
-    const pointsEl = document.getElementById('points');
-    const badgesEl = document.getElementById('badges');
-    const myPollsEl= document.getElementById('myPolls');
-    const activityEl= document.getElementById('activity');
-
-    function initials(name){ const t=(name||me).trim(); const parts=t.split(/\s+/); return (parts[0]?.[0]||'U' + (parts[1]?.[0]||'')).toUpperCase().slice(0,2); }
-    function calcBadges(points){
-      const list = [];
-      if (points >= 1)   list.push({name:'Starter'});
-      if (points >= 10)  list.push({name:'Supporter'});
-      if (points >= 25)  list.push({name:'Contributor'});
-      if (points >= 50)  list.push({name:'Influencer'});
-      if (points >= 100) list.push({name:'Trendsetter'});
-      return list;
-    }
+    const me = VHAuth.current().username;
+    const getProfiles = ()=> JSON.parse(localStorage.getItem('vh_profiles')||'{}');
+    const setProfiles = (d)=> localStorage.setItem('vh_profiles', JSON.stringify(d));
+    const getPts = ()=> JSON.parse(localStorage.getItem('userPoints')||'{}')[me]||0;
+    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
 
     function render(){
-      const profiles = getProfile();
-      const profile = profiles[me] || { name: me, bio: '' };
+      const p = getProfiles()[me] || { name: me, bio: '' };
+      document.getElementById('name').value = p.name || '';
+      document.getElementById('bio').value  = p.bio || '';
+      document.getElementById('pts').textContent = getPts();
 
-      userEl.textContent = profile.name || me;
-      roleEl.textContent = role;
-      nameEl.value = profile.name || '';
-      bioEl.value = profile.bio || '';
-      avatarEl.textContent = initials(profile.name);
-
-      const pts = getPoints()[me] || 0;
-      pointsEl.textContent = pts;
-      badgesEl.innerHTML = calcBadges(pts).map(b=>`<span class="badge bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">${b.name}</span>`).join('') || '<span class="text-sm text-gray-500">No badges yet.</span>';
-
-      // My polls (createdBy = me)
-      const polls = Object.entries(getPolls()).filter(([id,p])=> (p?.createdBy || 'guest') === me);
-      myPollsEl.innerHTML = polls.length
-        ? polls.map(([id,p])=>{
-            const end = new Date(p.endTime);
-            const closed = Date.now() > end.getTime();
-            const badge = closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-            return `
-            <article class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4">
-              <div class="flex items-center gap-2 text-xs mb-2">
-                <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
-                <span class="text-gray-500">${p.category||'General'}</span>
-              </div>
-              <h4 class="font-semibold mb-1">${p.title}</h4>
-              <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-              <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm">Open</a>
-            </article>`;
-          }).join('')
-        : '<div class="text-sm text-gray-500">You haven’t created any polls yet.</div>';
-
-      // Activity (based on earned + approvals log)
-      const earned = getEarned();
-      const feed = [];
-      Object.keys(earned).forEach(k=>{
-        if (!k.includes(`:${me}:`)) return;
-        if (k.startsWith('vote:'))  feed.push('Voted on a poll (+2)');
-        if (k.startsWith('share:')) feed.push('Shared a poll (+1)');
-      });
-      getLog().filter(x=>x.applicant===me && x.status==='approved').forEach(()=> feed.push('Poll approved (+10)'));
-      activityEl.innerHTML = feed.length ? feed.slice(-20).reverse().map(i=>`<div>• ${i}</div>`).join('') : '<div class="text-gray-500">No recent activity.</div>';
+      const polls = Object.entries(getPolls()).filter(([id,x])=> (x?.createdBy||'')===me);
+      document.getElementById('mypolls').innerHTML = polls.length ? polls.map(([id,p])=>{
+        const end=new Date(p.endTime); const closed=Date.now()>end; const badge=closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
+        return `<article class="border border-gray-100 shadow rounded p-4">
+          <div class="flex items-center gap-2 text-xs mb-1"><span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span><span class="text-gray-500">${p.category||'General'}</span></div>
+          <h3 class="font-semibold mb-1">${p.title}</h3>
+          <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+          <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm">Open</a>
+        </article>`;
+      }).join('') : '<div class="text-sm text-gray-500">No polls yet.</div>';
     }
 
-    saveBtn.addEventListener('click', ()=>{
-      const profiles = getProfile();
-      profiles[me] = {
-        name: nameEl.value.trim() || me,
-        bio: bioEl.value.trim() || ''
-      };
-      setProfile(profiles);
+    document.getElementById('save').addEventListener('click', ()=>{
+      const profiles = getProfiles();
+      profiles[me] = { name: document.getElementById('name').value.trim() || me, bio: document.getElementById('bio').value.trim() || '' };
+      setProfiles(profiles);
       render();
-      saveBtn.textContent = 'Saved ✓';
-      setTimeout(()=> saveBtn.textContent = 'Save Profile', 1200);
+      document.getElementById('save').textContent='Saved ✓'; setTimeout(()=>document.getElementById('save').textContent='Save',1200);
     });
 
     render();

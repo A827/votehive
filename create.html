@@ -1,122 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Apply to Create – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
-  <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-input { background:#fff; } html.vh-dark .vh-input { background:#0b1222; color:#e5e7eb; border-color:#334155; }
-  </style>
+  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="applications.html" class="hover:underline">Applications</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
-      </nav>
-    </div>
-  </header>
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
-  <main class="max-w-3xl mx-auto px-4 py-12">
-    <h1 class="text-3xl font-bold mb-2">Apply to Create a Poll</h1>
-    <p class="text-gray-600 mb-6">Your application will be reviewed by an admin. You’ll see the status on the Applications page.</p>
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-2xl md:text-3xl font-bold mb-2">Apply to Create a Poll</h1>
+    <p class="text-gray-600 mb-6">Your submission will be reviewed. You’ll be notified in-app when approved.</p>
 
-    <form id="form" class="vh-card border border-gray-100 shadow rounded p-6 space-y-5">
+    <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4">
       <div>
-        <label class="block font-semibold mb-1" for="title">Title</label>
-        <input id="title" class="vh-input w-full border rounded px-3 py-2" required placeholder="e.g., Should we adopt a 4-day workweek?" />
+        <label class="block text-sm font-medium">Title</label>
+        <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140"/>
       </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block font-semibold mb-1" for="category">Category</label>
-          <input id="category" class="vh-input w-full border rounded px-3 py-2" required placeholder="e.g., Work, Policy, Startups" />
-        </div>
-        <div>
-          <label class="block font-semibold mb-1" for="duration">Requested duration</label>
-          <select id="duration" class="vh-input w-full border rounded px-3 py-2">
-            <option value="1">1 day</option>
-            <option value="3">3 days</option>
-            <option value="7" selected>7 days</option>
-            <option value="30">30 days</option>
-          </select>
-        </div>
-      </div>
-
       <div>
-        <label class="block font-semibold mb-1" for="options">Options (comma separated)</label>
-        <input id="options" class="vh-input w-full border rounded px-3 py-2" required placeholder="Yes, No, Maybe" />
+        <label class="block text-sm font-medium">Category</label>
+        <select id="category" class="w-full border rounded px-3 py-2">
+          <option>Startups</option><option>Politics</option><option>Brands</option><option>Finance</option><option>Design</option><option>Parenting</option>
+        </select>
       </div>
-
       <div>
-        <label class="block font-semibold mb-1" for="context">Context (optional)</label>
-        <textarea id="context" class="vh-input w-full border rounded px-3 py-2" rows="3" placeholder="Why this question matters…"></textarea>
+        <label class="block text-sm font-medium">Options (one per line, 2–6)</label>
+        <textarea id="options" rows="4" class="w-full border rounded px-3 py-2" placeholder="Option A&#10;Option B" required></textarea>
       </div>
-
+      <div>
+        <label class="block text-sm font-medium">Close Date</label>
+        <input id="close" type="datetime-local" class="w-full border rounded px-3 py-2" required/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Why should this be featured? (optional)</label>
+        <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+      </div>
       <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Submit Application</button>
-      <p id="msg" class="text-sm mt-2"></p>
     </form>
+
+    <p id="ok" class="hidden mt-4 text-green-600">Application submitted. You can track it in Moderation once approved.</p>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
   </footer>
 
   <script>
-    const session = (window.VHAuth?.current?.() || null);
+    const me = VHAuth.current().username;
+    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
+    const setLog = (d)=> localStorage.setItem('applicationLog', JSON.stringify(d));
 
-    function getPending(){ try{ return JSON.parse(localStorage.getItem('pendingPolls')||'{}'); }catch{ return {}; } }
-    function setPending(d){ localStorage.setItem('pendingPolls', JSON.stringify(d)); }
-
-    document.getElementById('form').addEventListener('submit', (e)=>{
+    document.getElementById('appForm').addEventListener('submit', (e)=>{
       e.preventDefault();
       const title = document.getElementById('title').value.trim();
-      const category = document.getElementById('category').value.trim();
-      const duration = parseInt(document.getElementById('duration').value, 10);
-      const options = document.getElementById('options').value.split(',').map(s=>s.trim()).filter(Boolean);
-      const context = document.getElementById('context').value.trim();
-      const msg = document.getElementById('msg');
+      const category = document.getElementById('category').value;
+      const options = document.getElementById('options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      const close = document.getElementById('close').value;
+      const reason = document.getElementById('reason').value.trim();
 
-      if (!title || !category || options.length < 2) {
-        msg.textContent = 'Please fill title, category, and at least 2 options.';
-        msg.className = 'text-red-600 text-sm';
-        return;
-      }
+      if (options.length<2 || options.length>6) { alert('Please provide 2 to 6 options.'); return; }
 
-      const id = 'app-' + Date.now();
-      const data = getPending();
-      data[id] = {
-        title, category, options, context,
-        requestedDays: duration,
-        submittedAt: new Date().toISOString(),
-        applicant: session?.username || 'guest'
+      const entry = {
+        id: 'app-' + Date.now(),
+        applicant: me,
+        title, category, options,
+        closeAt: close,
+        reason,
+        status: 'pending',
+        createdAt: new Date().toISOString()
       };
-      setPending(data);
-
-      msg.textContent = '✅ Application submitted! Track it on Applications.';
-      msg.className = 'text-green-600 text-sm';
-      setTimeout(()=> location.href = 'applications.html', 600);
+      const log = getLog(); log.push(entry); setLog(log);
+      document.getElementById('ok').classList.remove('hidden');
+      e.target.reset();
     });
   </script>
 </body>

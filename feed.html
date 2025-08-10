@@ -1,228 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Feed – VoteHive</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <style>
-    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
-    .menu-enter.open { max-height:420px; }
-    .pill {font-size:12px;padding:2px 8px;border-radius:9999px;display:inline-block}
-  </style>
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
-  <script src="streak.js" defer></script>
+  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
-      </a>
-      <nav class="hidden md:flex items-center gap-3 text-sm">
-        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
-        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
-      </nav>
-      <div class="hidden md:flex items-center gap-2 text-xs" id="streakBadge"></div>
-      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
-          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div class="px-4 py-2 grid gap-1">
-        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
-        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <div class="flex gap-2 mt-1">
-          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
-        </div>
-      </div>
-    </div>
-  </header>
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
-  <!-- Hero -->
-  <section class="text-center py-10 md:py-12 bg-gray-50 dark:bg-gray-900">
-    <h1 class="text-2xl md:text-3xl font-bold mb-2">Engagement Feed</h1>
-    <p class="text-gray-600 dark:text-gray-300">See what’s happening across VoteHive in real-time (local demo).</p>
-  </section>
-
-  <main class="max-w-7xl mx-auto px-4 py-8 md:py-12 grid gap-6 md:grid-cols-3">
-    <!-- Filters -->
-    <aside class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 md:col-span-1">
-      <h2 class="text-lg font-semibold mb-3">Filters</h2>
-      <div class="space-y-2 text-sm">
-        <label class="flex items-center gap-2"><input type="checkbox" class="filter" value="vote" checked>Votes</label>
-        <label class="flex items-center gap-2"><input type="checkbox" class="filter" value="share" checked>Shares</label>
-        <label class="flex items-center gap-2"><input type="checkbox" class="filter" value="comment" checked>Comments</label>
-        <label class="flex items-center gap-2"><input type="checkbox" class="filter" value="create" checked>Poll Created</label>
-        <label class="flex items-center gap-2"><input type="checkbox" class="filter" value="approve" checked>Poll Approved</label>
-      </div>
-      <hr class="my-4 border-gray-200 dark:border-gray-800">
-      <label class="block text-sm mb-1">Search</label>
-      <input id="q" type="text" placeholder="Find user or title…" class="w-full border rounded px-3 py-2 text-sm">
+  <main class="max-w-7xl mx-auto px-4 py-10 grid gap-6 md:grid-cols-3">
+    <aside class="bg-white border border-gray-100 shadow rounded p-4">
+      <h2 class="text-lg font-semibold mb-2">Filters</h2>
+      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="vote" checked>Votes</label>
+      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="share" checked>Shares</label>
+      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="comment" checked>Comments</label>
+      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="create" checked>Created</label>
+      <label class="flex items-center gap-2"><input type="checkbox" class="f" value="approve" checked>Approved</label>
+      <input id="q" class="mt-4 w-full border rounded px-3 py-2 text-sm" placeholder="Search…"/>
     </aside>
-
-    <!-- Feed list -->
     <section class="md:col-span-2">
-      <div id="empty" class="hidden text-center bg-gray-50 dark:bg-gray-900 p-10 rounded text-gray-600 dark:text-gray-400">No activity yet.</div>
+      <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No activity yet.</div>
       <div id="feed" class="space-y-3"></div>
     </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
   </footer>
 
   <script>
-    // Mobile nav
-    const burger = document.getElementById('burger');
-    const mobileMenu = document.getElementById('mobileMenu');
-    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+    const feedEl=document.getElementById('feed'), empty=document.getElementById('empty'), q=document.getElementById('q'), filters=[...document.querySelectorAll('.f')];
+    const getEarned = ()=> JSON.parse(localStorage.getItem('vh_pointsEarned')||'{}');
+    const getComments = ()=> JSON.parse(localStorage.getItem('pollComments')||'{}');
+    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
+    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
 
-    // Streak badge
-    renderStreakBadge?.(document.getElementById('streakBadge'));
-
-    // Build feed from local signals:
-    // - vh_pointsEarned keys (vote:USER:pollId, share:USER:pollId)
-    // - pollComments (per poll with user)
-    // - applicationLog (submitted/approved)
-    // - customPolls (createdAt / createdBy)
-    const session = (window.VHAuth?.current?.() || {username:'guest', role:'user'});
-    const me = session.username;
-
-    const getEarned   = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}');
-    const getComments = () => JSON.parse(localStorage.getItem('pollComments') || '{}');
-    const getLog      = () => JSON.parse(localStorage.getItem('applicationLog') || '[]');
-    const getPolls    = () => JSON.parse(localStorage.getItem('customPolls') || '{}');
-
-    const feedEl = document.getElementById('feed');
-    const emptyEl= document.getElementById('empty');
-    const qEl    = document.getElementById('q');
-    const filters= [...document.querySelectorAll('.filter')];
-
-    function asItems(){
-      const items = [];
-
-      // votes & shares from earned keys
-      const earned = getEarned();
-      Object.keys(earned).forEach(key=>{
-        const parts = key.split(':'); // type:username:pollId
-        if (parts.length !== 3) return;
-        const [type, user, pollId] = parts;
-        const poll = getPolls()[pollId];
-        const title = poll?.title || '(poll)';
-        const ts = poll?.createdAt || new Date().toISOString(); // approximate
-        if (type==='vote')  items.push({type:'vote',  user, title, pollId, ts});
-        if (type==='share') items.push({type:'share', user, title, pollId, ts});
+    function items(){
+      const out=[]; const polls=getPolls(); const earned=getEarned(); const comments=getComments(); const logs=getLog();
+      Object.keys(earned).forEach(k=>{
+        const [type,user,pid]=k.split(':'); if(!polls[pid]) return;
+        if(type==='vote') out.push({type,user,title:polls[pid].title,pid,ts: polls[pid].createdAt});
+        if(type==='share') out.push({type,user,title:polls[pid].title,pid,ts: polls[pid].createdAt});
       });
-
-      // comments
-      const comments = getComments();
-      Object.entries(comments).forEach(([pollId, list])=>{
-        const poll = getPolls()[pollId];
-        const title = poll?.title || '(poll)';
-        list.forEach(c=>{
-          items.push({type:'comment', user:c.user, title, pollId, ts:c.ts});
-        });
+      Object.entries(comments).forEach(([pid,list])=>{
+        const poll=polls[pid]; if(!poll) return;
+        list.forEach(c=> out.push({type:'comment', user:c.user, title:poll.title, pid, ts:c.ts}));
       });
-
-      // application log (submitted & approved)
-      getLog().forEach(row=>{
-        const pollId = row.pollId || '(pending)';
-        const title = row.title || '(application)';
-        const user  = row.applicant || 'user';
-        if (row.status === 'approved') items.push({type:'approve', user, title, pollId, ts:row.updatedAt || row.createdAt || new Date().toISOString()});
-        else items.push({type:'create', user, title, pollId, ts:row.createdAt || new Date().toISOString()});
+      logs.forEach(l=>{
+        if(l.status==='approved') out.push({type:'approve', user:l.applicant, title:l.title, pid:'-', ts:l.updatedAt||l.createdAt});
+        else out.push({type:'create', user:l.applicant, title:l.title, pid:'-', ts:l.createdAt});
       });
-
-      // Also include any polls with createdBy (if not in log)
-      Object.entries(getPolls()).forEach(([id,p])=>{
-        if (p?.createdBy) items.push({type:'create', user:p.createdBy, title:p.title, pollId:id, ts:p.createdAt || new Date().toISOString()});
-      });
-
-      // Sort newest first
-      items.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
-      return items;
+      return out.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
     }
-
-    function icon(t){
-      if (t==='vote') return '🗳️';
-      if (t==='share') return '🔗';
-      if (t==='comment') return '💬';
-      if (t==='create') return '📝';
-      if (t==='approve') return '✅';
-      return '•';
-    }
-    function colorCls(t){
-      if (t==='vote') return 'bg-purple-100 text-purple-800';
-      if (t==='share') return 'bg-blue-100 text-blue-800';
-      if (t==='comment') return 'bg-green-100 text-green-800';
-      if (t==='create') return 'bg-yellow-100 text-yellow-800';
-      if (t==='approve') return 'bg-indigo-100 text-indigo-800';
-      return 'bg-gray-100 text-gray-800';
-    }
-
-    function applyFilters(items){
-      const allowed = new Set(filters.filter(f=>f.checked).map(f=>f.value));
-      const term = (qEl.value||'').toLowerCase().trim();
-      return items.filter(i=>{
-        if (!allowed.has(i.type)) return false;
-        if (!term) return true;
+    function color(t){ if(t==='vote')return'bg-purple-100 text-purple-800'; if(t==='share')return'bg-blue-100 text-blue-800'; if(t==='comment')return'bg-green-100 text-green-800'; if(t==='create')return'bg-yellow-100 text-yellow-800'; if(t==='approve')return'bg-indigo-100 text-indigo-800'; return'bg-gray-100 text-gray-800'; }
+    function icon(t){ return t==='vote'?'🗳️':t==='share'?'🔗':t==='comment'?'💬':t==='create'?'📝':t==='approve'?'✅':'•'; }
+    function applyFilters(arr){
+      const allow=new Set(filters.filter(f=>f.checked).map(f=>f.value));
+      const term=(q.value||'').toLowerCase().trim();
+      return arr.filter(i=>{
+        if(!allow.has(i.type)) return false;
+        if(!term) return true;
         return (i.user||'').toLowerCase().includes(term) || (i.title||'').toLowerCase().includes(term);
       });
     }
-
     function render(){
-      const items = applyFilters(asItems());
-      if (!items.length){
-        emptyEl.classList.remove('hidden'); feedEl.innerHTML = '';
-        return;
-      }
-      emptyEl.classList.add('hidden');
-      feedEl.innerHTML = items.slice(0,200).map(i=>{
-        const dt = new Date(i.ts); const when = isNaN(dt)?'':dt.toLocaleString();
-        return `
-          <article class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="pill ${colorCls(i.type)}">${icon(i.type)} ${i.type}</span>
-                <span class="text-sm text-gray-500">${when}</span>
-              </div>
-              <a href="poll.html?id=${encodeURIComponent(i.pollId)}" class="text-sm text-indigo-600 hover:underline">Open</a>
+      const arr=applyFilters(items());
+      if(!arr.length){ empty.classList.remove('hidden'); feedEl.innerHTML=''; return; }
+      empty.classList.add('hidden');
+      feedEl.innerHTML = arr.map(i=>`
+        <article class="bg-white border border-gray-100 shadow rounded p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-1 rounded-full text-xs ${color(i.type)}">${icon(i.type)} ${i.type}</span>
+              <span class="text-xs text-gray-500">${new Date(i.ts).toLocaleString()}</span>
             </div>
-            <div class="mt-2 text-sm"><span class="font-semibold">${i.user}</span> — ${i.title}</div>
-          </article>
-        `;
-      }).join('');
+            ${i.pid && i.pid!=='-' ? `<a href="poll.html?id=${encodeURIComponent(i.pid)}" class="text-sm text-indigo-600 hover:underline">Open</a>`:''}
+          </div>
+          <div class="mt-2 text-sm"><span class="font-semibold">${i.user}</span> — ${i.title}</div>
+        </article>`).join('');
     }
-
-    qEl.addEventListener('input', render);
-    filters.forEach(f=> f.addEventListener('change', render));
-
-    render();
-    // Light auto-refresh
+    q.addEventListener('input', render); filters.forEach(f=>f.addEventListener('change', render)); render();
     setInterval(render, 5000);
   </script>
 </body>

@@ -1,217 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Moderation Queue – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
-  <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; }
-    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; }
-    html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
-    .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
-  </style>
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Moderation – VoteHive</title>
+  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <script src="guard.js"></script>
+  <script>requireAdmin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Guard: superadmin only -->
-  <script>
-    try {
-      const s = JSON.parse(localStorage.getItem('session')||'null');
-      if (!s || s.role !== 'superadmin') location.href = 'login.html';
-    } catch { location.href = 'login.html'; }
-  </script>
-
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive Admin</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="admin-dashboard.html" class="hover:underline">Dashboard</a>
-        <a href="moderation.html" class="hover:underline font-semibold underline">Moderation</a>
-        <a href="applications.html" class="hover:underline">Applications</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <button onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
-      </nav>
-    </div>
-  </header>
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
   <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-      <h1 class="text-3xl font-bold">Moderation Queue</h1>
-      <div class="flex items-center gap-2">
-        <input id="q" type="text" placeholder="Search title…" class="border rounded px-3 py-2 w-72">
-        <select id="state" class="border rounded px-3 py-2">
-          <option value="">All</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
-          <option value="hidden">Hidden</option>
-        </select>
-        <select id="sort" class="border rounded px-3 py-2">
-          <option value="flags" selected>🚩 Most flags</option>
-          <option value="closing">⏳ Closing soon</option>
-          <option value="newest">🆕 Newest</option>
-          <option value="title">A–Z Title</option>
-        </select>
-      </div>
-    </div>
-
-    <section class="vh-card border border-gray-100 shadow rounded p-6">
-      <div id="hint" class="text-sm text-gray-600 mb-3"></div>
-
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left text-gray-600 border-b">
-              <th class="py-2 pr-4">Poll</th>
-              <th class="py-2 pr-4">Status</th>
-              <th class="py-2 pr-4">Flags</th>
-              <th class="py-2 pr-4">Ends</th>
-              <th class="py-2 pr-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
-    </section>
+    <h1 class="text-2xl md:text-3xl font-bold mb-6">Moderation Queue</h1>
+    <div id="list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No applications.</div>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
   </footer>
 
   <script>
-    // storage helpers
-    const getPolls = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
-    const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
-    const getFlags = () => { try { return JSON.parse(localStorage.getItem('pollFlags') || '{}'); } catch { return {}; } };
-    const setFlags = (d) => localStorage.setItem('pollFlags', JSON.stringify(d));
+    const getLog = ()=> JSON.parse(localStorage.getItem('applicationLog')||'[]');
+    const setLog = (d)=> localStorage.setItem('applicationLog', JSON.stringify(d));
+    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
+    const setPolls = (d)=> localStorage.setItem('customPolls', JSON.stringify(d));
 
-    // DOM
-    const qEl = document.getElementById('q');
-    const stateEl = document.getElementById('state');
-    const sortEl = document.getElementById('sort');
-    const rows = document.getElementById('rows');
-    const hint = document.getElementById('hint');
-
-    function listFlagged(){
-      const polls = getPolls();
-      const flags = getFlags();
-      const term = (qEl.value || '').toLowerCase();
-      const st = stateEl.value;
-
-      let items = Object.entries(flags)
-        .map(([id, count]) => ({ id, count, poll: polls[id] }))
-        .filter(x => x.poll) // only existing polls
-        .filter(x => !term || (x.poll.title||'').toLowerCase().includes(term));
-
-      if (st) {
-        items = items.filter(x => {
-          const end = new Date(x.poll.endTime);
-          const closed = Date.now() > end.getTime();
-          if (st === 'open') return !closed && !x.poll.hidden;
-          if (st === 'closed') return closed;
-          if (st === 'hidden') return !!x.poll.hidden;
-          return true;
-        });
-      }
-
-      // sorting
-      const mode = sortEl.value;
-      if (mode === 'flags')   items.sort((a,b)=> b.count - a.count);
-      if (mode === 'closing') items.sort((a,b)=> new Date(a.poll.endTime) - new Date(b.poll.endTime));
-      if (mode === 'newest')  items.sort((a,b)=> new Date(b.poll.createdAt||0) - new Date(a.poll.createdAt||0));
-      if (mode === 'title')   items.sort((a,b)=> (a.poll.title||'').localeCompare(b.poll.title||''));
-
-      return items;
-    }
+    const listEl=document.getElementById('list'), empty=document.getElementById('empty');
 
     function render(){
-      const items = listFlagged();
-      rows.innerHTML = '';
-      hint.textContent = items.length ? `Showing ${items.length} flagged poll(s).` : 'No flagged polls right now.';
+      const rows = getLog().filter(x=>x.status==='pending');
+      listEl.innerHTML = rows.map(x=>`
+        <article class="bg-white border border-gray-100 shadow rounded p-5">
+          <div class="text-xs text-gray-500 mb-1">Applicant: <strong>${x.applicant}</strong> • Created: ${new Date(x.createdAt).toLocaleString()}</div>
+          <h3 class="font-semibold text-lg">${x.title}</h3>
+          <div class="text-sm text-gray-600 mb-2">Category: ${x.category}</div>
+          <div class="text-sm mb-3"><strong>Options:</strong> ${x.options.join(', ')}</div>
+          <div class="text-xs text-gray-500 mb-3">Requested close: ${x.closeAt || 'N/A'}</div>
+          <div class="flex gap-2">
+            <button data-id="${x.id}" class="approve bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm">Approve</button>
+            <button data-id="${x.id}" class="reject bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">Reject</button>
+          </div>
+        </article>`).join('');
+      empty.classList.toggle('hidden', rows.length>0);
 
-      items.forEach(({id, count, poll})=>{
-        const end = new Date(poll.endTime);
-        const closed = Date.now() > end.getTime();
-        const statusBadges = [
-          `<span class="badge ${closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${closed?'Closed':'Open'}</span>`,
-          poll.hidden ? `<span class="badge bg-gray-200 text-gray-700">Hidden</span>` : '',
-          poll.featured ? `<span class="badge bg-yellow-100 text-yellow-700">Featured</span>` : ''
-        ].join(' ');
-
-        rows.insertAdjacentHTML('beforeend', `
-          <tr class="border-b align-top">
-            <td class="py-3 pr-4">
-              <div class="font-semibold">${poll.title}</div>
-              <div class="text-xs text-gray-500">${poll.category||'General'}</div>
-              <div class="mt-1"><a class="text-indigo-600 hover:underline text-xs" href="poll.html?id=${encodeURIComponent(id)}" target="_blank">Open poll</a></div>
-            </td>
-            <td class="py-3 pr-4">${statusBadges}</td>
-            <td class="py-3 pr-4"><span class="badge bg-rose-100 text-rose-700">🚩 ${count}</span></td>
-            <td class="py-3 pr-4 text-xs text-gray-600">${isNaN(end)?'N/A':end.toLocaleString()}</td>
-            <td class="py-3 pr-4">
-              <div class="flex flex-wrap gap-2">
-                <button data-id="${id}" class="act dismiss bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Dismiss</button>
-                <button data-id="${id}" class="act hide bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${poll.hidden?'Unhide':'Hide'}</button>
-                <button data-id="${id}" class="act feature bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">${poll.featured?'Unfeature':'Feature'}</button>
-                <button data-id="${id}" class="act close bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Close Now</button>
-                <button data-id="${id}" class="act delete bg-gray-100 text-gray-800 px-3 py-1 rounded text-sm">Delete</button>
-              </div>
-            </td>
-          </tr>
-        `);
+      // Bind
+      document.querySelectorAll('.approve').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id=btn.getAttribute('data-id'); const log=getLog(); const app=log.find(a=>a.id===id);
+          if(!app) return;
+          // create poll
+          const pid='poll-'+Date.now()+Math.random().toString(36).slice(2);
+          const polls=getPolls();
+          polls[pid]={ title:app.title, category:app.category, options:app.options, endTime: app.closeAt || new Date(Date.now()+86400000).toISOString(), createdAt:new Date().toISOString(), createdBy: app.applicant, featured:false };
+          setPolls(polls);
+          // mark approved
+          app.status='approved'; app.updatedAt=new Date().toISOString(); localStorage.setItem('applicationLog', JSON.stringify(log));
+          render();
+        });
       });
-
-      bindActions();
+      document.querySelectorAll('.reject').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id=btn.getAttribute('data-id'); const log=getLog(); const app=log.find(a=>a.id===id);
+          if(!app) return; app.status='rejected'; app.updatedAt=new Date().toISOString(); setLog(log); render();
+        });
+      });
     }
-
-    function bindActions(){
-      rows.querySelectorAll('.act.dismiss').forEach(b=>b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-id');
-        const flags = getFlags(); delete flags[id]; setFlags(flags); render();
-      }));
-      rows.querySelectorAll('.act.hide').forEach(b=>b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-id');
-        const polls = getPolls(); if (!polls[id]) return;
-        polls[id].hidden = !polls[id].hidden; setPolls(polls); render();
-      }));
-      rows.querySelectorAll('.act.feature').forEach(b=>b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-id');
-        const polls = getPolls(); if (!polls[id]) return;
-        polls[id].featured = !polls[id].featured; setPolls(polls); render();
-      }));
-      rows.querySelectorAll('.act.close').forEach(b=>b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-id');
-        const polls = getPolls(); if (!polls[id]) return;
-        polls[id].endTime = new Date(Date.now()-1000).toISOString(); setPolls(polls); render();
-      }));
-      rows.querySelectorAll('.act.delete').forEach(b=>b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-id');
-        if (!confirm('Delete this poll?')) return;
-        const polls = getPolls(); delete polls[id]; setPolls(polls);
-        const flags = getFlags(); delete flags[id]; setFlags(flags);
-        render();
-      }));
-    }
-
-    qEl.addEventListener('input', render);
-    stateEl.addEventListener('change', render);
-    sortEl.addEventListener('change', render);
-
     render();
   </script>
 </body>

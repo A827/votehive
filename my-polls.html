@@ -1,149 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="auth.js" defer></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>My Polls – VoteHive</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-4 text-sm">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="trending.html" class="hover:underline">Trending Polls</a>
-        <a href="browse.html" class="hover:underline">Browse Polls</a>
-        <a href="my-polls.html" class="hover:underline underline-offset-4">My Polls</a>
-        <a href="create.html" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Create Poll</a>
-        <a href="#" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Log In</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-      </nav>
-    </div>
-  </header>
+  <div id="vh-header"></div>
+  <script src="header.js"></script>
 
-  <!-- Page Title -->
-  <section class="text-center py-10 bg-gray-50">
-    <h1 class="text-3xl font-bold">My Polls</h1>
-    <p class="text-gray-600 mt-2">Polls saved in your browser (local demo data).</p>
-  </section>
-
-  <!-- Content -->
-  <main class="max-w-5xl mx-auto px-4 py-10">
+  <main class="max-w-6xl mx-auto px-4 py-10">
     <div class="flex justify-between items-center mb-6">
-      <div class="flex items-center gap-3">
-        <input id="search" type="text" placeholder="Search by title…" class="border border-gray-300 rounded px-3 py-2 w-64">
-        <select id="categoryFilter" class="border border-gray-300 rounded px-3 py-2">
-          <option value="">All categories</option>
-        </select>
-      </div>
-      <div class="flex gap-2">
-        <a href="create.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">New Poll</a>
-        <button id="clearAll" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm">Clear All</button>
-      </div>
+      <h1 class="text-2xl md:text-3xl font-bold">My Polls</h1>
+      <a href="create.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Apply to Create</a>
     </div>
-
-    <div id="emptyState" class="hidden text-center py-16 bg-gray-50 rounded">
-      <p class="text-gray-600 mb-4">No polls yet. Create your first one!</p>
-      <a href="create.html" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Create a Poll</a>
-    </div>
-
     <div id="list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">You haven’t created any polls yet.</div>
   </main>
 
-  <!-- Footer -->
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6 mt-2 md:mt-0">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
-    </div>
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
   </footer>
 
   <script>
-    const listEl = document.getElementById('list');
-    const emptyEl = document.getElementById('emptyState');
-    const searchEl = document.getElementById('search');
-    const categoryEl = document.getElementById('categoryFilter');
-    const clearAllBtn = document.getElementById('clearAll');
+    const me = VHAuth.current().username;
+    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
 
-    function loadPolls() {
-      const data = JSON.parse(localStorage.getItem('customPolls') || '{}');
-      const categories = new Set();
-      Object.values(data).forEach(p => { if (p.category) categories.add(p.category); });
-      if (categoryEl.options.length === 1) {
-        [...categories].sort().forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c; opt.textContent = c; categoryEl.appendChild(opt);
-        });
-      }
-      return data;
-    }
-
-    function render() {
-      const polls = loadPolls();
-      const term = searchEl.value.toLowerCase();
-      const cat = categoryEl.value;
-      const entries = Object.entries(polls)
-        .filter(([id, p]) => (!term || p.title.toLowerCase().includes(term)))
-        .filter(([id, p]) => (!cat || p.category === cat));
-
-      listEl.innerHTML = '';
-      if (entries.length === 0) {
-        emptyEl.classList.remove('hidden');
-        return;
-      }
-      emptyEl.classList.add('hidden');
-
-      entries.forEach(([id, p]) => {
-        const end = new Date(p.endTime);
-        const closed = Date.now() > end.getTime();
-        const card = document.createElement('div');
-        card.className = 'bg-white shadow rounded p-4 flex flex-col';
-        card.innerHTML = `
-          <div class="flex items-center gap-2 text-sm mb-2">
-            <span class="px-2 py-1 rounded-full ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${closed ? 'Closed' : 'Open'}</span>
-            <span class="text-gray-500">${p.category || 'General'}</span>
-          </div>
+    function render(){
+      const rows = Object.entries(getPolls()).filter(([id,p])=> (p?.createdBy||'')===me);
+      document.getElementById('list').innerHTML = rows.map(([id,p])=>{
+        const end=new Date(p.endTime); const closed=Date.now()>end; const badge=closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
+        return `<article class="bg-white border border-gray-100 shadow rounded p-4">
+          <div class="flex items-center gap-2 text-xs mb-2"><span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span><span class="text-gray-500">${p.category||'General'}</span></div>
           <h3 class="font-semibold mb-2">${p.title}</h3>
-          <p class="text-xs text-gray-500 mb-4">Ends: ${end.toLocaleString()}</p>
-          <div class="mt-auto flex gap-2">
-            <a href="poll.html?id=${id}" class="flex-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-sm">Open</a>
-            <button data-id="${id}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm remove">Delete</button>
-          </div>
-        `;
-        listEl.appendChild(card);
-      });
-
-      listEl.querySelectorAll('.remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('data-id');
-          const data = JSON.parse(localStorage.getItem('customPolls') || '{}');
-          delete data[id];
-          localStorage.setItem('customPolls', JSON.stringify(data));
-          render();
-        });
-      });
+          <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
+          <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
+        </article>`;
+      }).join('');
+      document.getElementById('empty').classList.toggle('hidden', rows.length>0);
     }
-
-    clearAllBtn.addEventListener('click', () => {
-      if (confirm('Clear all locally saved polls?')) {
-        localStorage.removeItem('customPolls');
-        render();
-      }
-    });
-
-    searchEl.addEventListener('input', render);
-    categoryEl.addEventListener('change', render);
-
     render();
   </script>
 </body>
