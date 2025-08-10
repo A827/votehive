@@ -8,14 +8,15 @@
   <script src="guard.js"></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+  <!-- Header (whatever version you already use) -->
   <div id="vh-header"></div>
   <script src="header.js"></script>
 
   <main class="max-w-md mx-auto px-4 py-12">
     <h1 class="text-2xl font-bold mb-2">Log In (Demo)</h1>
-    <p class="text-gray-600 mb-6">This demo uses localStorage only.</p>
+    <p class="text-gray-600 mb-6">Local demo login (no backend).</p>
 
-    <form id="f" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4">
+    <form id="f" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4" novalidate>
       <div>
         <label class="block text-sm font-medium">Username</label>
         <input id="u" class="w-full border rounded px-3 py-2" required placeholder="e.g., alex"/>
@@ -37,21 +38,23 @@
     const params = new URLSearchParams(location.search);
     const next = params.get('next') || 'index.html';
 
-    // If already logged in, bounce to 'next' immediately
-    (function(){
-      const me = VHAuth.current();
+    // If already logged in, immediately go to "next"
+    (function () {
+      const me = Auth.get();
       if (me) location.replace(next);
     })();
 
-    document.getElementById('f').addEventListener('submit', (e)=>{
+    document.getElementById('f').addEventListener('submit', (e) => {
       e.preventDefault();
       const username = document.getElementById('u').value.trim();
-      const role = document.getElementById('r').value;
+      const role = document.getElementById('r').value || 'user';
       if (!username) return;
 
-      VHAuth.login({ username, role });
+      // Set exactly this key/shape. Nothing else.
+      localStorage.setItem('currentUser', JSON.stringify({ username, role }));
+
       document.getElementById('ok').classList.remove('hidden');
-      setTimeout(()=> location.href = next, 300);
+      setTimeout(() => location.href = next, 250);
     });
   </script>
 </body>
