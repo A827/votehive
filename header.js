@@ -22,7 +22,9 @@
     } catch { return null; }
   }
 
-  function isAdmin(user) { return !!(user && user.role === 'admin'); }
+  // superadmins count as admins for nav visibility
+  function isAdmin(user) { return !!(user && (user.role === 'admin' || user.role === 'superadmin')); }
+  function isSuper(user) { return !!(user && user.role === 'superadmin'); }
   function safeInitial(name = 'U') { return (name && name[0] ? name[0] : 'U').toUpperCase(); }
 
   function currentPageKey() {
@@ -74,7 +76,8 @@
             ${me ? navLink('applications.html', 'Applications') : ''}
             ${me ? navLink('my-polls.html', 'My Polls') : ''}
             ${me ? navLink('create.html', 'Apply to Create') : ''}
-            ${me && isAdmin(me) ? navLink('moderation.html', 'Moderation') : ''}
+            ${isAdmin(me) ? navLink('moderation.html', 'Moderation') : ''}
+            ${isSuper(me) ? navLink('users.html', 'Users') : ''}
           </nav>
 
           <div class="flex items-center gap-2">
@@ -104,7 +107,8 @@
             ${me ? navLink('applications.html', 'Applications', 'block') : ''}
             ${me ? navLink('my-polls.html', 'My Polls', 'block') : ''}
             ${me ? navLink('create.html', 'Apply to Create', 'block') : ''}
-            ${me && isAdmin(me) ? navLink('moderation.html', 'Moderation', 'block') : ''}
+            ${isAdmin(me) ? navLink('moderation.html', 'Moderation', 'block') : ''}
+            ${isSuper(me) ? navLink('users.html', 'Users', 'block') : ''}
             ${!me ? `
               <a id="vh-login-m"  href="login.html"  class="block px-3 py-2 text-sm rounded bg-white text-purple-700">Log In</a>
               <a id="vh-signup-m" href="signup.html" class="block px-3 py-2 text-sm rounded border border-white/60">Sign Up</a>
