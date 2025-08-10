@@ -2,40 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard – VoteHive</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
   <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
+    .vh-card { background:#fff; transition:box-shadow .2s ease, transform .06s ease; }
+    html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
+    .vh-card:hover { box-shadow:0 10px 30px rgba(2,6,23,.08); }
     .badge { font-size:12px; border-radius:9999px; padding:2px 8px; display:inline-block }
+    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
+    .menu-enter.open { max-height:420px; }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
+  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="profile.html" class="hover:underline">Profile</a>
-        <a href="moderation.html" class="hover:underline">Moderation</a>
-        <button onclick="toggleTheme()" class="bg-white text-purple-700 px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-3 text-sm">
+        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
+        <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
       </nav>
+      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="px-4 py-2 grid gap-1">
+        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
+        <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <div class="flex gap-2 mt-1">
+          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-12">
+  <main class="max-w-7xl mx-auto px-4 py-10 md:py-12">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <h1 class="text-3xl font-bold">Leaderboard</h1>
+      <h1 class="text-2xl md:text-3xl font-bold">Leaderboard</h1>
       <div class="flex items-center gap-2">
         <select id="range" class="border rounded px-3 py-2">
           <option value="today">Today</option>
@@ -43,22 +64,22 @@
           <option value="all">All-time</option>
         </select>
         <select id="sort" class="border rounded px-3 py-2">
-          <option value="votes" selected>📊 Most votes</option>
-          <option value="trending">🔥 Trending score</option>
+          <option value="votes">📊 Most votes</option>
+          <option value="trending" selected>🔥 Trending score</option>
           <option value="newest">🆕 Newest</option>
           <option value="closing">⏳ Closing soon</option>
         </select>
       </div>
     </div>
 
-    <section class="vh-card border border-gray-100 shadow rounded p-6">
-      <div id="hint" class="text-sm text-gray-600 mb-3"></div>
-      <div id="list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-6">
+      <div id="hint" class="text-sm text-gray-600 dark:text-gray-300 mb-3"></div>
+      <div id="list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
     </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
+    <div class="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6">
         <a href="#" class="hover:underline">About</a>
@@ -68,6 +89,11 @@
   </footer>
 
   <script>
+    // Mobile nav
+    const burger = document.getElementById('burger');
+    const mobileMenu = document.getElementById('mobileMenu');
+    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+
     const listEl = document.getElementById('list');
     const rangeEl = document.getElementById('range');
     const sortEl  = document.getElementById('sort');
@@ -119,17 +145,20 @@
         const v = votesFor(id);
         const tscore = Math.round(trendingScore(id,p));
         return `
-          <div class="vh-card border border-gray-100 shadow rounded p-4 flex flex-col">
-            <div class="flex items-center gap-2 text-sm mb-2">
+          <article class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 flex flex-col">
+            <div class="flex items-center gap-2 text-xs md:text-sm mb-2">
               <span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span>
               <span class="text-gray-500">${p.category || 'General'}</span>
               ${p.featured?'<span class="badge bg-yellow-100 text-yellow-700">Featured</span>':''}
             </div>
-            <h4 class="font-semibold mb-2">${p.title}</h4>
-            <div class="text-xs text-gray-500">Votes: ${v} • 🔥 Score: ${tscore}</div>
-            <div class="text-xs text-gray-500 mb-4">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm text-center">Open</a>
-          </div>`;
+            <h4 class="font-semibold text-base md:text-lg leading-snug mb-2">${p.title}</h4>
+            <div class="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1 mb-4">
+              <span>Votes: <strong>${v}</strong></span>
+              <span>🔥 Score: ${tscore}</span>
+              <span>Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</span>
+            </div>
+            <a href="poll.html?id=${encodeURIComponent(id)}" class="mt-auto inline-block text-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
+          </article>`;
       }).join('');
     }
 
