@@ -3,65 +3,276 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Leaderboard – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .ring{box-shadow:0 0 0 3px rgba(99,102,241,.25)}
+    .mono{font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .tab{cursor:pointer}
+    .tab.active{background:#eef2ff;color:#3730a3}
+    .row:hover{background:#fafafa}
+  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header -->
   <div id="vh-header"></div>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <main class="max-w-7xl mx-auto px-4 py-10">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold">Leaderboard</h1>
-      <div class="flex gap-2">
-        <select id="range" class="border rounded px-3 py-2 text-sm">
-          <option value="today">Today</option><option value="week" selected>This Week</option><option value="all">All-time</option>
-        </select>
-        <select id="sort" class="border rounded px-3 py-2 text-sm">
-          <option value="trending" selected>Trending</option><option value="votes">Most votes</option><option value="newest">Newest</option><option value="closing">Closing soon</option>
-        </select>
+  <!-- Title -->
+  <section class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <h1 class="text-3xl font-bold mb-2">Leaderboard</h1>
+      <p class="text-gray-600">Who’s driving the conversation? Points come from <span class="font-medium">votes (+2)</span>, <span class="font-medium">comments (+1)</span>, and <span class="font-medium">shares (+1)</span>.</p>
+    </div>
+  </section>
+
+  <!-- Tabs + Your rank -->
+  <section class="max-w-7xl mx-auto px-4 pt-6 pb-2">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2">
+        <div class="inline-flex gap-2 bg-gray-100 rounded-lg p-1">
+          <button class="tab px-4 py-2 rounded-lg text-sm active" data-range="weekly">Weekly</button>
+          <button class="tab px-4 py-2 rounded-lg text-sm" data-range="monthly">Monthly</button>
+          <button class="tab px-4 py-2 rounded-lg text-sm" data-range="all">All-time</button>
+        </div>
+      </div>
+      <div class="md:col-span-1">
+        <div id="yourCard" class="hidden bg-white border border-gray-100 rounded-xl shadow p-4">
+          <div class="text-sm text-gray-500 mb-2">Your rank</div>
+          <div class="flex items-center gap-3">
+            <div id="youAvatar" class="w-10 h-10 rounded-full bg-indigo-50 ring flex items-center justify-center text-indigo-700 font-semibold">U</div>
+            <div class="flex-1">
+              <div id="youName" class="font-semibold">—</div>
+              <div id="youPoints" class="text-xs text-gray-500">—</div>
+            </div>
+            <div id="youRank" class="text-indigo-700 font-semibold">#—</div>
+          </div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls yet.</div>
+  <!-- Table -->
+  <main class="max-w-7xl mx-auto px-4 pb-14">
+    <div class="mt-4 bg-white border border-gray-100 rounded-xl shadow overflow-hidden">
+      <div class="px-4 py-3 border-b text-sm text-gray-600 flex items-center justify-between">
+        <div>
+          <span id="rangeLabel" class="font-medium">Top this week</span>
+          <span id="totalMeta" class="ml-2 text-gray-400"></span>
+        </div>
+        <div class="text-xs text-gray-400">Votes=+2 • Comments=+1 • Shares=+1</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-4 py-3">#</th>
+              <th class="text-left px-4 py-3">User</th>
+              <th class="text-right px-4 py-3">Points</th>
+              <th class="text-right px-4 py-3">Votes</th>
+              <th class="text-right px-4 py-3">Comments</th>
+              <th class="text-right px-4 py-3">Shares</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div id="empty" class="hidden text-center text-gray-500 bg-gray-50 p-10">No activity yet. Start by <a class="text-indigo-600 underline" href="browse.html">voting or commenting</a>.</div>
+    </div>
+
+    <!-- Top 3 cards -->
+    <section class="mt-8 grid md:grid-cols-3 gap-4" id="podium"></section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+  <footer class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <span class="font-semibold">VoteHive</span>
+      </div>
+      <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
     </div>
   </footer>
 
   <script>
-    const listEl=document.getElementById('list'), empty=document.getElementById('empty');
-    const rEl=document.getElementById('range'), sEl=document.getElementById('sort');
-    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
-    const getVotes = ()=> JSON.parse(localStorage.getItem('pollVotes')||'{}');
-    function votesFor(id){ const v=getVotes()[id]||{}; return Object.values(v).reduce((a,b)=>a+b,0); }
-    function trending(id,p){const t=votesFor(id); const h=Math.max(0,(new Date(p.endTime)-new Date())/36e5); const r=1/(1+h); const f=Math.min(1,(Date.now()-new Date(p.createdAt||Date.now()))/86400000<2?1:.6); return t*.8+r*10+f*2; }
-    function inRange(p){
-      const m=rEl.value, c=new Date(p.createdAt||Date.now()), now=new Date();
-      const d=(now-c)/86400000; if(m==='today') return d<1; if(m==='week') return d<7; return true;
+    // ---------- Data ----------
+    const me = (window.VHAuth?.current?.() || null); // {username, role}? or null
+    const activity = get('activityLog', [])    // [{type:'vote'|'comment'|'share', user, ts, pid, meta}]
+      .filter(e => e && e.user && e.ts);
+
+    const allTimePoints = get('userPoints', {}); // {username: points}
+
+    function get(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }catch{ return fallback; } }
+
+    // ---------- Helpers ----------
+    function avatarHTML(name){
+      const ch = (name||'?')[0]?.toUpperCase() || 'U';
+      return `<div class="w-9 h-9 rounded-full bg-indigo-50 ring flex items-center justify-center text-indigo-700 font-semibold">${ch}</div>`;
     }
-    function render(){
-      let rows=Object.entries(getPolls()).filter(([id,p])=>p&&!p.hidden&&inRange(p));
-      const mode=sEl.value;
-      if(mode==='votes') rows.sort((a,b)=>votesFor(b[0])-votesFor(a[0]));
-      if(mode==='trending') rows.sort((a,b)=>trending(b[0],b[1])-trending(a[0],a[1]));
-      if(mode==='newest') rows.sort((a,b)=>new Date(b[1].createdAt||0)-new Date(a[1].createdAt||0));
-      if(mode==='closing') rows.sort((a,b)=>new Date(a[1].endTime)-new Date(b[1].endTime));
-      listEl.innerHTML = rows.map(([id,p])=>{
-        const end=new Date(p.endTime); const closed=Date.now()>end; const badge=closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-        return `<article class="bg-white border border-gray-100 shadow rounded p-4">
-          <div class="flex items-center gap-2 text-xs mb-2"><span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span><span class="text-gray-500">${p.category||'General'}</span></div>
-          <h3 class="font-semibold mb-2">${p.title}</h3>
-          <div class="text-xs text-gray-500">Votes: <strong>${votesFor(id)}</strong> • Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-          <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Open</a>
-        </article>`;
-      }).join('');
-      empty.classList.toggle('hidden', rows.length>0);
+    function fmt(n){ return (n||0).toLocaleString(); }
+
+    // Compute time windows
+    const now = Date.now();
+    const WEEK_MS = 7*24*60*60*1000;
+    const MONTH_MS = 30*24*60*60*1000;
+
+    function within(ts, range){
+      const t = typeof ts === 'number' ? ts : new Date(ts).getTime();
+      if (!t) return false;
+      if (range === 'weekly')  return (now - t) <= WEEK_MS;
+      if (range === 'monthly') return (now - t) <= MONTH_MS;
+      return true; // all-time
     }
-    rEl.addEventListener('change', render); sEl.addEventListener('change', render); render();
+
+    function aggregate(range){
+      const rows = {}; // username -> {points, votes, comments, shares}
+      // Points model from events
+      for (const e of activity){
+        if (!within(e.ts, range)) continue;
+        const u = e.user;
+        rows[u] ||= {points:0, votes:0, comments:0, shares:0};
+        if (e.type === 'vote'){ rows[u].votes++; rows[u].points += 2; }
+        if (e.type === 'comment'){ rows[u].comments++; rows[u].points += 1; }
+        if (e.type === 'share'){ rows[u].shares++; rows[u].points += 1; }
+      }
+
+      // For all-time, ensure we include users known only via userPoints
+      if (range === 'all'){
+        for (const [u, pts] of Object.entries(allTimePoints)){
+          rows[u] ||= {points:0, votes:0, comments:0, shares:0};
+          // Keep event-derived breakdown but trust stored total if larger
+          rows[u].points = Math.max(rows[u].points, pts||0);
+        }
+      }
+
+      // Convert to array + sort
+      const list = Object.entries(rows).map(([user,stats])=>({user, ...stats}))
+        .sort((a,b)=> (b.points||0) - (a.points||0));
+
+      return list;
+    }
+
+    // ---------- Render ----------
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('empty');
+    const podiumEl = document.getElementById('podium');
+    const rangeLabel = document.getElementById('rangeLabel');
+    const totalMeta = document.getElementById('totalMeta');
+
+    function render(range='weekly'){
+      const list = aggregate(range);
+      const totalUsers = list.length;
+
+      rangeLabel.textContent =
+        range==='weekly' ? 'Top this week'
+        : range==='monthly' ? 'Top this month'
+        : 'Top all-time';
+      totalMeta.textContent = totalUsers ? `• ${totalUsers} users` : '';
+
+      if (!totalUsers){
+        rowsEl.innerHTML = '';
+        podiumEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        renderYou(range, null, null);
+        return;
+      }
+      emptyEl.classList.add('hidden');
+
+      rowsEl.innerHTML = list.map((r, i) => rowHTML(i+1, r)).join('');
+      podiumEl.innerHTML = podiumHTML(list);
+
+      renderYou(range, list, totalUsers);
+    }
+
+    function rowHTML(rank, r){
+      return `
+        <tr class="row border-t">
+          <td class="px-4 py-3 w-12">#${rank}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              ${avatarHTML(r.user)}
+              <div class="leading-tight">
+                <div class="font-medium">${r.user}</div>
+                <div class="text-xs text-gray-500">
+                  <span class="chip bg-indigo-50 text-indigo-700 mr-1">Votes ${fmt(r.votes)}</span>
+                  <span class="chip bg-emerald-50 text-emerald-700 mr-1">Comments ${fmt(r.comments)}</span>
+                  <span class="chip bg-amber-50 text-amber-700">Shares ${fmt(r.shares)}</span>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-right font-semibold">${fmt(r.points)}</td>
+          <td class="px-4 py-3 text-right">${fmt(r.votes)}</td>
+          <td class="px-4 py-3 text-right">${fmt(r.comments)}</td>
+          <td class="px-4 py-3 text-right">${fmt(r.shares)}</td>
+        </tr>
+      `;
+    }
+
+    function podiumHTML(list){
+      const top = list.slice(0,3);
+      if (!top.length) return '';
+      return top.map((r, idx)=>`
+        <div class="bg-white border border-gray-100 rounded-xl shadow p-4">
+          <div class="text-xs text-gray-500 mb-1">${idx===0?'Champion 🥇':idx===1?'Runner-up 🥈':'Third 🥉'}</div>
+          <div class="flex items-center gap-3">
+            ${avatarHTML(r.user)}
+            <div class="flex-1">
+              <div class="font-semibold">${r.user}</div>
+              <div class="text-xs text-gray-500">
+                ${fmt(r.points)} pts • ${fmt(r.votes)} votes • ${fmt(r.comments)} comments • ${fmt(r.shares)} shares
+              </div>
+            </div>
+            <div class="text-indigo-700 font-semibold">#${idx+1}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Your rank card
+    const yourCard = document.getElementById('yourCard');
+    function renderYou(range, list, total){
+      if (!me){ yourCard.classList.add('hidden'); return; }
+      yourCard.classList.remove('hidden');
+
+      const youName = document.getElementById('youName');
+      const youPoints = document.getElementById('youPoints');
+      const youRank = document.getElementById('youRank');
+      const youAvatar = document.getElementById('youAvatar');
+
+      youName.textContent = me.username;
+      youAvatar.textContent = (me.username[0]||'U').toUpperCase();
+
+      if (!list || !list.length){
+        // fall back to stored all-time points
+        const pts = allTimePoints[me.username] || 0;
+        youPoints.textContent = `${fmt(pts)} pts (no recent activity)`;
+        youRank.textContent = '#—';
+        return;
+      }
+
+      const idx = list.findIndex(x=> x.user === me.username);
+      const pts = idx >= 0 ? list[idx].points : (range==='all' ? (allTimePoints[me.username]||0) : 0);
+      youPoints.textContent = `${fmt(pts)} pts`;
+      youRank.textContent = idx >= 0 ? `#${idx+1}` : '#—';
+    }
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(b=> b.classList.remove('active'));
+        btn.classList.add('active');
+        render(btn.getAttribute('data-range'));
+      });
+    });
+
+    // Initial render
+    render('weekly');
   </script>
 </body>
 </html>
