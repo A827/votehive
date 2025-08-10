@@ -5,26 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>VoteHive – Where Ideas Compete</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <!-- Tailwind (CDN) -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    /* Dark base */
     html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
     .vh-card { background:#fff; transition:box-shadow .2s ease, transform .06s ease; }
     html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
     .vh-card:hover { box-shadow:0 10px 30px rgba(2,6,23,.08); }
     .tag { display:inline-block; padding:6px 12px; border-radius:9999px; background:#f3f4f6; margin:4px; font-size:12px; }
     html.vh-dark .tag { background:#1f2937; }
-    /* Mobile quick actions (only < md) */
-    @media (max-width: 767px){
-      .vh-quickbar { position: sticky; bottom: 0; z-index: 30; }
-    }
-    /* Mobile menu animation */
     .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
     .menu-enter.open { max-height:420px; }
+    @media (max-width: 767px){ .vh-quickbar { position: sticky; bottom: 0; z-index: 30; } }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
+  <script src="streak.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
@@ -35,32 +30,28 @@
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
         <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
       </a>
-
-      <!-- Desktop nav -->
       <nav class="hidden md:flex items-center gap-3 text-sm">
         <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
         <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="feed.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
         <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
         <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
         <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
         <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
         <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
       </nav>
-
-      <!-- Mobile burger -->
+      <div class="hidden md:flex items-center gap-2 text-xs" id="streakBadge"></div>
       <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
-        <!-- simple burger icon -->
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
           <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
     </div>
-
-    <!-- Mobile menu -->
     <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
       <div class="px-4 py-2 grid gap-1">
         <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
         <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="feed.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
         <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
         <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
         <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
@@ -87,7 +78,7 @@
     </div>
   </section>
 
-  <!-- Trending section -->
+  <!-- Trending -->
   <section class="max-w-7xl mx-auto px-4 py-10 md:py-14">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl md:text-2xl font-bold">Trending Now</h2>
@@ -101,8 +92,6 @@
         </select>
       </div>
     </div>
-
-    <!-- Cards -->
     <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
   </section>
 
@@ -119,6 +108,7 @@
   <div class="vh-quickbar md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
     <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between">
       <a href="browse.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+      <a href="feed.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
       <a href="create.html" class="flex-1 text-center py-2 rounded bg-indigo-600 text-white mx-2">Create</a>
       <a href="leaderboard.html" class="flex-1 text-center py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Top</a>
     </div>
@@ -141,7 +131,10 @@
     const mobileMenu = document.getElementById('mobileMenu');
     burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
 
-    // Data helpers
+    // Streak badge
+    renderStreakBadge?.(document.getElementById('streakBadge'));
+
+    // Data helpers for Trending
     const grid = document.getElementById('grid');
     const sortEl = document.getElementById('sort');
     const tagsEl = document.getElementById('tags');
@@ -168,7 +161,6 @@
       if (mode === 'newest')   rows.sort((a,b)=> new Date(b[1].createdAt||0) - new Date(a[1].createdAt||0));
       if (mode === 'votes')    rows.sort((a,b)=> votesFor(b[0]) - votesFor(a[0]));
 
-      // Render cards (mobile-first layout)
       grid.innerHTML = rows.slice(0,6).map(([id,p])=>{
         const end = new Date(p.endTime);
         const closed = Date.now() > end.getTime();
@@ -196,7 +188,6 @@
       renderTags(rows.map(r=>r[1]));
     }
 
-    // Trending tags extracted from titles
     function renderTags(polls){
       const stop = new Set(['the','is','a','an','to','of','and','in','on','for','with','by','or','be','are','will','do','does','should','we','you','your','our']);
       const counts = {};
