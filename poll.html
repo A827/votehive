@@ -1,504 +1,272 @@
 <!DOCTYPE html>
-<html lang="en" prefix="og: http://ogp.me/ns#">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VoteHive – Poll</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
-
-  <!-- Tailwind -->
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Poll – VoteHive</title>
+  <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-
-  <!-- Open Graph (updated at runtime with poll title) -->
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="VoteHive">
-  <meta property="og:title" content="VoteHive – Poll">
-  <meta property="og:description" content="Vote and see live results on VoteHive.">
-  <meta property="og:image" content="/og-default.png">
-  <meta property="og:url" content="">
-  <meta name="twitter:card" content="summary_large_image">
-
   <style>
-    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
-    .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
-    .vh-btn-light { background:#fff; color:#6b21a8; } html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
-    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
-    .menu-enter.open { max-height:420px; }
-    @media (max-width: 767px){
-      .vh-sticky-actions { position: sticky; bottom: 0; z-index: 40; border-top:1px solid rgba(0,0,0,.08); }
-      html.vh-dark .vh-sticky-actions { border-top-color:#1f2937; }
-      .vh-option { padding:14px; }
-    }
-    @media (min-width: 768px){
-      .vh-option { padding:10px; }
-    }
+    .pill{padding:4px 10px;border-radius:9999px;font-size:12px;display:inline-block}
+    .countdown{font-variant-numeric:tabular-nums}
   </style>
-
-  <script src="theme.js"></script>
-  <script src="auth.js" defer></script>
-  <script src="streak.js" defer></script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-  <!-- Header -->
-  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
-      </a>
-      <nav class="hidden md:flex items-center gap-3 text-sm">
-        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="feed.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
-        <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
-        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
-      </nav>
-      <div class="hidden md:flex items-center gap-2 text-xs" id="streakBadge"></div>
-      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
-          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div class="px-4 py-2 grid gap-1">
-        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
-        <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
-        <a href="feed.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Feed</a>
-        <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
-        <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
-        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
-        <div class="flex gap-2 mt-1">
-          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
-          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
+  <!-- Header mount (required) -->
+  <div id="vh-header"></div>
+  <!-- Keep your existing auth helpers -->
+  <script src="guard.js"></script>
+  <!-- Your existing role-aware header -->
+  <script src="header.js"></script>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <a href="browse.html" class="text-sm text-indigo-600 hover:underline">← Back to Browse</a>
+
+    <div id="wrap" class="mt-4 bg-white border border-gray-100 shadow rounded p-5">
+      <h1 id="title" class="text-2xl font-bold mb-1">Loading…</h1>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+        <span id="cat" class="pill bg-gray-100 text-gray-700">General</span>
+        <span id="state" class="pill">Open</span>
+        <span id="ends" class="pill bg-indigo-100 text-indigo-700 countdown">Ends —</span>
+      </div>
+
+      <div id="desc" class="mt-4 text-gray-700 hidden"></div>
+
+      <section class="mt-6">
+        <h2 class="text-lg font-semibold mb-3">Vote</h2>
+        <div id="opts" class="grid gap-2"></div>
+        <div id="note" class="mt-2 text-xs text-gray-500"></div>
+      </section>
+
+      <section class="mt-8">
+        <h3 class="text-lg font-semibold mb-2">Share</h3>
+        <div class="flex gap-2">
+          <input id="link" class="border rounded px-3 py-2 w-full text-sm" readonly/>
+          <button id="copy" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Copy</button>
         </div>
-      </div>
-    </div>
-  </header>
+        <p class="text-xs text-gray-500 mt-1">Share this link to invite votes. (Logged-in users earn +1 point for sharing.)</p>
+      </section>
 
-  <!-- Poll Content -->
-  <main class="max-w-3xl mx-auto px-4 py-10 md:py-12">
-    <h1 id="poll-title" class="text-2xl md:text-3xl font-bold mb-2">Loading…</h1>
-    <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
-    <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
-
-    <div id="guard-msg" class="hidden mb-4 text-sm p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200"></div>
-
-    <form id="vote-form" class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-3 md:p-4 space-y-2 md:space-y-3 mb-4 md:mb-6"></form>
-
-    <!-- Sticky actions (mobile) -->
-    <div class="vh-sticky-actions md:hidden bg-white dark:bg-gray-900 px-4 py-3">
-      <div class="flex gap-2">
-        <button id="submit-vote-mobile" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Submit Vote</button>
-        <button id="flag-btn-mobile" class="px-4 py-3 rounded text-sm border">Flag</button>
-      </div>
-      <p id="vote-note-mobile" class="text-xs text-gray-600 mt-2 hidden"></p>
-    </div>
-
-    <!-- Desktop actions -->
-    <div class="hidden md:flex flex-wrap gap-3">
-      <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
-      <button id="flag-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded">Flag for Review</button>
-    </div>
-    <p id="vote-note" class="hidden md:block text-sm text-gray-600 mt-2"></p>
-    <p id="flag-note" class="text-sm text-green-600 mt-2 hidden">Thanks—your flag was recorded.</p>
-
-    <section id="results" class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-8 hidden">
-      <h2 class="text-lg font-semibold mb-3">Results</h2>
-      <div id="results-list" class="space-y-3"></div>
-      <p id="total-votes" class="text-xs text-gray-500 mt-2"></p>
-    </section>
-
-    <!-- Share -->
-    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-10">
-      <div class="flex items-center justify-between mb-3">
-        <label class="block text-sm font-medium">📤 Share this poll</label>
-        <button id="qr-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded text-sm">Show QR</button>
-      </div>
-      <div class="flex gap-2">
-        <input id="share-link" type="text" class="flex-1 border px-3 py-2 rounded" readonly>
-        <button id="copy-btn" class="bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 text-sm">Copy</button>
-      </div>
-      <p id="copied-msg" class="text-green-600 text-sm mt-1 hidden">Link copied! (+1 point)</p>
-
-      <div id="qr-wrap" class="mt-4 hidden">
-        <img id="qr-img" alt="QR code" class="w-44 h-44 border rounded"/>
-        <p class="text-xs text-gray-500 mt-2">Scan to open this poll.</p>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2 mt-4">
-        <a id="share-wa" target="_blank" rel="noopener" class="inline-block bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600">WhatsApp</a>
-        <a id="share-tg" target="_blank" rel="noopener" class="inline-block bg-blue-500 text-white text-sm px-3 py-2 rounded hover:opacity-90">Telegram</a>
-        <a id="share-fb" target="_blank" rel="noopener" class="inline-block bg-blue-700 text-white text-sm px-3 py-2 rounded hover:opacity-90">Facebook</a>
-        <a id="share-x"  target="_blank" rel="noopener" class="inline-block bg-black text-white text-sm px-3 py-2 rounded hover:opacity-90">X</a>
-      </div>
-    </section>
-
-    <!-- Comments -->
-    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-10">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Comments</h2>
-        <span id="comment-count" class="text-sm text-gray-500">0</span>
-      </div>
-
-      <div id="comment-guard" class="hidden mt-3 text-sm p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200">
-        Please <a href="login.html" class="underline font-medium">log in</a> to post a comment.
-      </div>
-
-      <form id="comment-form" class="mt-3 hidden">
-        <textarea id="comment-text" rows="3" class="w-full border rounded px-3 py-2" placeholder="Add a comment…"></textarea>
-        <div class="flex justify-between items-center mt-2">
-          <span class="text-xs text-gray-500">Be respectful. No spam.</span>
-          <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Post</button>
+      <section class="mt-8">
+        <h3 class="text-lg font-semibold mb-2">Comments</h3>
+        <div id="commentForm" class="mb-3">
+          <textarea id="cText" rows="3" class="w-full border rounded px-3 py-2 text-sm" placeholder="Add a comment… (login required)"></textarea>
+          <div class="mt-2 flex items-center justify-between">
+            <span id="cHint" class="text-xs text-gray-500">You’re not logged in.</span>
+            <button id="cPost" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-sm">Post</button>
+          </div>
         </div>
-      </form>
-
-      <div id="comment-list" class="mt-6 space-y-4"></div>
-    </section>
+        <div id="comments" class="space-y-3"></div>
+        <div id="noComments" class="text-sm text-gray-500">No comments yet.</div>
+      </section>
+    </div>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-12">
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
+      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
     </div>
   </footer>
 
-  <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
-
   <script>
-    // Mobile nav + streak badge
-    const burger = document.getElementById('burger');
-    const mobileMenu = document.getElementById('mobileMenu');
-    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
-    renderStreakBadge?.(document.getElementById('streakBadge'));
+    // --- Helpers: storage + auth ---
+    const pid = new URLSearchParams(location.search).get('id');
+    const getPolls = () => JSON.parse(localStorage.getItem('customPolls') || '{}');
+    const setPolls = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
 
-    // ======== Helpers & state ========
-    const session = (window.VHAuth?.current?.() || {username:'guest', role:'user'});
-    const currentUser = session.username;
-    const role = session.role || 'user';
-    const pageLoadedAt = Date.now();
+    const getVotes = () => JSON.parse(localStorage.getItem('pollVotes') || '{}');
+    const setVotes = (d) => localStorage.setItem('pollVotes', JSON.stringify(d));
 
-    function getDeviceId(){
-      let id = localStorage.getItem('vh_device');
-      if (!id) { id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('vh_device', id); }
-      return id;
+    const getUserVotes = () => JSON.parse(localStorage.getItem('userVotes') || '{}'); // { [pid]: { [username]: optionIndex } }
+    const setUserVotes = (d) => localStorage.setItem('userVotes', JSON.stringify(d));
+
+    const getComments = () => JSON.parse(localStorage.getItem('pollComments') || '{}'); // { [pid]: [{user, text, ts}] }
+    const setComments = (d) => localStorage.setItem('pollComments', JSON.stringify(d));
+
+    const getPoints = () => JSON.parse(localStorage.getItem('userPoints') || '{}'); // { [username]: points }
+    const setPoints = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
+
+    const getEarned = () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); // { "vote:USER:PID": ts, "share:USER:PID": ts }
+    const setEarned = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
+
+    const me = (window.VHAuth?.current?.() || null);
+
+    // --- Render poll ---
+    function fmtCountdown(end) {
+      const ms = end - new Date();
+      if (ms <= 0) return 'Closed';
+      const s = Math.floor(ms/1000);
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const ss= s % 60;
+      return `${d}d ${h}h ${m}m ${ss}s`;
     }
-    const deviceId = getDeviceId();
 
-    // storage
-    const ls = {
-      getPolls: () => JSON.parse(localStorage.getItem("customPolls") || "{}"),
-      getVotes: () => JSON.parse(localStorage.getItem("pollVotes") || "{}"),
-      setVotes: (v) => localStorage.setItem("pollVotes", JSON.stringify(v)),
-      getVotesByUser: () => JSON.parse(localStorage.getItem('vh_votesByUser') || '{}'),
-      setVotesByUser: (d) => localStorage.setItem('vh_votesByUser', JSON.stringify(d)),
-      getDeviceLedger: () => JSON.parse(localStorage.getItem('vh_pollDeviceVotes') || '{}'),
-      setDeviceLedger: (d) => localStorage.setItem('vh_pollDeviceVotes', JSON.stringify(d)),
-      getFlags: () => JSON.parse(localStorage.getItem('pollFlags') || '{}'),
-      setFlags: (d) => localStorage.setItem('pollFlags', JSON.stringify(d)),
-      getFlagsByUser: () => JSON.parse(localStorage.getItem('vh_flagsByUser') || '{}'),
-      setFlagsByUser: (d) => localStorage.setItem('vh_flagsByUser', JSON.stringify(d)),
-      getPoints: () => JSON.parse(localStorage.getItem('userPoints') || '{}'),
-      setPoints: (d) => localStorage.setItem('userPoints', JSON.stringify(d)),
-      getEarned: () => JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'),
-      setEarned: (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d)),
-      getComments: () => JSON.parse(localStorage.getItem('pollComments') || '{}'),
-      setComments: (d) => localStorage.setItem('pollComments', JSON.stringify(d)),
-    };
+    function render() {
+      const polls = getPolls();
+      const p = polls[pid];
+      const titleEl = document.getElementById('title');
+      const catEl   = document.getElementById('cat');
+      const stateEl = document.getElementById('state');
+      const endsEl  = document.getElementById('ends');
+      const optsEl  = document.getElementById('opts');
+      const noteEl  = document.getElementById('note');
+      const linkEl  = document.getElementById('link');
 
-    function addPoints(username, amount){ const pts = ls.getPoints(); pts[username] = (pts[username] || 0) + amount; ls.setPoints(pts); }
-    function markEarned(key){ const e=ls.getEarned(); e[key]=true; ls.setEarned(e); }
-    function hasEarned(key){ return !!ls.getEarned()[key]; }
-
-    // DOM
-    const titleEl = document.getElementById("poll-title");
-    const categoryEl = document.getElementById("poll-category");
-    const formEl = document.getElementById("vote-form");
-    const submitBtn = document.getElementById("submit-vote");
-    const submitBtnMobile = document.getElementById("submit-vote-mobile");
-    const noteEl = document.getElementById("vote-note");
-    const noteElMobile = document.getElementById("vote-note-mobile");
-    const countdownEl = document.getElementById("countdown");
-    const resultsWrap = document.getElementById("results");
-    const resultsList = document.getElementById("results-list");
-    const totalVotesEl = document.getElementById("total-votes");
-    const shareInput = document.getElementById("share-link");
-    const copyBtn = document.getElementById("copy-btn");
-    const copiedMsg = document.getElementById("copied-msg");
-    const shareWA = document.getElementById("share-wa");
-    const shareTG = document.getElementById("share-tg");
-    const shareFB = document.getElementById("share-fb");
-    const shareX  = document.getElementById("share-x");
-    const toast = document.getElementById("toast");
-    const flagBtn = document.getElementById("flag-btn");
-    const flagBtnMobile = document.getElementById("flag-btn-mobile");
-    const flagNote = document.getElementById("flag-note");
-    const qrBtn = document.getElementById("qr-btn");
-    const qrWrap = document.getElementById("qr-wrap");
-    const qrImg = document.getElementById("qr-img");
-    const guardMsg = document.getElementById("guard-msg");
-
-    // comments DOM
-    const commentCount = document.getElementById('comment-count');
-    const commentGuard = document.getElementById('comment-guard');
-    const commentForm  = document.getElementById('comment-form');
-    const commentText  = document.getElementById('comment-text');
-    const commentList  = document.getElementById('comment-list');
-
-    // Load poll
-    const params = new URLSearchParams(location.search);
-    const pollId = params.get("id") || "";
-    const poll = ls.getPolls()[pollId];
-
-    function showGuard(msg){ guardMsg.textContent = msg; guardMsg.classList.remove('hidden'); }
-    function hideGuard(){ guardMsg.classList.add('hidden'); }
-
-    if (!poll || poll.hidden) {
-      titleEl.textContent = "Poll not found or unavailable.";
-      formEl.innerHTML = "";
-      submitBtn?.remove();
-      submitBtnMobile?.remove();
-      resultsWrap.classList.add('hidden');
-    } else {
-      // OG tags for this page (best-effort client update)
-      document.title = `${poll.title} – VoteHive`;
-      const ogt = document.querySelector('meta[property="og:title"]'); if (ogt) ogt.setAttribute('content', `${poll.title} – VoteHive`);
-      const ogd = document.querySelector('meta[property="og:description"]'); if (ogd) ogd.setAttribute('content', 'Vote and see live results on VoteHive.');
-      const ogu = document.querySelector('meta[property="og:url"]'); if (ogu) ogu.setAttribute('content', location.href);
-
-      titleEl.textContent = poll.title || "Untitled poll";
-      categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
-
-      // Share URLs
-      const shareUrl = `${location.origin}${location.pathname}?id=${encodeURIComponent(pollId)}`;
-      shareInput.value = shareUrl;
-      shareWA.href = `https://wa.me/?text=${encodeURIComponent(poll.title + " — " + shareUrl)}`;
-      shareTG.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(poll.title)}`;
-      shareFB.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-      shareX.href  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(poll.title)}&url=${encodeURIComponent(shareUrl)}`;
-      qrBtn.addEventListener('click', ()=>{
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
-        qrImg.src = url; qrWrap.classList.remove('hidden');
-      });
-
-      // Options
-      formEl.innerHTML = "";
-      (poll.options || []).forEach((opt, i) => {
-        const id = `opt-${i}`;
-        formEl.insertAdjacentHTML("beforeend", `
-          <label for="${id}" class="vh-option block border border-gray-300 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-            <input id="${id}" type="radio" name="vote" value="${opt}" class="mr-2 transform scale-110 align-middle"> ${opt}
-          </label>
-        `);
-      });
-
-      // Countdown
-      const end = new Date(poll.endTime);
-      function updateCountdown() {
-        const diff = end - new Date();
-        if (isNaN(diff)) { countdownEl.textContent = ""; return; }
-        if (diff <= 0) {
-          countdownEl.textContent = "⏱️ Poll Closed";
-          disableVotingUI();
-          renderResults();
-          return;
-        }
-        const d = Math.floor(diff/86400000);
-        const h = Math.floor((diff/3600000)%24);
-        const m = Math.floor((diff/60000)%60);
-        countdownEl.textContent = `⏳ Closes in ${d}d ${h}h ${m}m`;
+      if (!p) {
+        titleEl.textContent = 'Poll not found';
+        document.getElementById('wrap').classList.add('opacity-70');
+        document.getElementById('opts').innerHTML = '<div class="text-sm text-gray-500">No options available.</div>';
+        return;
       }
-      updateCountdown();
-      setInterval(updateCountdown, 60000);
 
-      // Results
-      function currentVotes() { const all = ls.getVotes(); return all[pollId] || {}; }
-      function saveVotes(v)    { const all = ls.getVotes(); all[pollId] = v; ls.setVotes(all); }
-      function castVote(option){ const v = currentVotes(); v[option] = (v[option] || 0) + 1; saveVotes(v); }
-      function totalVotes(v)   { return Object.values(v).reduce((a,b)=>a+b,0); }
-      function renderResults() {
-        const v = currentVotes();
-        const t = totalVotes(v);
-        resultsList.innerHTML = "";
-        (poll.options || []).forEach(opt => {
-          const count = v[opt] || 0;
-          const pct = t ? Math.round((count/t)*100) : 0;
-          resultsList.insertAdjacentHTML("beforeend", `
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span>${opt}</span><span>${pct}% (${count})</span>
-              </div>
-              <div class="w-full h-2 bg-gray-200 rounded overflow-hidden">
-                <div class="h-2 bg-indigo-600 rounded" style="width:${pct}%"></div>
-              </div>
+      const end = new Date(p.endTime);
+      const closed = isNaN(end) ? false : (Date.now() > end.getTime());
+
+      titleEl.textContent = p.title || 'Untitled poll';
+      catEl.textContent = p.category || 'General';
+      stateEl.textContent = closed ? 'Closed' : 'Open';
+      stateEl.className = 'pill ' + (closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
+      endsEl.textContent = (isNaN(end) ? 'Ends: N/A' : 'Ends: ' + end.toLocaleString());
+
+      // Live countdown (if end valid)
+      if (!isNaN(end)) {
+        const upd = () => { endsEl.textContent = 'Ends: ' + fmtCountdown(end); };
+        upd();
+        setInterval(upd, 1000);
+      }
+
+      // Voting UI
+      const votes = getVotes();
+      const userVotes = getUserVotes();
+      const myVote = (me && userVotes[pid] && userVotes[pid][me.username] !== undefined)
+        ? userVotes[pid][me.username] : null;
+
+      const counts = votes[pid] || {}; // { "0": 10, "1": 3, ... }
+      const total = (p.options || []).reduce((acc, _, i) => acc + (counts[i] || 0), 0);
+
+      optsEl.innerHTML = (p.options || []).map((opt, i) => {
+        const c = counts[i] || 0;
+        const pct = total ? Math.round((c / total) * 100) : 0;
+        const isMine = myVote === i;
+        return `
+          <button data-idx="${i}" class="group w-full text-left border rounded px-3 py-3 hover:bg-gray-50 ${isMine?'border-indigo-300 bg-indigo-50':''}" ${closed?'disabled':''}>
+            <div class="flex items-center justify-between">
+              <span class="font-medium">${opt.replace(/</g,'&lt;')}</span>
+              <span class="text-sm text-gray-500">${c} • ${pct}%</span>
             </div>
-          `);
-        });
-        totalVotesEl.textContent = `Total votes: ${t}`;
-        resultsWrap.classList.remove("hidden");
-      }
-      renderResults();
-      setInterval(renderResults, 5000); // light live refresh (local)
-
-      // ======== Voting guard: one vote per user AND per device ========
-      const votesByUser = ls.getVotesByUser();
-      const myVotes = votesByUser[currentUser] || {};
-      const deviceLedger = ls.getDeviceLedger();
-      const deviceMap = deviceLedger[pollId] || {};
-
-      const userVoted = !!myVotes[pollId];
-      const deviceVoted = !!deviceMap[deviceId];
-
-      if (userVoted) {
-        disableVotingUI();
-        showNote(`You already voted: ${myVotes[pollId]} (+2 points earned)`);
-      } else if (deviceVoted) {
-        disableVotingUI();
-        showGuard('A vote for this poll has already been cast from this device.');
-      }
-
-      // Anti-spam cooldown + captcha if too fast
-      let lastSubmitAt = 0; const COOLDOWN_MS = 5000;
-      function tooFastSubmit(){ return Date.now() - pageLoadedAt < 2000; }
-      function askSimpleCaptcha(){ const a=2+Math.floor(Math.random()*7), b=2+Math.floor(Math.random()*7); return prompt(`Quick check: ${a}+${b}=?`,'')==(a+b); }
-
-      function handleVoteSubmit(){
-        hideGuard();
-        if (new Date() > end) { updateCountdown(); return; }
-
-        const now = Date.now();
-        if (now - lastSubmitAt < COOLDOWN_MS) { showGuard('Please wait a moment before submitting again.'); return; }
-
-        const votesByUser = ls.getVotesByUser();
-        const myVotes = votesByUser[currentUser] || {};
-        const deviceLedger = ls.getDeviceLedger();
-        const deviceMap = deviceLedger[pollId] || {};
-
-        if (myVotes[pollId]) { showGuard('You have already voted on this poll.'); return; }
-        if (deviceMap[deviceId]) { showGuard('This device has already voted on this poll.'); return; }
-        if (tooFastSubmit() && !askSimpleCaptcha()) { showGuard('Captcha failed. Please try again.'); return; }
-
-        const chosen = document.querySelector('input[name="vote"]:checked');
-        if (!chosen) { showGuard('Please select an option.'); return; }
-
-        castVote(chosen.value);
-
-        myVotes[pollId] = chosen.value;
-        votesByUser[currentUser] = myVotes;
-        ls.setVotesByUser(votesByUser);
-
-        const ledger = ls.getDeviceLedger();
-        ledger[pollId] = ledger[pollId] || {};
-        ledger[pollId][deviceId] = true;
-        ls.setDeviceLedger(ledger);
-
-        const voteKey = `vote:${currentUser}:${pollId}`;
-        if (!hasEarned(voteKey)) { addPoints(currentUser, 2); markEarned(voteKey); }
-
-        renderResults();
-        showToast('Thanks for voting! (+2 points)');
-
-        disableVotingUI();
-        showNote(`You voted: ${chosen.value}`);
-
-        lastSubmitAt = now;
-      }
-
-      function disableVotingUI(){
-        submitBtn?.setAttribute('disabled','disabled');
-        submitBtnMobile?.setAttribute('disabled','disabled');
-        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-      }
-      function showNote(text){
-        if (noteEl) { noteEl.textContent = text; noteEl.classList.remove('hidden'); }
-        if (noteElMobile) { noteElMobile.textContent = text; noteElMobile.classList.remove('hidden'); }
-      }
-      function showToast(msg){
-        toast.textContent = msg; toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), 1200);
-      }
-
-      submitBtn?.addEventListener("click", (e)=>{ e.preventDefault(); handleVoteSubmit(); });
-      submitBtnMobile?.addEventListener("click", (e)=>{ e.preventDefault(); handleVoteSubmit(); });
-
-      function handleFlag(){
-        const flagsByUser = ls.getFlagsByUser();
-        const my = flagsByUser[currentUser] || {};
-        if (my[pollId]) { flagNote.textContent = "You’ve already flagged this poll."; flagNote.classList.remove('hidden'); return; }
-        const flags = ls.getFlags(); flags[pollId] = (flags[pollId] || 0) + 1; ls.setFlags(flags);
-        my[pollId] = true; flagsByUser[currentUser] = my; ls.setFlagsByUser(flagsByUser);
-        flagNote.textContent = "Thanks—your flag was recorded."; flagNote.classList.remove('hidden');
-      }
-      flagBtn?.addEventListener('click', (e)=>{ e.preventDefault(); handleFlag(); });
-      flagBtnMobile?.addEventListener('click', (e)=>{ e.preventDefault(); handleFlag(); });
-
-      // Copy link → +1 point once
-      copyBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const input = document.getElementById("share-link");
-        input.select(); document.execCommand("copy");
-        copiedMsg.classList.remove("hidden"); setTimeout(()=>copiedMsg.classList.add("hidden"), 1500);
-        const key = `share:${currentUser}:${pollId}`; if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
-      });
-
-      // ======== Comments ========
-      const isLoggedIn = !!window.VHAuth?.current?.();
-      if (!isLoggedIn) { commentGuard.classList.remove('hidden'); } else { commentForm.classList.remove('hidden'); }
-
-      function loadComments() { const all = ls.getComments(); return all[pollId] || []; }
-      function saveComments(list) { const all = ls.getComments(); all[pollId] = list; ls.setComments(all); }
-      function fmtTime(iso) { const d=new Date(iso); return isNaN(d)?'':d.toLocaleString(); }
-      function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-
-      function renderComments() {
-        const items = loadComments();
-        commentList.innerHTML = ''; commentCount.textContent = `${items.length}`;
-        if (!items.length) { commentList.innerHTML = '<div class="text-sm text-gray-500">No comments yet. Be the first to share your thoughts.</div>'; return; }
-        items.forEach(c => {
-          const delBtn = (role === 'superadmin') ? `<button data-id="${c.id}" class="del bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs">Delete</button>` : '';
-          commentList.insertAdjacentHTML('beforeend', `
-            <div class="border rounded p-3">
-              <div class="flex justify-between items-center">
-                <div class="text-sm"><span class="font-semibold">${c.user}</span> <span class="text-gray-500">• ${fmtTime(c.ts)}</span></div>
-                ${delBtn}
-              </div>
-              <p class="mt-2 text-sm">${escapeHtml(c.text)}</p>
+            <div class="h-2 mt-2 rounded bg-gray-100">
+              <div class="h-2 rounded ${isMine?'bg-indigo-500':'bg-indigo-300'}" style="width:${pct}%;"></div>
             </div>
-          `);
-        });
-        if (role === 'superadmin') {
-          commentList.querySelectorAll('.del').forEach(btn=>{
-            btn.addEventListener('click', ()=>{
-              const id = btn.getAttribute('data-id');
-              const list = loadComments().filter(x => x.id !== id);
-              saveComments(list); renderComments();
-            });
-          });
-        }
+          </button>`;
+      }).join('');
+
+      if (closed) {
+        noteEl.textContent = 'This poll is closed. Voting is disabled.';
+      } else if (!me) {
+        noteEl.innerHTML = 'Log in to vote. <a class="text-indigo-600 hover:underline" href="login.html?next=' + encodeURIComponent(location.pathname + location.search) + '">Log in</a>';
+      } else if (myVote !== null) {
+        noteEl.textContent = `You voted for option #${myVote + 1}.`;
+      } else {
+        noteEl.textContent = 'One vote per user.';
       }
 
-      commentForm.addEventListener('submit', (e)=>{
-        e.preventDefault();
-        const text = (commentText.value || '').trim();
-        if (text.length < 2) { commentText.focus(); return; }
-        if (text.length > 1000) { alert('Comment too long. (Max 1000 chars)'); return; }
-        const list = loadComments();
-        list.push({ id: 'c-' + Date.now() + Math.random().toString(36).slice(2), user: currentUser, text, ts: new Date().toISOString() });
-        saveComments(list); commentText.value = ''; renderComments();
-        // reward once per poll for first comment (optional)
-        const key = `comment:${currentUser}:${pollId}`;
-        if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
+      // Bind votes
+      optsEl.querySelectorAll('button[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (closed) return;
+          if (!me) { location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search); return; }
+          const idx = Number(btn.getAttribute('data-idx'));
+          // Prevent double vote
+          const uv = getUserVotes();
+          if (!uv[pid]) uv[pid] = {};
+          if (uv[pid][me.username] !== undefined) { render(); return; }
+
+          const vv = getVotes();
+          if (!vv[pid]) vv[pid] = {};
+          vv[pid][idx] = (vv[pid][idx] || 0) + 1;
+          setVotes(vv);
+
+          uv[pid][me.username] = idx;
+          setUserVotes(uv);
+
+          // Points +2 for vote
+          const pts = getPoints(); pts[me.username] = (pts[me.username] || 0) + 2; setPoints(pts);
+          const earned = getEarned(); earned[`vote:${me.username}:${pid}`] = new Date().toISOString(); setEarned(earned);
+
+          render();
+        });
       });
 
+      // Share link
+      linkEl.value = location.origin + location.pathname + '?id=' + encodeURIComponent(pid);
+    }
+
+    // Copy button + share points
+    document.getElementById('copy').addEventListener('click', async () => {
+      const link = document.getElementById('link').value;
+      try {
+        await navigator.clipboard.writeText(link);
+        // Award share point if logged in and not awarded yet for this poll
+        if (me) {
+          const earned = getEarned();
+          const key = `share:${me.username}:${pid}`;
+          if (!earned[key]) {
+            earned[key] = new Date().toISOString();
+            setEarned(earned);
+            const pts = getPoints(); pts[me.username] = (pts[me.username] || 0) + 1; setPoints(pts);
+          }
+        }
+        document.getElementById('copy').textContent = 'Copied ✓';
+        setTimeout(() => document.getElementById('copy').textContent = 'Copy', 900);
+      } catch (e) {
+        alert('Copy failed. You can manually copy the link.');
+      }
+    });
+
+    // Comments
+    function renderComments(){
+      const box = document.getElementById('comments');
+      const empty = document.getElementById('noComments');
+      const data = getComments()[pid] || [];
+      if (!data.length){ box.innerHTML=''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      box.innerHTML = data.slice(-50).reverse().map(c => `
+        <article class="bg-white border border-gray-100 rounded p-3">
+          <div class="text-xs text-gray-500">${c.user} • ${new Date(c.ts).toLocaleString()}</div>
+          <div class="text-sm mt-1">${(c.text||'').replace(/</g,'&lt;')}</div>
+        </article>
+      `).join('');
+    }
+
+    document.getElementById('cPost').addEventListener('click', ()=>{
+      const t = document.getElementById('cText').value.trim();
+      const hint = document.getElementById('cHint');
+      if (!me){ location.href = 'login.html?next=' + encodeURIComponent(location.pathname + location.search); return; }
+      if (!t) return;
+      const all = getComments();
+      if (!all[pid]) all[pid] = [];
+      all[pid].push({ user: me.username, text: t, ts: new Date().toISOString() });
+      setComments(all);
+      document.getElementById('cText').value = '';
+      // Points +1 for comment
+      const pts = getPoints(); pts[me.username] = (pts[me.username] || 0) + 1; setPoints(pts);
+      const earned = getEarned(); earned[`comment:${me.username}:${pid}`] = new Date().toISOString(); setEarned(earned);
       renderComments();
-    }
+    });
+
+    // Comment hint
+    (function(){
+      const hint = document.getElementById('cHint');
+      if (me) hint.textContent = `Logged in as ${me.username}`;
+      else hint.innerHTML = `You’re not logged in. <a href="login.html?next=${encodeURIComponent(location.pathname + location.search)}" class="text-indigo-600 hover:underline">Log in</a>`;
+    })();
+
+    // Init
+    render();
+    renderComments();
   </script>
 </body>
 </html>
