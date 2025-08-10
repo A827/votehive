@@ -1,18 +1,13 @@
 <script>
 /*
-  VoteHive Auth (Local Demo)
-  - Non-destructive: only defines window.VHAuth if missing.
-  - Users stored in localStorage: key 'vh_users'
-  - Session stored at    : key 'currentUser'  ( {username, role} )
-  - Seeds: superadmin / admin123  (role: 'admin') if no users exist.
-  - Methods:
-      VHAuth.current() -> {username, role} | null
-      VHAuth.login(username, password) -> {ok, error?}
-      VHAuth.logout()
-      VHAuth.register({username, password}) -> {ok, error?}
+  VoteHive Auth (Local Demo) — robust version
+  - Stores users in localStorage: 'vh_users'
+  - Session in 'currentUser' ( {username, role} )
+  - Seeds admin: superadmin / admin123
+  - Adds crypto fallback if crypto.subtle is unavailable.
 */
 (function(){
-  if (window.VHAuth) return; // don’t override if already defined
+  if (window.VHAuth) return; // don't override existing
 
   const LS_USERS = 'vh_users';
   const LS_SESSION = 'currentUser';
@@ -22,14 +17,23 @@
     catch { return {}; }
   }
   function saveUsers(db){ localStorage.setItem(LS_USERS, JSON.stringify(db)); }
+
+  // Hash with crypto.subtle if available, else a simple (not secure) fallback so login works in older browsers.
   async function sha256(txt){
-    const enc = new TextEncoder().encode(txt);
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    try {
+      if (window.crypto?.subtle) {
+        const enc = new TextEncoder().encode(txt);
+        const buf = await crypto.subtle.digest('SHA-256', enc);
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      }
+    } catch(e){}
+    // Fallback (weak): DJB2-style
+    let h = 5381;
+    for (let i=0;i<txt.length;i++) h = ((h<<5)+h) ^ txt.charCodeAt(i);
+    return ('00000000'+(h>>>0).toString(16)).slice(-8);
   }
 
-  // seed admin on first run
-  (async function seed(){
+  async function seed(){
     const db = loadUsers();
     if (!Object.keys(db).length){
       db['superadmin'] = {
@@ -39,7 +43,9 @@
       };
       saveUsers(db);
     }
-  })();
+  }
+  // Fire seed, but don't block usage
+  seed();
 
   window.VHAuth = {
     current(){
@@ -72,7 +78,6 @@
         createdAt: new Date().toISOString()
       };
       saveUsers(db);
-      // Auto-login after signup
       localStorage.setItem(LS_SESSION, JSON.stringify({username, role:'user'}));
       return {ok:true};
     }

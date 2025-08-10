@@ -8,12 +8,11 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
-  <!-- Header (role-aware) -->
+  <!-- Header mount -->
   <div id="vh-header"></div>
 
-  <!-- Auth first -->
+  <!-- Remember: auth -> guard -> header -->
   <script src="auth.js"></script>
-  <!-- Then your existing guards & header (they can read VHAuth.current) -->
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
@@ -26,26 +25,27 @@
           <p class="text-sm text-gray-600">Log in to vote, comment, and track your points.</p>
         </div>
 
-        <form id="form" class="space-y-4">
+        <form id="form" class="space-y-4" autocomplete="on">
           <div>
             <label class="block text-sm font-medium">Username</label>
-            <input id="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required/>
+            <input id="username" class="w-full border rounded px-3 py-2" placeholder="e.g., alex_01" required autofocus/>
           </div>
           <div>
             <label class="block text-sm font-medium">Password</label>
             <input id="password" type="password" class="w-full border rounded px-3 py-2" placeholder="••••••••" required/>
           </div>
-          <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Log in</button>
+          <button id="submitBtn" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Log in</button>
         </form>
 
         <p id="err" class="text-sm text-red-600 mt-3 hidden"></p>
+        <p id="ok" class="text-sm text-green-600 mt-3 hidden">Logged in! Redirecting…</p>
 
         <div class="mt-6 text-sm text-center text-gray-600">
           New here?
           <a class="text-indigo-600 hover:underline" id="signupLink" href="signup.html">Create an account</a>
         </div>
 
-        <div class="mt-2 text-xs text-center text-gray-400">Tip: demo admin is <code>superadmin</code> / <code>admin123</code></div>
+        <div class="mt-2 text-xs text-center text-gray-400">Demo admin: <code>superadmin</code> / <code>admin123</code></div>
       </div>
     </div>
   </main>
@@ -54,25 +54,49 @@
     const params = new URLSearchParams(location.search);
     const nextUrl = params.get('next') || 'index.html';
 
-    // If already logged in, bounce to next
+    // If already logged in, go where they came from
     (function(){
-      const me = window.VHAuth?.current?.();
-      if (me) location.replace(nextUrl);
+      try{
+        const me = window.VHAuth?.current?.();
+        if (me) location.replace(nextUrl);
+      }catch(e){}
     })();
 
-    document.getElementById('form').addEventListener('submit', async (e)=>{
+    const form = document.getElementById('form');
+    const btn  = document.getElementById('submitBtn');
+    const err  = document.getElementById('err');
+    const ok   = document.getElementById('ok');
+
+    form.addEventListener('submit', async (e)=>{
       e.preventDefault();
+      err.classList.add('hidden'); ok.classList.add('hidden');
+
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value;
-      const out = await window.VHAuth.login(u,p);
-      const err = document.getElementById('err');
-      if (!out.ok){
-        err.textContent = out.error || 'Login failed';
+
+      if (!window.VHAuth || !window.VHAuth.login){
+        err.textContent = 'Auth not initialized. Make sure auth.js is loaded before guard.js/header.js.';
         err.classList.remove('hidden');
         return;
       }
-      // Success
-      location.href = nextUrl;
+
+      btn.disabled = true; btn.textContent = 'Logging in…';
+      try{
+        const out = await window.VHAuth.login(u,p);
+        if (!out || !out.ok){
+          err.textContent = (out && out.error) ? out.error : 'Login failed';
+          err.classList.remove('hidden');
+          btn.disabled = false; btn.textContent = 'Log in';
+          return;
+        }
+        ok.classList.remove('hidden');
+        // Short delay so user sees success
+        setTimeout(()=> { location.href = nextUrl; }, 300);
+      }catch(ex){
+        err.textContent = 'Unexpected error. Try again.';
+        err.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Log in';
+      }
     });
 
     // Preserve ?next when jumping to signup
