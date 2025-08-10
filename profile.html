@@ -3,72 +3,351 @@
 <head>
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Profile – VoteHive</title>
-  <link rel="icon" href="/favicon.ico"/><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <script src="guard.js"></script>
-  <script>requireLogin();</script>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .ring{box-shadow:0 0 0 3px rgba(99,102,241,.25)}
+    .img-thumb{object-fit:cover}
+    .count{font-variant-numeric:tabular-nums}
+    .row:hover{background:#fafafa}
+  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+
+  <!-- Header -->
   <div id="vh-header"></div>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <main class="max-w-7xl mx-auto px-4 py-10 grid gap-6 md:grid-cols-3">
-    <section class="bg-white border border-gray-100 shadow rounded p-6">
-      <h1 class="text-2xl font-bold mb-2">Your Profile</h1>
-      <label class="block text-sm font-medium mt-2">Display Name</label>
-      <input id="name" class="w-full border rounded px-3 py-2" />
-      <label class="block text-sm font-medium mt-3">Bio</label>
-      <textarea id="bio" rows="3" class="w-full border rounded px-3 py-2"></textarea>
-      <button id="save" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Save</button>
-      <div class="mt-6">
-        <h3 class="text-sm font-semibold">Points</h3>
-        <div id="pts" class="text-3xl font-extrabold text-indigo-700">0</div>
+  <!-- Title -->
+  <section class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-10">
+      <h1 class="text-3xl font-bold mb-2">Profile</h1>
+      <p class="text-gray-600">See activity, points, and badges.</p>
+    </div>
+  </section>
+
+  <!-- Profile header -->
+  <main class="max-w-7xl mx-auto px-4 pt-6 pb-14">
+    <section id="profileCard" class="bg-white border border-gray-100 rounded-2xl shadow p-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div id="avatar" class="w-14 h-14 rounded-full bg-indigo-50 ring flex items-center justify-center text-indigo-700 font-semibold text-xl">U</div>
+          <div>
+            <div class="text-xl font-semibold" id="pName">—</div>
+            <div class="text-sm text-gray-500">
+              <span id="pRole" class="chip bg-indigo-50 text-indigo-700">User</span>
+              <span class="chip bg-gray-100 text-gray-700 count" id="pPoints">0 pts</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-sm text-gray-500">
+          <div class="mb-1">Badges</div>
+          <div id="badges" class="flex flex-wrap gap-2">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bio (owner can edit) -->
+      <div class="mt-5 border-t pt-4">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold">Bio</div>
+          <button id="editBioBtn" class="hidden text-xs text-indigo-600 hover:underline">Edit</button>
+        </div>
+        <p id="bioText" class="mt-1 text-sm text-gray-700">—</p>
+
+        <form id="bioForm" class="hidden mt-2">
+          <textarea id="bioInput" rows="3" class="w-full border rounded px-3 py-2 text-sm" maxlength="280" placeholder="Write a short bio (max 280 chars)…"></textarea>
+          <div class="mt-2 flex gap-2">
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-sm" type="submit">Save</button>
+            <button id="cancelBio" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm" type="button">Cancel</button>
+          </div>
+        </form>
       </div>
     </section>
 
-    <section class="bg-white border border-gray-100 shadow rounded p-6 md:col-span-2">
-      <h2 class="text-lg font-semibold mb-2">Your Polls</h2>
-      <div id="mypolls" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+    <!-- Tabs -->
+    <section class="mt-8">
+      <div class="inline-flex gap-2 bg-gray-100 rounded-lg p-1">
+        <button class="tab px-4 py-2 rounded-lg text-sm bg-white" data-tab="activity">Activity</button>
+        <button class="tab px-4 py-2 rounded-lg text-sm" data-tab="comments">Comments</button>
+        <button class="tab px-4 py-2 rounded-lg text-sm" data-tab="voted">Voted Polls</button>
+      </div>
+    </section>
+
+    <!-- Activity -->
+    <section id="tab-activity" class="mt-5">
+      <div class="bg-white border border-gray-100 rounded-2xl shadow overflow-hidden">
+        <div class="px-4 py-3 border-b text-sm text-gray-600 flex items-center justify-between">
+          <div class="font-medium">Recent Activity</div>
+          <div class="text-xs text-gray-400">Last 60 items</div>
+        </div>
+        <div id="activityRows" class="divide-y">
+          <!-- rows -->
+        </div>
+        <div id="activityEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10">No activity yet.</div>
+      </div>
+    </section>
+
+    <!-- Comments -->
+    <section id="tab-comments" class="hidden mt-5">
+      <div class="bg-white border border-gray-100 rounded-2xl shadow overflow-hidden">
+        <div class="px-4 py-3 border-b text-sm text-gray-600 flex items-center justify-between">
+          <div class="font-medium">Comments</div>
+          <div class="text-xs text-gray-400">Most recent first</div>
+        </div>
+        <div id="commentRows" class="divide-y"></div>
+        <div id="commentEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10">No comments yet.</div>
+      </div>
+    </section>
+
+    <!-- Voted polls -->
+    <section id="tab-voted" class="hidden mt-5">
+      <div class="bg-white border border-gray-100 rounded-2xl shadow overflow-hidden">
+        <div class="px-4 py-3 border-b text-sm text-gray-600 flex items-center justify-between">
+          <div class="font-medium">Voted Polls</div>
+          <div class="text-xs text-gray-400">Most recent first</div>
+        </div>
+        <div id="votedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4"></div>
+        <div id="votedEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10">No votes yet.</div>
+      </div>
     </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm"><span>© 2025 VoteHive</span><div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div></div>
+  <footer class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
+      <div class="flex items-center gap-2">
+        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6">
+        <span class="font-semibold">VoteHive</span>
+      </div>
+      <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
+    </div>
   </footer>
 
   <script>
-    const me = VHAuth.current().username;
-    const getProfiles = ()=> JSON.parse(localStorage.getItem('vh_profiles')||'{}');
-    const setProfiles = (d)=> localStorage.setItem('vh_profiles', JSON.stringify(d));
-    const getPts = ()=> JSON.parse(localStorage.getItem('userPoints')||'{}')[me]||0;
-    const getPolls = ()=> JSON.parse(localStorage.getItem('customPolls')||'{}');
+    // ------- Utilities & data loaders -------
+    const me = (window.VHAuth?.current?.() || null);
+    const params = new URLSearchParams(location.search);
+    const paramUser = params.get('u');
 
-    function render(){
-      const p = getProfiles()[me] || { name: me, bio: '' };
-      document.getElementById('name').value = p.name || '';
-      document.getElementById('bio').value  = p.bio || '';
-      document.getElementById('pts').textContent = getPts();
+    function get(key, fallback){
+      try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }
+      catch{ return fallback; }
+    }
+    function set(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-      const polls = Object.entries(getPolls()).filter(([id,x])=> (x?.createdBy||'')===me);
-      document.getElementById('mypolls').innerHTML = polls.length ? polls.map(([id,p])=>{
-        const end=new Date(p.endTime); const closed=Date.now()>end; const badge=closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700';
-        return `<article class="border border-gray-100 shadow rounded p-4">
-          <div class="flex items-center gap-2 text-xs mb-1"><span class="px-2 py-1 rounded-full ${badge}">${closed?'Closed':'Open'}</span><span class="text-gray-500">${p.category||'General'}</span></div>
-          <h3 class="font-semibold mb-1">${p.title}</h3>
-          <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-          <a href="poll.html?id=${encodeURIComponent(id)}" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm">Open</a>
-        </article>`;
-      }).join('') : '<div class="text-sm text-gray-500">No polls yet.</div>';
+    const polls = get('customPolls', {});              // {id: poll}
+    const votes = get('userVotes', {});                // {pollId:{username: idx}}
+    const commentsAll = get('pollComments', {});       // {pollId:[{user,text,ts,parentId,...}]}
+    const points = get('userPoints', {});              // {username: number}
+    const profiles = get('userProfiles', {});          // {username:{bio}}
+    const activity = (get('activityLog', [])||[])      // [{type,user,ts,pid,meta}]
+      .filter(x => x && x.user && x.ts).slice(-200).reverse();
+
+    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;'}[m])); }
+    function fmt(n){ return (n||0).toLocaleString(); }
+    function fmtTime(ts){ return new Date(ts).toLocaleString(); }
+
+    // ------- Determine whose profile -------
+    const profileUser = paramUser || (me && me.username) || null;
+
+    // Redirect hint if none
+    if (!profileUser){
+      document.querySelector('main').innerHTML = `
+        <section class="bg-white border border-gray-100 rounded-2xl shadow p-8 text-center">
+          <div class="text-lg font-semibold mb-2">No profile selected</div>
+          <p class="text-gray-600">Log in to view your profile, or open <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs">/profile.html?u=USERNAME</code></p>
+        </section>
+      `;
     }
 
-    document.getElementById('save').addEventListener('click', ()=>{
-      const profiles = getProfiles();
-      profiles[me] = { name: document.getElementById('name').value.trim() || me, bio: document.getElementById('bio').value.trim() || '' };
-      setProfiles(profiles);
-      render();
-      document.getElementById('save').textContent='Saved ✓'; setTimeout(()=>document.getElementById('save').textContent='Save',1200);
+    // ------- Populate header card -------
+    (function renderHeader(){
+      if (!profileUser) return;
+      const avatar = document.getElementById('avatar');
+      const pName = document.getElementById('pName');
+      const pRole = document.getElementById('pRole');
+      const pPoints = document.getElementById('pPoints');
+      const bioText = document.getElementById('bioText');
+      const editBtn = document.getElementById('editBioBtn');
+      const isOwner = !!(me && me.username === profileUser);
+
+      avatar.textContent = (profileUser[0]||'U').toUpperCase();
+      pName.textContent = profileUser;
+      pRole.textContent = me && me.username===profileUser ? (me.role||'user') : 'User';
+      pPoints.textContent = (points[profileUser]||0) + ' pts';
+
+      const bio = (profiles[profileUser] && profiles[profileUser].bio) || 'No bio yet.';
+      bioText.textContent = bio;
+
+      // badges
+      const b = calcBadges(profileUser);
+      const badges = document.getElementById('badges');
+      badges.innerHTML = b.length ? b.map(b=>`<span class="chip ${b.class}">${b.label}</span>`).join('') : '<span class="text-gray-400 text-sm">—</span>';
+
+      // bio edit (owner only)
+      if (isOwner){
+        editBtn.classList.remove('hidden');
+        editBtn.addEventListener('click', ()=>{
+          document.getElementById('bioForm').classList.remove('hidden');
+          editBtn.classList.add('hidden');
+          document.getElementById('bioInput').value = (profiles[profileUser]?.bio)||'';
+        });
+        document.getElementById('cancelBio').addEventListener('click', ()=>{
+          document.getElementById('bioForm').classList.add('hidden');
+          editBtn.classList.remove('hidden');
+        });
+        document.getElementById('bioForm').addEventListener('submit', (e)=>{
+          e.preventDefault();
+          profiles[profileUser] = profiles[profileUser]||{};
+          profiles[profileUser].bio = document.getElementById('bioInput').value.trim().slice(0,280);
+          set('userProfiles', profiles);
+          document.getElementById('bioForm').classList.add('hidden');
+          editBtn.classList.remove('hidden');
+          document.getElementById('bioText').textContent = profiles[profileUser].bio || 'No bio yet.';
+        });
+      }
+    })();
+
+    function calcBadges(user){
+      // derive counts
+      const a = activity.filter(e => e.user === user);
+      const votesC = a.filter(e => e.type==='vote').length;
+      const comC = a.filter(e => e.type==='comment').length;
+      const shareC = a.filter(e => e.type==='share').length;
+      const total = points[user] || (votesC*2 + comC + shareC);
+
+      const out = [];
+      if (votesC >= 1) out.push({label:'Voter', class:'bg-indigo-50 text-indigo-700'});
+      if (comC >= 1) out.push({label:'Voice', class:'bg-emerald-50 text-emerald-700'});
+      if (shareC >= 1) out.push({label:'Amplifier', class:'bg-amber-50 text-amber-700'});
+      if (total >= 25) out.push({label:'Rising', class:'bg-purple-50 text-purple-700'});
+      if (total >= 100) out.push({label:'Influencer', class:'bg-pink-50 text-pink-700'});
+      return out.slice(0,5);
+    }
+
+    // ------- Tabs switching -------
+    document.querySelectorAll('.tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(b=> b.classList.remove('bg-white'));
+        btn.classList.add('bg-white');
+        const tab = btn.getAttribute('data-tab');
+        ['activity','comments','voted'].forEach(t=>{
+          document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
+        });
+      });
     });
 
-    render();
+    // ------- Activity list -------
+    (function renderActivity(){
+      if (!profileUser) return;
+      const rowsEl = document.getElementById('activityRows');
+      const emptyEl = document.getElementById('activityEmpty');
+      const my = activity.filter(e => e.user === profileUser).slice(0,60);
+      if (!my.length){ emptyEl.classList.remove('hidden'); return; }
+      emptyEl.classList.add('hidden');
+
+      rowsEl.innerHTML = my.map(ev=>{
+        const p = polls[ev.pid] || {};
+        const title = (p.title || 'a poll');
+        const icon = ev.type==='vote' ? '🗳️' : ev.type==='comment' ? '💬' : '🔗';
+        return `
+          <div class="px-4 py-3 row">
+            <div class="flex items-center justify-between">
+              <div class="text-sm">
+                ${icon} <span class="font-medium">${esc(profileUser)}</span>
+                ${ev.type==='vote' ? 'voted in' : ev.type==='comment' ? 'commented on' : 'shared'}
+                <a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(ev.pid)}">${esc(title)}</a>
+              </div>
+              <div class="text-xs text-gray-500">${fmtTime(ev.ts)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    })();
+
+    // ------- Comments list -------
+    (function renderComments(){
+      if (!profileUser) return;
+      const rowsEl = document.getElementById('commentRows');
+      const emptyEl = document.getElementById('commentEmpty');
+
+      const mine = [];
+      for (const [pid, arr] of Object.entries(commentsAll)){
+        (arr||[]).forEach(c=>{
+          if (c && !c.deleted && c.user === profileUser){
+            mine.push({pid, c});
+          }
+        });
+      }
+      mine.sort((a,b)=> new Date(b.c.ts) - new Date(a.c.ts));
+      if (!mine.length){ emptyEl.classList.remove('hidden'); return; }
+      emptyEl.classList.add('hidden');
+
+      rowsEl.innerHTML = mine.slice(0,80).map(({pid,c})=>{
+        const p = polls[pid] || {};
+        return `
+          <div class="px-4 py-3 row">
+            <div class="flex items-center justify-between">
+              <div class="text-sm">
+                <span class="text-gray-500">${fmtTime(c.ts)}</span>
+                • in <a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(pid)}">${esc(p.title||'a poll')}</a>
+              </div>
+            </div>
+            <div class="mt-1 text-sm">${esc(c.text||'')}</div>
+          </div>
+        `;
+      }).join('');
+    })();
+
+    // ------- Voted polls grid -------
+    (function renderVoted(){
+      if (!profileUser) return;
+      const grid = document.getElementById('votedGrid');
+      const empty = document.getElementById('votedEmpty');
+
+      const mine = [];
+      for (const [pid, map] of Object.entries(votes)){
+        if (map && map[profileUser] !== undefined) mine.push(pid);
+      }
+      // sort by most recent activity from activityLog if possible
+      mine.sort((a,b)=>{
+        const at = activity.find(e=> e.user===profileUser && e.pid===a && e.type==='vote')?.ts || 0;
+        const bt = activity.find(e=> e.user===profileUser && e.pid===b && e.type==='vote')?.ts || 0;
+        return (new Date(bt)) - (new Date(at));
+      });
+
+      if (!mine.length){ empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = mine.slice(0,12).map(id=>{
+        const p = polls[id] || {};
+        const end = new Date(p.endTime);
+        const closed = !isNaN(end) && Date.now() > end.getTime();
+        const badge = closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        const thumb = p.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+        return `
+          <article class="bg-white border border-gray-100 shadow rounded-xl overflow-hidden">
+            <div class="h-28 w-full overflow-hidden">
+              <img class="w-full h-full img-thumb" src="${thumb}" alt="">
+            </div>
+            <div class="p-3">
+              <div class="flex items-center gap-2 text-xs mb-1">
+                <span class="chip ${badge}">${closed?'Closed':'Open'}</span>
+                <span class="text-gray-500">${esc(p.category||'General')}</span>
+              </div>
+              <div class="font-semibold line-clamp-2">${esc(p.title||'Untitled')}</div>
+              <a class="mt-2 inline-block text-sm text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(id)}">Open</a>
+            </div>
+          </article>
+        `;
+      }).join('');
+    })();
+
+    // Default tab visible
+    document.querySelector('[data-tab="activity"]').click();
   </script>
 </body>
 </html>
