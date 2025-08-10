@@ -2,16 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>VoteHive – Poll</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <style>
-    html.vh-dark body { background-color:#0f172a; color:#e5e7eb; }
-    html.vh-dark header, html.vh-dark footer { filter: brightness(0.9); }
+    html.vh-dark body { background:#0f172a; color:#e5e7eb; }
     .vh-card { background:#fff; } html.vh-dark .vh-card { background:#111827; border-color:#1f2937; }
     .vh-btn-light { background:#fff; color:#6b21a8; } html.vh-dark .vh-btn-light { background:#1f2937; color:#d8b4fe; }
-    .disabled { opacity:0.6; pointer-events:none; }
+    .menu-enter { max-height:0; overflow:hidden; transition:max-height .25s ease; }
+    .menu-enter.open { max-height:420px; }
+    /* Sticky action bar on mobile */
+    @media (max-width: 767px){
+      .vh-sticky-actions { position: sticky; bottom: 0; z-index: 40; border-top:1px solid rgba(0,0,0,.08); }
+      html.vh-dark .vh-sticky-actions { border-top-color:#1f2937; }
+      .vh-option { padding:14px; }
+    }
+    @media (min-width: 768px){
+      .vh-option { padding:10px; }
+    }
   </style>
   <script src="theme.js"></script>
   <script src="auth.js" defer></script>
@@ -19,48 +28,77 @@
 <body class="bg-white text-gray-800 font-sans">
 
   <!-- Header -->
-  <header class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-      <div class="flex items-center gap-3">
+  <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
         <img src="/logo.svg" alt="VoteHive Logo" class="w-8 h-8">
-        <span class="text-xl font-bold">VoteHive</span>
-      </div>
-      <nav class="flex gap-3 text-sm items-center">
-        <a href="index.html" class="hover:underline">Home</a>
-        <a href="browse.html" class="hover:underline">Browse</a>
-        <a href="leaderboard.html" class="hover:underline">Leaderboard</a>
-        <a href="rewards.html" class="hover:underline">Rewards</a>
-        <a href="create.html" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Apply to Create</a>
-        <a href="moderation.html" class="hover:underline">Moderation</a>
-        <button id="themeToggle" onclick="toggleTheme()" class="vh-btn-light px-3 py-1 rounded hover:bg-gray-200">Toggle Theme</button>
+        <span class="text-xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">VoteHive</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-3 text-sm">
+        <a href="browse.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="leaderboard.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="rewards.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
+        <a href="profile.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <a href="create.html" class="ml-1 bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+        <button onclick="toggleTheme()" class="ml-1 border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
       </nav>
+      <button id="burger" aria-label="Open menu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded border border-gray-200 dark:border-gray-800">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gray-700 dark:text-gray-200">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="mobileMenu" class="menu-enter md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="px-4 py-2 grid gap-1">
+        <a href="browse.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Browse</a>
+        <a href="leaderboard.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Leaderboard</a>
+        <a href="rewards.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Rewards</a>
+        <a href="profile.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Profile</a>
+        <a href="moderation.html" class="px-3 py-3 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Moderation</a>
+        <div class="flex gap-2 mt-1">
+          <a href="create.html" class="flex-1 text-center bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700">Apply to Create</a>
+          <button onclick="toggleTheme()" class="flex-1 text-center border px-3 py-2 rounded text-indigo-700 border-indigo-200 dark:text-indigo-300 dark:border-indigo-800">Theme</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <!-- Poll Content -->
-  <main class="max-w-3xl mx-auto px-4 py-12">
-    <h1 id="poll-title" class="text-3xl font-bold mb-2">Loading...</h1>
+  <main class="max-w-3xl mx-auto px-4 py-10 md:py-12">
+    <h1 id="poll-title" class="text-2xl md:text-3xl font-bold mb-2">Loading…</h1>
     <p id="poll-category" class="text-sm text-gray-500 mb-1"></p>
     <p id="countdown" class="text-sm text-indigo-600 font-semibold mb-6"></p>
 
     <div id="guard-msg" class="hidden mb-4 text-sm p-3 rounded bg-yellow-50 text-yellow-800 border border-yellow-200"></div>
 
-    <form id="vote-form" class="vh-card border border-gray-100 shadow rounded p-4 space-y-3 mb-6"></form>
-    <div class="flex flex-wrap gap-3">
+    <form id="vote-form" class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-3 md:p-4 space-y-2 md:space-y-3 mb-4 md:mb-6"></form>
+
+    <!-- Sticky actions (mobile) -->
+    <div class="vh-sticky-actions md:hidden bg-white dark:bg-gray-900 px-4 py-3">
+      <div class="flex gap-2">
+        <button id="submit-vote-mobile" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded text-sm">Submit Vote</button>
+        <button id="flag-btn-mobile" class="px-4 py-3 rounded text-sm border">Flag</button>
+      </div>
+      <p id="vote-note-mobile" class="text-xs text-gray-600 mt-2 hidden"></p>
+    </div>
+
+    <!-- Desktop actions -->
+    <div class="hidden md:flex flex-wrap gap-3">
       <button id="submit-vote" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded">Submit Vote</button>
       <button id="flag-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded">Flag for Review</button>
     </div>
-    <p id="vote-note" class="text-sm text-gray-600 mt-2 hidden"></p>
+    <p id="vote-note" class="hidden md:block text-sm text-gray-600 mt-2"></p>
     <p id="flag-note" class="text-sm text-green-600 mt-2 hidden">Thanks—your flag was recorded.</p>
 
-    <section id="results" class="vh-card border border-gray-100 shadow rounded p-4 mt-8 hidden">
+    <section id="results" class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-8 hidden">
       <h2 class="text-lg font-semibold mb-3">Results</h2>
       <div id="results-list" class="space-y-3"></div>
       <p id="total-votes" class="text-xs text-gray-500 mt-2"></p>
     </section>
 
     <!-- Share -->
-    <section class="vh-card border border-gray-100 shadow rounded p-4 mt-10">
+    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-10">
       <div class="flex items-center justify-between mb-3">
         <label class="block text-sm font-medium">📤 Share this poll</label>
         <button id="qr-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded text-sm">Show QR</button>
@@ -85,7 +123,7 @@
     </section>
 
     <!-- Comments -->
-    <section class="vh-card border border-gray-100 shadow rounded p-4 mt-10">
+    <section class="vh-card border border-gray-100 dark:border-gray-800 shadow rounded p-4 mt-10">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">Comments</h2>
         <span id="comment-count" class="text-sm text-gray-500">0</span>
@@ -98,7 +136,7 @@
       <form id="comment-form" class="mt-3 hidden">
         <textarea id="comment-text" rows="3" class="w-full border rounded px-3 py-2" placeholder="Add a comment…"></textarea>
         <div class="flex justify-between items-center mt-2">
-          <span id="comment-hint" class="text-xs text-gray-500">Be respectful. No spam.</span>
+          <span class="text-xs text-gray-500">Be respectful. No spam.</span>
           <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">Post</button>
         </div>
       </form>
@@ -107,7 +145,7 @@
     </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
+  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
       <span>© 2025 VoteHive</span>
       <div class="flex gap-6">
@@ -120,6 +158,11 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow"></div>
 
   <script>
+    // Mobile nav
+    const burger = document.getElementById('burger');
+    const mobileMenu = document.getElementById('mobileMenu');
+    burger?.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+
     // ======== Helpers & state ========
     const session = (window.VHAuth?.current?.() || {username:'guest', role:'user'});
     const currentUser = session.username;
@@ -163,7 +206,9 @@
     const categoryEl = document.getElementById("poll-category");
     const formEl = document.getElementById("vote-form");
     const submitBtn = document.getElementById("submit-vote");
+    const submitBtnMobile = document.getElementById("submit-vote-mobile");
     const noteEl = document.getElementById("vote-note");
+    const noteElMobile = document.getElementById("vote-note-mobile");
     const countdownEl = document.getElementById("countdown");
     const resultsWrap = document.getElementById("results");
     const resultsList = document.getElementById("results-list");
@@ -177,6 +222,7 @@
     const shareX  = document.getElementById("share-x");
     const toast = document.getElementById("toast");
     const flagBtn = document.getElementById("flag-btn");
+    const flagBtnMobile = document.getElementById("flag-btn-mobile");
     const flagNote = document.getElementById("flag-note");
     const qrBtn = document.getElementById("qr-btn");
     const qrWrap = document.getElementById("qr-wrap");
@@ -201,8 +247,9 @@
     if (!poll || poll.hidden) {
       titleEl.textContent = "Poll not found or unavailable.";
       formEl.innerHTML = "";
-      submitBtn.style.display = "none";
-      document.getElementById('results').classList.add('hidden');
+      submitBtn?.remove();
+      submitBtnMobile?.remove();
+      resultsWrap.classList.add('hidden');
     } else {
       titleEl.textContent = poll.title || "Untitled poll";
       categoryEl.textContent = poll.category ? `Category: ${poll.category}` : "";
@@ -219,13 +266,13 @@
         qrImg.src = url; qrWrap.classList.remove('hidden');
       });
 
-      // Options
+      // Options (larger hit areas on mobile)
       formEl.innerHTML = "";
       (poll.options || []).forEach((opt, i) => {
         const id = `opt-${i}`;
         formEl.insertAdjacentHTML("beforeend", `
-          <label for="${id}" class="block border border-gray-300 rounded p-2 cursor-pointer hover:bg-gray-50">
-            <input id="${id}" type="radio" name="vote" value="${opt}" class="mr-2">${opt}
+          <label for="${id}" class="vh-option block border border-gray-300 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+            <input id="${id}" type="radio" name="vote" value="${opt}" class="mr-2 transform scale-110 align-middle"> ${opt}
           </label>
         `);
       });
@@ -237,8 +284,7 @@
         if (isNaN(diff)) { countdownEl.textContent = ""; return; }
         if (diff <= 0) {
           countdownEl.textContent = "⏱️ Poll Closed";
-          submitBtn.disabled = true;
-          formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
+          disableVotingUI();
           renderResults();
           return;
         }
@@ -277,9 +323,7 @@
         resultsWrap.classList.remove("hidden");
       }
       renderResults();
-
-      // Live refresh (local) every 5s
-      setInterval(renderResults, 5000);
+      setInterval(renderResults, 5000); // live refresh (local)
 
       // ======== Voting guard: one vote per user AND per device ========
       const votesByUser = ls.getVotesByUser();
@@ -291,14 +335,11 @@
       const deviceVoted = !!deviceMap[deviceId];
 
       if (userVoted) {
-        submitBtn.disabled = true;
-        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        noteEl.textContent = `You already voted: ${myVotes[pollId]} (+2 points earned)`;
-        noteEl.classList.remove('hidden');
+        disableVotingUI();
+        showNote(`You already voted: ${myVotes[pollId]} (+2 points earned)`);
       } else if (deviceVoted) {
-        submitBtn.disabled = true;
-        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        showGuard('A vote for this poll has already been cast from this device. Log in from another device to vote.');
+        disableVotingUI();
+        showGuard('A vote for this poll has already been cast from this device.');
       }
 
       // Anti-spam cooldown + captcha if too fast
@@ -306,8 +347,8 @@
       function tooFastSubmit(){ return Date.now() - pageLoadedAt < 2000; }
       function askSimpleCaptcha(){ const a=2+Math.floor(Math.random()*7), b=2+Math.floor(Math.random()*7); return prompt(`Quick check: ${a}+${b}=?`,'')==(a+b); }
 
-      submitBtn.addEventListener("click", (e) => {
-        e.preventDefault(); hideGuard();
+      function handleVoteSubmit(){
+        hideGuard();
         if (new Date() > end) { updateCountdown(); return; }
 
         const now = Date.now();
@@ -325,10 +366,8 @@
         const chosen = document.querySelector('input[name="vote"]:checked');
         if (!chosen) { showGuard('Please select an option.'); return; }
 
-        // Record vote
         castVote(chosen.value);
 
-        // Ledgers
         myVotes[pollId] = chosen.value;
         votesByUser[currentUser] = myVotes;
         ls.setVotesByUser(votesByUser);
@@ -338,31 +377,44 @@
         ledger[pollId][deviceId] = true;
         ls.setDeviceLedger(ledger);
 
-        // Points once per poll
         const voteKey = `vote:${currentUser}:${pollId}`;
         if (!hasEarned(voteKey)) { addPoints(currentUser, 2); markEarned(voteKey); }
 
         renderResults();
-        toast.textContent = `Thanks for voting! (+2 points)`;
-        toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), 1200);
+        showToast('Thanks for voting! (+2 points)');
 
-        submitBtn.disabled = true;
-        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
-        noteEl.textContent = `You voted: ${chosen.value}`; noteEl.classList.remove('hidden');
+        disableVotingUI();
+        showNote(`You voted: ${chosen.value}`);
 
         lastSubmitAt = now;
-      });
+      }
 
-      // Flagging
-      flagBtn.addEventListener('click', (e)=>{
-        e.preventDefault();
+      function disableVotingUI(){
+        submitBtn?.setAttribute('disabled','disabled');
+        submitBtnMobile?.setAttribute('disabled','disabled');
+        formEl.querySelectorAll("input[type=radio]").forEach(i => i.disabled = true);
+      }
+      function showNote(text){
+        if (noteEl) { noteEl.textContent = text; noteEl.classList.remove('hidden'); }
+        if (noteElMobile) { noteElMobile.textContent = text; noteElMobile.classList.remove('hidden'); }
+      }
+      function showToast(msg){
+        toast.textContent = msg; toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), 1200);
+      }
+
+      submitBtn?.addEventListener("click", (e)=>{ e.preventDefault(); handleVoteSubmit(); });
+      submitBtnMobile?.addEventListener("click", (e)=>{ e.preventDefault(); handleVoteSubmit(); });
+
+      function handleFlag(){
         const flagsByUser = ls.getFlagsByUser();
         const my = flagsByUser[currentUser] || {};
         if (my[pollId]) { flagNote.textContent = "You’ve already flagged this poll."; flagNote.classList.remove('hidden'); return; }
         const flags = ls.getFlags(); flags[pollId] = (flags[pollId] || 0) + 1; ls.setFlags(flags);
         my[pollId] = true; flagsByUser[currentUser] = my; ls.setFlagsByUser(flagsByUser);
         flagNote.textContent = "Thanks—your flag was recorded."; flagNote.classList.remove('hidden');
-      });
+      }
+      flagBtn?.addEventListener('click', (e)=>{ e.preventDefault(); handleFlag(); });
+      flagBtnMobile?.addEventListener('click', (e)=>{ e.preventDefault(); handleFlag(); });
 
       // Copy link → +1 point once
       copyBtn.addEventListener("click", (e) => {
@@ -373,7 +425,7 @@
         const key = `share:${currentUser}:${pollId}`; if (!hasEarned(key)) { addPoints(currentUser, 1); markEarned(key); }
       });
 
-      // SEO title
+      // SEO
       document.title = `${poll.title} – VoteHive`;
 
       // ======== Comments ========
