@@ -2,20 +2,20 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "votehive-a827s-projects.vercel.app" }],
-      "destination": "https://votehive.vercel.app/$1",
+      "has": [{ "type": "host", "value": "votehive.vercel.app" }],
+      "destination": "https://votehive-446dl0t5v-a827s-projects.vercel.app/$1",
       "permanent": true
     },
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "votehive-941xoqv8l-a827s-projects.vercel.app" }],
-      "destination": "https://votehive.vercel.app/$1",
+      "has": [{ "type": "host", "value": "votehive-a827s-projects.vercel.app" }],
+      "destination": "https://votehive-446dl0t5v-a827s-projects.vercel.app/$1",
       "permanent": true
     },
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "votehive-hwcvq4vpl-a827s-projects.vercel.app" }],
-      "destination": "https://votehive.vercel.app/$1",
+      "destination": "https://votehive-446dl0t5v-a827s-projects.vercel.app/$1",
       "permanent": true
     }
   ]
