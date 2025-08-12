@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>VoteHive – Where Ideas Compete</title>
+  <meta name="description" content="VoteHive: create and vote on trending ideas across categories. See live activity, trending polls, and top voters." />
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 
@@ -16,7 +17,6 @@
     @media (prefers-reduced-motion: reduce){ .ticker > div{animation:none; padding-left:0} }
     .countdown{font-variant-numeric:tabular-nums}
     .img-thumb{object-fit:cover}
-    /* 2-line clamp helper (no plugin needed) */
     .clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   </style>
 </head>
@@ -24,14 +24,14 @@
 
   <!-- Role-aware header -->
   <div id="vh-header"></div>
-  <!-- IMPORTANT: load order -->
-  <script src="auth.js"></script>
-  <script src="guard.js"></script>
-  <script src="header.js"></script>
+  <!-- IMPORTANT: keep this order, using defer to avoid blocking -->
+  <script src="auth.js" defer></script>
+  <script src="guard.js" defer></script>
+  <script src="header.js" defer></script>
 
   <!-- HERO with Spotlight + Ticker -->
   <section class="relative overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-indigo-700 to-purple-700"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-indigo-700 to-purple-700" aria-hidden="true"></div>
     <div class="relative max-w-7xl mx-auto px-4 py-14 md:py-18 text-white">
       <div class="grid md:grid-cols-3 gap-6 items-stretch">
         <!-- Left: Claim + CTAs -->
@@ -55,7 +55,7 @@
         <div class="md:col-span-1">
           <div class="rounded-2xl shadow-2xl bg-white/10 border border-white/10 p-4 h-full">
             <div class="text-sm text-white/90 mb-2">Daily Spotlight</div>
-            <article id="spotlight" class="bg-white/10 rounded-xl overflow-hidden">
+            <article id="spotlight" class="bg-white/10 rounded-xl overflow-hidden" aria-live="polite">
               <!-- Filled by JS -->
             </article>
           </div>
@@ -87,7 +87,7 @@
         </div>
       </div>
       <div class="md:col-span-1">
-        <div class="flex gap-2 overflow-x-auto scrollhide">
+        <div class="flex gap-2 overflow-x-auto scrollhide" aria-label="Popular categories">
           <a href="browse.html?category=Startups" class="chip bg-indigo-50 text-indigo-700">Startups</a>
           <a href="browse.html?category=Brands" class="chip bg-indigo-50 text-indigo-700">Brands</a>
           <a href="browse.html?category=Politics" class="chip bg-indigo-50 text-indigo-700">Politics</a>
@@ -105,10 +105,12 @@
   <section class="max-w-7xl mx-auto px-4 pb-4">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl md:text-2xl font-bold">Trending Polls</h2>
-      <div class="text-sm text-gray-500" id="trendingMeta"></div>
+      <div class="text-sm text-gray-500" id="trendingMeta" aria-live="polite"></div>
     </div>
     <div id="trendingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    <div id="trendingEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">No polls yet. Be the first to <a class="text-indigo-600 underline" href="create.html">apply</a>.</div>
+    <div id="trendingEmpty" class="hidden text-center text-gray-500 bg-gray-50 p-10 rounded">
+      No polls yet. Be the first to <a class="text-indigo-600 underline" href="create.html">apply</a>.
+    </div>
   </section>
 
   <!-- Top Voters (social proof) -->
@@ -140,7 +142,7 @@
   <footer class="bg-gray-50 mt-12">
     <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex flex-col md:flex-row items-center justify-between">
       <div class="flex items-center gap-2">
-        <img src="/logo.svg" alt="VoteHive" class="w-6 h-6" loading="lazy" decoding="async">
+        <img src="/logo.svg" alt="VoteHive logo" class="w-6 h-6" loading="lazy" decoding="async">
         <span class="font-semibold">VoteHive</span>
       </div>
       <div class="mt-3 md:mt-0 text-gray-500">© 2025 VoteHive • <a href="#" class="hover:underline">About</a> • <a href="#" class="hover:underline">Contact</a></div>
@@ -156,25 +158,35 @@
     const getPoints = () => { try { return JSON.parse(localStorage.getItem('userPoints')||'{}'); } catch { return {}; } };
 
     function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-    function totalVotesFor(id){ const v = getVotes()[id] || {}; return Object.values(v).reduce((a,b)=>a + (Number(b)||0), 0); }
+    function totalVotesFor(id){
+      const v = getVotes()[id] || {};
+      return Object.values(v).reduce((a,b)=> a + (Number(b)||0), 0);
+    }
 
     function trendingScore(id, p){
+      if (!p) return -Infinity;
+      const end = new Date(p.endTime);
+      const hoursLeft = isNaN(end) ? 0 : Math.max(0, (end - new Date()) / 36e5);
+      const created = new Date(p.createdAt || Date.now());
+      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - created) / (3*864e5))); // ~3 days
       const t = totalVotesFor(id);
-      const hoursLeft = Math.max(0, (new Date(p.endTime) - new Date()) / 36e5);
-      const recency = Math.max(0, 1 - Math.min(1, (Date.now() - new Date(p.createdAt||Date.now())) / (3*864e5))); // ~3 days
-      const commentsWeight = 0;
-      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5 + commentsWeight;
+      return t * 0.8 + (1/(1+hoursLeft)) * 10 + recency * 5;
     }
 
     // ------- Spotlight -------
     function spotlightPoll(){
       const polls = getPolls();
       const keys = Object.keys(polls);
-      let pick = null;
-      if (keys.length){
-        pick = keys.map(id => [id, polls[id]]).sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]))[0];
-      }
       const el = document.getElementById('spotlight');
+      let pick = null;
+
+      if (keys.length){
+        pick = keys
+          .map(id => [id, polls[id]])
+          .filter(([_,p]) => p && !p.hidden)
+          .sort((a,b)=> trendingScore(b[0],b[1]) - trendingScore(a[0],a[1]))[0];
+      }
+
       if (!pick){
         const demo = {
           id:'demo1',
@@ -215,7 +227,7 @@
 
     // ------- Activity Ticker -------
     function renderTicker(){
-      const log = (getActivity()||[]).slice(-30).reverse(); // newest first
+      const log = (getActivity()||[]).filter(Boolean).slice(-30).reverse(); // newest first
       const polls = getPolls();
       const fmt = log.map(ev => {
         const p = polls[ev.pid] || {};
@@ -257,7 +269,7 @@
     function renderTrending(){
       const polls = getPolls();
       const rows = Object.entries(polls)
-        .filter(([id,p]) => p && !p.hidden)
+        .filter(([_,p]) => p && !p.hidden)
         .sort((a,b) => trendingScore(b[0], b[1]) - trendingScore(a[0], a[1]))
         .slice(0, 6);
 
@@ -294,7 +306,7 @@
       }
       el.innerHTML = rows.map(([user,score])=>`
         <div class="bg-white border border-gray-100 rounded-xl p-4 text-center">
-          <div class="mx-auto mb-2 w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-semibold">${esc(user[0]||'U').toUpperCase()}</div>
+          <div class="mx-auto mb-2 w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-semibold">${esc((user||'U')[0]).toUpperCase()}</div>
           <div class="font-medium">${esc(user)}</div>
           <div class="text-xs text-gray-500">Points: ${score}</div>
         </div>
@@ -307,7 +319,7 @@
       const btn = document.getElementById('searchBtn');
       btn.addEventListener('click', (e)=>{
         const q = (input.value||'').trim();
-        if (!q) return;
+        if (!q) return; // keep default href
         btn.href = 'browse.html?q=' + encodeURIComponent(q);
       });
       input.addEventListener('keydown', (e)=>{
