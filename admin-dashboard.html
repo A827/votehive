@@ -25,21 +25,23 @@
 
   <!-- Shared header (role-aware) -->
   <div id="vh-header"></div>
+  <!-- LOAD ORDER MATTERS -->
   <script src="auth.js"></script>
   <script src="guard.js"></script>
   <script src="header.js"></script>
   <script>
-    // Admin-only guard (uses our shared guard)
-    requireAdmin();
+    // Admin-only guard (admin OR superadmin)
+    if (typeof requireAdmin === 'function') { requireAdmin(); }
+
     // Simple theme toggle (no external theme.js)
     (function initTheme(){
-      const t = localStorage.getItem('vh_theme') || 'light';
+      var t = localStorage.getItem('vh_theme') || 'light';
       document.documentElement.classList.toggle('vh-dark', t === 'dark');
       window.toggleTheme = function(){
-        const dark = !document.documentElement.classList.contains('vh-dark');
+        var dark = !document.documentElement.classList.contains('vh-dark');
         document.documentElement.classList.toggle('vh-dark', dark);
         localStorage.setItem('vh_theme', dark ? 'dark' : 'light');
-      }
+      };
     })();
   </script>
 
@@ -91,24 +93,27 @@
 
   <script>
     // ----- Storage helpers (shared keys) -----
-    const getPolls   = () => { try { return JSON.parse(localStorage.getItem('customPolls') || '{}'); } catch { return {}; } };
-    const setPolls   = (d) => localStorage.setItem('customPolls', JSON.stringify(d));
-    const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
-    const setLog     = (d) => localStorage.setItem('applicationLog', JSON.stringify(d));
+    function safeParse(json, fallback){
+      try { return JSON.parse(json); } catch(e){ return fallback; }
+    }
+    var getPolls   = function(){ return safeParse(localStorage.getItem('customPolls') || '{}', {}); };
+    var setPolls   = function(d){ localStorage.setItem('customPolls', JSON.stringify(d)); };
+    var getLog     = function(){ return safeParse(localStorage.getItem('applicationLog') || '[]', []); };
+    var setLog     = function(d){ localStorage.setItem('applicationLog', JSON.stringify(d)); };
 
-    // Legacy/optional pending store (if you later use it)
-    const getPendingObj = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
-    const setPendingObj = (d) => localStorage.setItem('pendingPolls', JSON.stringify(d));
+    // Legacy/optional pending store
+    var getPendingObj = function(){ return safeParse(localStorage.getItem('pendingPolls') || '{}', {}); };
+    var setPendingObj = function(d){ localStorage.setItem('pendingPolls', JSON.stringify(d)); };
 
-    const getPoints  = () => { try { return JSON.parse(localStorage.getItem('userPoints') || '{}'); } catch { return {}; } };
-    const setPoints  = (d) => localStorage.setItem('userPoints', JSON.stringify(d));
-    const getEarned  = () => { try { return JSON.parse(localStorage.getItem('vh_pointsEarned') || '{}'); } catch { return {}; } };
-    const setEarned  = (d) => localStorage.setItem('vh_pointsEarned', JSON.stringify(d));
+    var getPoints  = function(){ return safeParse(localStorage.getItem('userPoints') || '{}', {}); };
+    var setPoints  = function(d){ localStorage.setItem('userPoints', JSON.stringify(d)); };
+    var getEarned  = function(){ return safeParse(localStorage.getItem('vh_pointsEarned') || '{}', {}); };
+    var setEarned  = function(d){ localStorage.setItem('vh_pointsEarned', JSON.stringify(d)); };
 
     function awardOnce(key, username, amount){
-      const earned = getEarned();
+      var earned = getEarned();
       if (earned[key]) return false;
-      const pts = getPoints();
+      var pts = getPoints();
       pts[username] = (pts[username]||0) + amount;
       setPoints(pts);
       earned[key] = true;
@@ -118,10 +123,10 @@
 
     // ----- Pending applications (merge sources) -----
     function getPendingMerged(){
-      const out = [];
+      var out = [];
       // Source A: applicationLog entries with status "pending"
-      const log = getLog();
-      log.filter(x => x && x.status === 'pending').forEach(x => {
+      var log = getLog();
+      log.filter(function(x){ return x && x.status === 'pending'; }).forEach(function(x){
         out.push({
           pid: x.id || ('app-' + Math.random().toString(36).slice(2)),
           title: x.title,
@@ -135,10 +140,11 @@
       });
 
       // Source B: pendingPolls object (if present)
-      const pendObj = getPendingObj();
-      Object.entries(pendObj).forEach(([pid, p])=>{
+      var pendObj = getPendingObj();
+      Object.keys(pendObj).forEach(function(pid){
+        var p = pendObj[pid] || {};
         out.push({
-          pid,
+          pid: pid,
           title: p.title,
           category: p.category,
           options: p.options || [],
@@ -149,67 +155,71 @@
         });
       });
 
-      // Deduplicate by (title+applicant+submittedAt) heuristic
-      const seen = new Set();
-      const unique = [];
-      out.forEach(item=>{
-        const key = (item.title||'')+'|'+(item.applicant||'')+'|'+(item.submittedAt||'');
-        if (!seen.has(key)) { seen.add(key); unique.push(item); }
+      // Deduplicate by (title+applicant+submittedAt)
+      var seen = {};
+      var unique = [];
+      out.forEach(function(item){
+        var key = (item.title||'')+'|'+(item.applicant||'')+'|'+(item.submittedAt||'');
+        if (!seen[key]) { seen[key] = 1; unique.push(item); }
       });
 
       // Sort newest first
-      unique.sort((a,b)=> new Date(b.submittedAt) - new Date(a.submittedAt));
+      unique.sort(function(a,b){ return new Date(b.submittedAt) - new Date(a.submittedAt); });
       return unique;
     }
 
     function renderPending(){
-      const el = document.getElementById('pendingList');
-      const items = getPendingMerged();
-      document.getElementById('pendingHint').textContent = items.length ? '' : 'No applications pending.';
+      var el = document.getElementById('pendingList');
+      var items = getPendingMerged();
+      var hint = document.getElementById('pendingHint');
+      if (hint) hint.textContent = items.length ? '' : 'No applications pending.';
       el.innerHTML = '';
 
-      items.forEach(p=>{
-        const card = document.createElement('div');
+      items.forEach(function(p){
+        var card = document.createElement('div');
         card.className = 'py-4';
-        card.innerHTML = `
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex-1">
-              <div class="text-sm text-gray-500">Applicant: <strong>${p.applicant || 'guest'}</strong> • Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
-              <div class="font-semibold mt-1">${p.title}</div>
-              <div class="text-sm text-gray-600 mt-1">Category: ${p.category || 'General'} • Requested: ${p.requestedDays || 7} days</div>
-              <div class="text-sm text-gray-600 mt-1">Options: ${(p.options||[]).join(', ')}</div>
-              ${p.context ? `<div class="text-sm text-gray-500 mt-2">${p.context}</div>` : ''}
-            </div>
-            <div class="w-64 shrink-0 space-y-2">
-              <label class="block text-sm font-medium">Approve with duration</label>
-              <select data-key="${encodeURIComponent(p.pid)}" class="dur vh-input border rounded px-2 py-1 w-full">
-                <option value="1">1 day</option>
-                <option value="3">3 days</option>
-                <option value="7" selected>7 days</option>
-                <option value="30">30 days</option>
-              </select>
-              <div class="flex gap-2">
-                <button data-key="${encodeURIComponent(p.pid)}" class="approve vh-cta px-3 py-1 rounded text-sm">Approve</button>
-                <button data-key="${encodeURIComponent(p.pid)}" class="reject vh-btn px-3 py-1 rounded text-sm">Reject</button>
-              </div>
-            </div>
-          </div>
-        `;
+        card.innerHTML =
+          '<div class="flex items-start justify-between gap-4">'+
+            '<div class="flex-1">'+
+              '<div class="text-sm text-gray-500">Applicant: <strong>'+(p.applicant || 'guest')+
+              '</strong> • Submitted: '+ new Date(p.submittedAt).toLocaleString() +'</div>'+
+              '<div class="font-semibold mt-1">'+(p.title||'')+'</div>'+
+              '<div class="text-sm text-gray-600 mt-1">Category: '+(p.category || 'General')+
+              ' • Requested: '+(p.requestedDays || 7)+' days</div>'+
+              '<div class="text-sm text-gray-600 mt-1">Options: '+((p.options||[]).join(', '))+'</div>'+
+              (p.context ? '<div class="text-sm text-gray-500 mt-2">'+p.context+'</div>' : '')+
+            '</div>'+
+            '<div class="w-64 shrink-0 space-y-2">'+
+              '<label class="block text-sm font-medium">Approve with duration</label>'+
+              '<select data-key="'+encodeURIComponent(p.pid)+'" class="dur vh-input border rounded px-2 py-1 w-full">'+
+                '<option value="1">1 day</option>'+
+                '<option value="3">3 days</option>'+
+                '<option value="7" selected>7 days</option>'+
+                '<option value="30">30 days</option>'+
+              '</select>'+
+              '<div class="flex gap-2">'+
+                '<button data-key="'+encodeURIComponent(p.pid)+'" class="approve vh-cta px-3 py-1 rounded text-sm">Approve</button>'+
+                '<button data-key="'+encodeURIComponent(p.pid)+'" class="reject vh-btn px-3 py-1 rounded text-sm">Reject</button>'+
+              '</div>'+
+            '</div>'+
+          '</div>';
         el.appendChild(card);
       });
 
       // Bind actions
-      el.querySelectorAll('.approve').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const key = decodeURIComponent(btn.getAttribute('data-key'));
-          const sel = el.querySelector(`.dur[data-key="${btn.getAttribute('data-key')}"]`);
-          const days = parseInt(sel?.value || '7', 10);
+      Array.prototype.forEach.call(el.querySelectorAll('.approve'), function(btn){
+        btn.addEventListener('click', function(){
+          var keyAttr = btn.getAttribute('data-key');
+          var key = keyAttr ? decodeURIComponent(keyAttr) : '';
+          var sel = el.querySelector('.dur[data-key="'+keyAttr+'"]');
+          var days = parseInt((sel && sel.value) ? sel.value : '7', 10);
           approveApp(key, days);
         });
       });
-      el.querySelectorAll('.reject').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const key = decodeURIComponent(btn.getAttribute('data-key'));
+      Array.prototype.forEach.call(el.querySelectorAll('.reject'), function(btn){
+        btn.addEventListener('click', function(){
+          var keyAttr = btn.getAttribute('data-key');
+          var key = keyAttr ? decodeURIComponent(keyAttr) : '';
           if (!confirm('Reject this application?')) return;
           rejectApp(key);
         });
@@ -218,36 +228,40 @@
 
     function findAndRemovePendingByKey(key){
       // Remove from pendingPolls if present
-      const pend = getPendingObj();
+      var pend = getPendingObj();
       if (pend[key]) { delete pend[key]; setPendingObj(pend); }
 
-      // Mark matching applicationLog entry as not pending if we can match on title+applicant
-      const log = getLog();
-      const idx = log.findIndex(x => x && (x.id === key || encodeURIComponent(x.id||'') === encodeURIComponent(key)));
-      if (idx >= 0) return { log, idx }; // direct match
-      return { log, idx: -1 };
+      // Try to locate in applicationLog by id
+      var log = getLog();
+      var idx = -1;
+      for (var i=0;i<log.length;i++){
+        var x = log[i];
+        if (!x) continue;
+        var idEnc = encodeURIComponent(x.id || '');
+        if (x.id === key || idEnc === encodeURIComponent(key)) { idx = i; break; }
+      }
+      return { log: log, idx: idx };
     }
 
     function approveApp(key, days){
-      // 1) Locate the app in merged sources (by key) to get details
-      const items = getPendingMerged();
-      const app = items.find(x => x.pid === key);
+      var items = getPendingMerged();
+      var app = null;
+      for (var i=0;i<items.length;i++){ if (items[i].pid === key){ app = items[i]; break; } }
       if (!app){ alert('Application not found.'); renderAll(); return; }
 
-      // 2) Create unique poll id from title
-      let id = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-      if (!id) id = 'poll-' + Date.now();
-      const polls = getPolls();
+      // unique poll id from title
+      var base = (app.title || 'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      var id = base || ('poll-' + Date.now());
+      var polls = getPolls();
       if (polls[id]) id = id + '-' + Date.now();
 
-      // 3) Publish poll
-      const nowIso = new Date().toISOString();
-      const endTime = new Date(Date.now() + (days || 7)*24*60*60*1000).toISOString();
+      var nowIso = new Date().toISOString();
+      var endTime = new Date(Date.now() + (days || 7)*24*60*60*1000).toISOString();
       polls[id] = {
         title: app.title,
         category: app.category,
         options: app.options,
-        endTime,
+        endTime: endTime,
         createdAt: nowIso,
         createdBy: app.applicant || 'guest',
         featured: false,
@@ -255,39 +269,69 @@
       };
       setPolls(polls);
 
-      // 4) Log decision & award points
-      const { log, idx } = findAndRemovePendingByKey(key);
+      // log decision & award
+      var res = findAndRemovePendingByKey(key);
+      var log = res.log, idx = res.idx;
       if (idx >= 0) {
-        log[idx] = { ...log[idx], status:'approved', decidedAt: nowIso, pollId: id };
+        var entry = log[idx];
+        for (var k in entry){} // keep reference
+        log[idx] = {
+          id: entry.id,
+          status: 'approved',
+          title: entry.title || app.title,
+          category: entry.category || app.category,
+          applicant: entry.applicant || app.applicant || 'guest',
+          decidedAt: nowIso,
+          pollId: id
+        };
       } else {
-        // If we can’t match, append a decision entry
         log.push({ id:key, status:'approved', title:app.title, category:app.category, applicant:app.applicant||'guest', decidedAt: nowIso, pollId:id });
       }
       setLog(log);
 
-      const applicant = app.applicant || 'guest';
-      awardOnce(`approval:${applicant}:${id}`, applicant, 10);
+      var applicant = app.applicant || 'guest';
+      awardOnce('approval:'+applicant+':'+id, applicant, 10);
 
       alert('Approved and published! ✅ (+10 points to applicant)');
       renderAll();
     }
 
     function rejectApp(key){
-      const items = getPendingMerged();
-      const app = items.find(x => x.pid === key);
-      const nowIso = new Date().toISOString();
+      var items = getPendingMerged();
+      var app = null;
+      for (var i=0;i<items.length;i++){ if (items[i].pid === key){ app = items[i]; break; } }
+      var nowIso = new Date().toISOString();
 
-      // Remove from pending store if present
-      const pend = getPendingObj();
+      var pend = getPendingObj();
       if (pend[key]) { delete pend[key]; setPendingObj(pend); }
 
-      // Update or append log
-      const log = getLog();
-      const idx = log.findIndex(x => x && (x.id === key || encodeURIComponent(x.id||'') === encodeURIComponent(key)));
+      var log = getLog();
+      var idx = -1;
+      for (var j=0;j<log.length;j++){
+        var x = log[j];
+        if (!x) continue;
+        var idEnc = encodeURIComponent(x.id || '');
+        if (x.id === key || idEnc === encodeURIComponent(key)) { idx = j; break; }
+      }
       if (idx >= 0) {
-        log[idx] = { ...log[idx], status:'rejected', decidedAt: nowIso };
+        var e = log[idx];
+        log[idx] = {
+          id: e.id,
+          status: 'rejected',
+          title: e.title || (app ? app.title : undefined),
+          category: e.category || (app ? app.category : undefined),
+          applicant: e.applicant || (app ? (app.applicant||'guest') : 'guest'),
+          decidedAt: nowIso
+        };
       } else {
-        log.push({ id:key, status:'rejected', title:app?.title, category:app?.category, applicant:app?.applicant||'guest', decidedAt: nowIso });
+        log.push({
+          id:key,
+          status:'rejected',
+          title: app ? app.title : undefined,
+          category: app ? app.category : undefined,
+          applicant: app ? (app.applicant||'guest') : 'guest',
+          decidedAt: nowIso
+        });
       }
       setLog(log);
 
@@ -296,66 +340,96 @@
 
     // ----- Published polls list -----
     function renderPolls(){
-      const list = document.getElementById('pollList');
-      const q = (document.getElementById('search').value || '').toLowerCase();
-      const polls = Object.entries(getPolls()).filter(([id,p])=>{
-        if (!p) return false;
-        return !q || (p.title||'').toLowerCase().includes(q);
-      }).sort((a,b)=> new Date(a[1].endTime) - new Date(b[1].endTime));
+      var list = document.getElementById('pollList');
+      var qEl = document.getElementById('search');
+      var q = (qEl && qEl.value ? qEl.value : '').toLowerCase();
 
-      list.innerHTML = polls.length ? '' : '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
-      polls.forEach(([id,p])=>{
-        const end = new Date(p.endTime);
-        const closed = Date.now() > end.getTime();
-        const row = document.createElement('div');
+      var pollsArr = [];
+      var pollsObj = getPolls();
+      for (var id in pollsObj){
+        if (!pollsObj.hasOwnProperty(id)) continue;
+        var p = pollsObj[id];
+        if (!p) continue;
+        if (!q || String(p.title||'').toLowerCase().indexOf(q) !== -1){
+          pollsArr.push([id, p]);
+        }
+      }
+      pollsArr.sort(function(a,b){ return new Date(a[1].endTime) - new Date(b[1].endTime); });
+
+      list.innerHTML = pollsArr.length ? '' : '<div class="py-4 text-sm text-gray-600">No polls found.</div>';
+      pollsArr.forEach(function(pair){
+        var id = pair[0], p = pair[1];
+        var end = new Date(p.endTime);
+        var closed = Date.now() > end.getTime();
+        var row = document.createElement('div');
         row.className = 'py-4';
-        row.innerHTML = `
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-full text-xs ${closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${closed?'Closed':'Open'}</span>
-                <span class="text-xs text-gray-500">${p.category||'General'}</span>
-                ${p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':''}
-                ${p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':''}
-              </div>
-              <div class="font-semibold mt-1">${p.title}</div>
-              <div class="text-xs text-gray-500">Ends: ${isNaN(end)?'N/A':end.toLocaleString()}</div>
-              <div class="text-xs text-gray-500">By: ${p.createdBy||'—'}</div>
-            </div>
-            <div class="flex flex-col gap-2">
-              <a href="poll.html?id=${encodeURIComponent(id)}" target="_blank" class="vh-btn px-3 py-1 rounded text-sm text-center">Open</a>
-              <button data-id="${id}" class="feature vh-btn px-3 py-1 rounded text-sm">${p.featured?'Unfeature':'Feature'}</button>
-              <button data-id="${id}" class="hide vh-btn px-3 py-1 rounded text-sm">${p.hidden?'Unhide':'Hide'}</button>
-              <div class="flex gap-2">
-                <button data-id="${id}" class="extend vh-btn px-3 py-1 rounded text-sm">+7d</button>
-                <button data-id="${id}" class="closeNow vh-btn px-3 py-1 rounded text-sm">Close Now</button>
-              </div>
-              <button data-id="${id}" class="delete vh-btn px-3 py-1 rounded text-sm">Delete</button>
-            </div>
-          </div>
-        `;
+        row.innerHTML =
+          '<div class="flex items-start justify-between gap-4">'+
+            '<div>'+
+              '<div class="flex items-center gap-2">'+
+                '<span class="px-2 py-0.5 rounded-full text-xs '+(closed?'bg-red-100 text-red-700':'bg-green-100 text-green-700')+'">'+(closed?'Closed':'Open')+'</span>'+
+                '<span class="text-xs text-gray-500">'+(p.category||'General')+'</span>'+
+                (p.featured?'<span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">Featured</span>':'')+
+                (p.hidden?'<span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-700">Hidden</span>':'')+
+              '</div>'+
+              '<div class="font-semibold mt-1">'+(p.title||'')+'</div>'+
+              '<div class="text-xs text-gray-500">Ends: '+(isNaN(end)?'N/A':end.toLocaleString())+'</div>'+
+              '<div class="text-xs text-gray-500">By: '+(p.createdBy||'—')+'</div>'+
+            '</div>'+
+            '<div class="flex flex-col gap-2">'+
+              '<a href="poll.html?id='+encodeURIComponent(id)+'" target="_blank" class="vh-btn px-3 py-1 rounded text-sm text-center">Open</a>'+
+              '<button data-id="'+id+'" class="feature vh-btn px-3 py-1 rounded text-sm">'+(p.featured?'Unfeature':'Feature')+'</button>'+
+              '<button data-id="'+id+'" class="hide vh-btn px-3 py-1 rounded text-sm">'+(p.hidden?'Unhide':'Hide')+'</button>'+
+              '<div class="flex gap-2">'+
+                '<button data-id="'+id+'" class="extend vh-btn px-3 py-1 rounded text-sm">+7d</button>'+
+                '<button data-id="'+id+'" class="closeNow vh-btn px-3 py-1 rounded text-sm">Close Now</button>'+
+              '</div>'+
+              '<button data-id="'+id+'" class="delete vh-btn px-3 py-1 rounded text-sm">Delete</button>'+
+            '</div>'+
+          '</div>';
         list.appendChild(row);
       });
 
       // actions
-      list.querySelectorAll('.feature').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].featured=!polls[id].featured; setPolls(polls); renderPolls();
-      }));
-      list.querySelectorAll('.hide').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].hidden=!polls[id].hidden; setPolls(polls); renderPolls();
-      }));
-      list.querySelectorAll('.closeNow').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); polls[id].endTime=new Date(Date.now()-1000).toISOString(); setPolls(polls); renderPolls();
-      }));
-      list.querySelectorAll('.extend').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); const polls=getPolls(); const cur=new Date(polls[id].endTime||Date.now()); polls[id].endTime=new Date(cur.getTime()+7*24*60*60*1000).toISOString(); setPolls(polls); renderPolls();
-      }));
-      list.querySelectorAll('.delete').forEach(b=>b.addEventListener('click',()=>{
-        const id=b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return; const polls=getPolls(); delete polls[id]; setPolls(polls); renderPolls();
-      }));
+      Array.prototype.forEach.call(list.querySelectorAll('.feature'), function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-id'); var polls = getPolls();
+          if (!polls[id]) return;
+          polls[id].featured = !polls[id].featured; setPolls(polls); renderPolls();
+        });
+      });
+      Array.prototype.forEach.call(list.querySelectorAll('.hide'), function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-id'); var polls = getPolls();
+          if (!polls[id]) return;
+          polls[id].hidden = !polls[id].hidden; setPolls(polls); renderPolls();
+        });
+      });
+      Array.prototype.forEach.call(list.querySelectorAll('.closeNow'), function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-id'); var polls = getPolls();
+          if (!polls[id]) return;
+          polls[id].endTime = new Date(Date.now()-1000).toISOString(); setPolls(polls); renderPolls();
+        });
+      });
+      Array.prototype.forEach.call(list.querySelectorAll('.extend'), function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-id'); var polls = getPolls();
+          if (!polls[id]) return;
+          var cur = new Date(polls[id].endTime || Date.now());
+          polls[id].endTime = new Date(cur.getTime()+7*24*60*60*1000).toISOString(); setPolls(polls); renderPolls();
+        });
+      });
+      Array.prototype.forEach.call(list.querySelectorAll('.delete'), function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-id'); if(!confirm('Delete this poll?')) return;
+          var polls = getPolls(); delete polls[id]; setPolls(polls); renderPolls();
+        });
+      });
     }
 
-    document.getElementById('search').addEventListener('input', renderPolls);
+    var searchEl = document.getElementById('search');
+    if (searchEl) searchEl.addEventListener('input', renderPolls);
 
     function renderAll(){ renderPending(); renderPolls(); }
     renderAll();
