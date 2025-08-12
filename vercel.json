@@ -2,15 +2,21 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "votehive-git-main-a827s-projects.vercel.app" }],
+      "has": [{ "type": "host", "value": "votehive-a827s-projects.vercel.app" }],
       "destination": "https://votehive.vercel.app/$1",
-      "permanent": false
+      "permanent": true
     },
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "votehive-941xoqv8l-a827s-projects.vercel.app" }],
       "destination": "https://votehive.vercel.app/$1",
-      "permanent": false
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "votehive-hwcvq4vpl-a827s-projects.vercel.app" }],
+      "destination": "https://votehive.vercel.app/$1",
+      "permanent": true
     }
   ]
 }
