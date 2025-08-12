@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Analytics – VoteHive</title>
+  <link rel="icon" href="/favicon.ico"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .bar{height:10px;border-radius:9999px;background:#e5e7eb;overflow:hidden}
+    .bar > span{display:block;height:100%}
+    .spark{height:40px}
+    .card{background:#fff}
+    html.vh-dark body{background:#0f172a;color:#e5e7eb}
+    html.vh-dark .card{background:#111827;border-color:#1f2937}
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+  <!-- Shared header; load order matters -->
+  <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script src="header.js"></script>
+  <script>requireAdmin();</script>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-3xl font-bold">Analytics</h1>
+        <p class="text-gray-600">Real-time stats for polls, votes, and engagement.</p>
+      </div>
+      <div class="flex gap-2">
+        <select id="range" class="border rounded px-3 py-2 text-sm">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="all">All time</option>
+        </select>
+        <select id="pollSel" class="border rounded px-3 py-2 text-sm">
+          <option value="">All polls</option>
+        </select>
+        <button id="exportCsv" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded text-sm">Export CSV</button>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+      <div class="card border border-gray-100 shadow rounded p-5">
+        <div class="text-sm text-gray-500">Total Votes</div>
+        <div id="kpiVotes" class="text-3xl font-extrabold mt-1">0</div>
+        <div id="kpiVotesDelta" class="text-xs mt-1 text-gray-500">—</div>
+      </div>
+      <div class="card border border-gray-100 shadow rounded p-5">
+        <div class="text-sm text-gray-500">Active Polls</div>
+        <div id="kpiActive" class="text-3xl font-extrabold mt-1">0</div>
+        <div class="text-xs mt-1 text-gray-500">Closing soon shown below</div>
+      </div>
+      <div class="card border border-gray-100 shadow rounded p-5">
+        <div class="text-sm text-gray-500">Unique Voters</div>
+        <div id="kpiVoters" class="text-3xl font-extrabold mt-1">0</div>
+        <div class="text-xs mt-1 text-gray-500">Based on activity log</div>
+      </div>
+      <div class="card border border-gray-100 shadow rounded p-5">
+        <div class="text-sm text-gray-500">Comments</div>
+        <div id="kpiComments" class="text-3xl font-extrabold mt-1">0</div>
+        <div class="text-xs mt-1 text-gray-500">Conversation volume</div>
+      </div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="card border border-gray-100 shadow rounded p-5 mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold">Votes Over Time</h2>
+        <div class="text-xs text-gray-500">Bucketed by day</div>
+      </div>
+      <div id="timeline" class="spark bg-white border border-gray-100 rounded"></div>
+      <div id="timelineLegend" class="text-xs text-gray-500 mt-2"></div>
+    </section>
+
+    <!-- Poll breakdown -->
+    <section class="grid lg:grid-cols-3 gap-6 mt-6">
+      <div class="card border border-gray-100 shadow rounded p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Poll Performance</h2>
+          <div id="pollCount" class="text-xs text-gray-500"></div>
+        </div>
+        <div id="pollTable" class="overflow-x-auto">
+          <!-- rows injected -->
+        </div>
+      </div>
+
+      <div class="card border border-gray-100 shadow rounded p-5">
+        <h2 class="text-xl font-semibold mb-2">Ending Soon</h2>
+        <div id="endingSoon" class="space-y-3 text-sm"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-gray-50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2"><img src="/logo.svg" alt="" class="w-6 h-6"><span class="font-semibold">VoteHive</span></div>
+      <div class="text-gray-500">© 2025 VoteHive</div>
+    </div>
+  </footer>
+
+  <script>
+    // ---------- Safe getters ----------
+    function getJSON(key, fallback){
+      try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : (fallback || null); }catch(e){ return fallback || null; }
+    }
+    function getPolls(){ return getJSON('customPolls', {} ) || {}; }
+    function getVotes(){ return getJSON('pollVotes',   {} ) || {}; }
+    function getActivity(){ return getJSON('activityLog', []) || []; }
+    function getComments(){ return getJSON('pollComments', {}) || {}; }
+
+    // ---------- Helpers ----------
+    function withinRange(ts, rangeDays){
+      if (rangeDays === 'all') return true;
+      var t = (typeof ts === 'number') ? ts : (new Date(ts)).getTime();
+      if (!t) return false;
+      var now = Date.now();
+      var ms = parseInt(rangeDays,10) * 24*60*60*1000;
+      return (now - t) <= ms;
+    }
+    function fmt(n){ return (n||0).toLocaleString(); }
+    function pct(a,b){ if (b<=0) return '0%'; var p = Math.round((a/b)*100); return p+'%'; }
+    function esc(s){ return (s||'').replace(/[&<>"]/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]);}); }
+    function dayKey(ts){ var d=new Date(ts); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+
+    // ---------- DOM refs ----------
+    var rangeSel   = document.getElementById('range');
+    var pollSel    = document.getElementById('pollSel');
+    var kpiVotes   = document.getElementById('kpiVotes');
+    var kpiVotesDelta = document.getElementById('kpiVotesDelta');
+    var kpiActive  = document.getElementById('kpiActive');
+    var kpiVoters  = document.getElementById('kpiVoters');
+    var kpiComments= document.getElementById('kpiComments');
+    var timelineEl = document.getElementById('timeline');
+    var timelineLegend = document.getElementById('timelineLegend');
+    var pollTable  = document.getElementById('pollTable');
+    var endingSoon = document.getElementById('endingSoon');
+    var pollCount  = document.getElementById('pollCount');
+    var exportBtn  = document.getElementById('exportCsv');
+
+    // ---------- Build poll selector ----------
+    (function buildPollSelect(){
+      var polls = getPolls();
+      var opts = ['<option value="">All polls</option>'];
+      Object.keys(polls).forEach(function(id){
+        var p = polls[id]||{};
+        opts.push('<option value="'+id+'">'+esc(p.title||id)+'</option>');
+      });
+      pollSel.innerHTML = opts.join('');
+    })();
+
+    // ---------- Compute + Render ----------
+    function compute(rangeDays, pollId){
+      var polls = getPolls();
+      var votes = getVotes();
+      var acts  = getActivity();
+      var comms = getComments();
+
+      // Filter activity to range and poll
+      var filtActs = acts.filter(function(e){
+        if (!e || !e.ts) return false;
+        if (!withinRange(e.ts, rangeDays)) return false;
+        if (pollId && e.pid !== pollId) return false;
+        return (e.type==='vote' || e.type==='comment' || e.type==='share');
+      });
+
+      // KPIs
+      var totalVotes=0, uniqVoters={}, totalComments=0;
+      var byDay = {};
+      for (var i=0;i<filtActs.length;i++){
+        var ev = filtActs[i];
+        var day = dayKey(ev.ts);
+        if (!byDay[day]) byDay[day] = {votes:0, comments:0, shares:0};
+        if (ev.type==='vote'){ byDay[day].votes++; totalVotes++; if (ev.user) uniqVoters[ev.user]=1; }
+        if (ev.type==='comment'){ byDay[day].comments++; totalComments++; if (ev.user) uniqVoters[ev.user]=1; }
+        if (ev.type==='share'){ byDay[day].shares++; if (ev.user) uniqVoters[ev.user]=1; }
+      }
+
+      // Active polls
+      var now = Date.now();
+      var activeCount = 0;
+      Object.keys(polls).forEach(function(id){
+        var p = polls[id]; if (!p) return;
+        var end = new Date(p.endTime).getTime();
+        if (end && now < end) activeCount++;
+      });
+
+      // Poll rows
+      var pollRows = [];
+      Object.keys(polls).forEach(function(id){
+        if (pollId && id !== pollId) return;
+        var p = polls[id]; if (!p) return;
+        // votes for this poll in range
+        var vcount = 0, votersMap = {};
+        for (var j=0;j<filtActs.length;j++){
+          var ev2 = filtActs[j];
+          if (ev2.type==='vote' && ev2.pid===id){ vcount++; if (ev2.user) votersMap[ev2.user]=1; }
+        }
+        // comments in range
+        var ccount = 0;
+        for (var k=0;k<filtActs.length;k++){
+          var ev3 = filtActs[k];
+          if (ev3.type==='comment' && ev3.pid===id) ccount++;
+        }
+        // option breakdown (from pollVotes store, all time)
+        var optTotals = [];
+        var pollVotes = votes[id] || {}; // map user -> optionIndex or value
+        var allVoteCount = 0;
+        for (var who in pollVotes) if (pollVotes.hasOwnProperty(who)){
+          var choice = pollVotes[who];
+          var idx = (typeof choice === 'number') ? choice : 0;
+          optTotals[idx] = (optTotals[idx]||0) + 1;
+          allVoteCount++;
+        }
+        pollRows.push({
+          id:id, title:p.title||id, category:p.category||'General',
+          rangeVotes:vcount, rangeComments:ccount, uniqueVoters:Object.keys(votersMap).length,
+          optionTotals:optTotals, optionLabels:(p.options||[]), allVotes:allVoteCount,
+          endTime:p.endTime
+        });
+      });
+
+      return {
+        kpis:{
+          totalVotes: totalVotes,
+          uniqueVoters: Object.keys(uniqVoters).length,
+          totalComments: totalComments,
+          activeCount: activeCount
+        },
+        byDay: byDay,
+        pollRows: pollRows
+      };
+    }
+
+    function render(){
+      var r = rangeSel.value;
+      var pid = pollSel.value || '';
+      var data = compute(r, pid);
+
+      // KPIs
+      kpiVotes.textContent = fmt(data.kpis.totalVotes);
+      kpiVoters.textContent = fmt(data.kpis.uniqueVoters);
+      kpiComments.textContent = fmt(data.kpis.totalComments);
+      kpiActive.textContent = fmt(data.kpis.activeCount);
+
+      // Simple “delta” vs previous equal window
+      var deltaTxt = '—';
+      try{
+        if (r !== 'all'){
+          var days = parseInt(r,10);
+          var cutoff = Date.now() - days*24*60*60*1000;
+          // previous window
+          var earlierActs = getActivity().filter(function(e){
+            if (!e || !e.ts || e.type!=='vote') return false;
+            var t = new Date(e.ts).getTime();
+            if (pid && e.pid !== pid) return false;
+            return t < cutoff && t >= cutoff - days*24*60*60*1000;
+          });
+          var diff = data.kpis.totalVotes - earlierActs.length;
+          deltaTxt = (diff>=0?'+':'') + fmt(diff) + ' vs prior ' + r + 'd';
+        }
+      }catch(e){}
+      kpiVotesDelta.textContent = deltaTxt;
+
+      // Timeline render (spark bars)
+      var keys = Object.keys(data.byDay).sort();
+      if (!keys.length){
+        timelineEl.innerHTML = '<div class="h-full flex items-center justify-center text-sm text-gray-500">No activity in this range.</div>';
+        timelineLegend.textContent = '';
+      } else {
+        var max = 0; var i;
+        for (i=0;i<keys.length;i++){ var d = data.byDay[keys[i]]; if (d.votes>max) max=d.votes; }
+        var bars = [];
+        for (i=0;i<keys.length;i++){
+          var dv = data.byDay[keys[i]].votes;
+          var h = max ? Math.max(2, Math.round((dv/max)*100)) : 2;
+          bars.push('<div title="'+keys[i]+': '+dv+' votes" style="width:'+ (100/keys.length)+'%;display:inline-block;vertical-align:bottom"><div style="height:'+h+'%;background:#4f46e5"></div></div>');
+        }
+        timelineEl.innerHTML = bars.join('');
+        timelineLegend.textContent = keys[0] + ' → ' + keys[keys.length-1];
+      }
+
+      // Poll table
+      if (!data.pollRows.length){
+        pollTable.innerHTML = '<div class="p-4 text-sm text-gray-600">No polls in selection.</div>';
+        pollCount.textContent = '';
+      } else {
+        pollCount.textContent = data.pollRows.length + ' poll(s)';
+        var html = '<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr>' +
+          '<th class="text-left px-4 py-3">Poll</th>' +
+          '<th class="text-right px-4 py-3">Votes (range)</th>' +
+          '<th class="text-right px-4 py-3">Comments</th>' +
+          '<th class="text-left px-4 py-3">Breakdown</th>' +
+          '<th class="text-left px-4 py-3">Ends</th>' +
+          '</tr></thead><tbody>';
+        data.pollRows.sort(function(a,b){ return (b.rangeVotes||0) - (a.rangeVotes||0); });
+        for (var j=0;j<data.pollRows.length;j++){
+          var row = data.pollRows[j];
+          var parts = [];
+          var totalAll = row.allVotes || 0;
+          var opts = row.optionLabels.length ? row.optionLabels : ['Option 1','Option 2','Option 3'];
+          var maxW = 120;
+          for (var t=0;t<opts.length;t++){
+            var c = row.optionTotals[t] || 0;
+            var per = totalAll ? Math.round((c/totalAll)*100) : 0;
+            var w = Math.round((per/100)*maxW);
+            parts.push(
+              '<div class="mb-1">' +
+                '<div class="flex justify-between"><span class="text-xs text-gray-600">'+esc(opts[t])+'</span><span class="text-xs">'+c+' ('+per+'%)</span></div>' +
+                '<div class="bar"><span style="width:'+per+'%;background:#6366f1"></span></div>' +
+              '</div>'
+            );
+          }
+          var endTxt = '—';
+          try{ var et = new Date(row.endTime); endTxt = isNaN(et) ? '—' : et.toLocaleString(); }catch(e){}
+          html += '<tr class="border-t">' +
+            '<td class="px-4 py-3"><div class="font-medium">'+esc(row.title)+'</div><div class="text-xs text-gray-500">'+esc(row.category)+'</div></td>' +
+            '<td class="px-4 py-3 text-right">'+fmt(row.rangeVotes)+'</td>' +
+            '<td class="px-4 py-3 text-right">'+fmt(row.rangeComments)+'</td>' +
+            '<td class="px-4 py-3">'+parts.join('')+'</td>' +
+            '<td class="px-4 py-3">'+endTxt+'</td>' +
+          '</tr>';
+        }
+        html += '</tbody></table>';
+        pollTable.innerHTML = html;
+      }
+
+      // Ending soon
+      var soon = [];
+      var pollsAll = getPolls();
+      var nowTs = Date.now();
+      for (var id in pollsAll) if (pollsAll.hasOwnProperty(id)){
+        var p = pollsAll[id];
+        if (!p || !p.endTime) continue;
+        var endTs = new Date(p.endTime).getTime();
+        if (endTs > nowTs && (endTs - nowTs) <= 48*60*60*1000){ // next 48h
+          soon.push({ id:id, title:p.title||id, end:endTs });
+        }
+      }
+      soon.sort(function(a,b){ return a.end - b.end; });
+      if (!soon.length){
+        endingSoon.innerHTML = '<div class="text-gray-600">Nothing ending in the next 48 hours.</div>';
+      } else {
+        var out = [];
+        for (var s=0;s<soon.length;s++){
+          out.push('<div><div class="font-medium">'+esc(soon[s].title)+'</div><div class="text-xs text-gray-500">Ends: '+(new Date(soon[s].end)).toLocaleString()+'</div><a class="text-indigo-600 text-xs hover:underline" href="poll.html?id='+encodeURIComponent(soon[s].id)+'" target="_blank">Open →</a></div>');
+        }
+        endingSoon.innerHTML = out.join('<hr class="my-2">');
+      }
+    }
+
+    // Export CSV (votes by day for current selection)
+    function exportCSV(){
+      var r = rangeSel.value;
+      var pid = pollSel.value || '';
+      var data = compute(r, pid);
+      var keys = Object.keys(data.byDay).sort();
+      var lines = ['Day,Votes,Comments,Shares'];
+      for (var i=0;i<keys.length;i++){
+        var d = data.byDay[keys[i]];
+        lines.push(keys[i]+','+(d.votes||0)+','+(d.comments||0)+','+(d.shares||0));
+      }
+      var csv = lines.join('\n');
+      var blob = new Blob([csv], {type:'text/csv'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'votehive-analytics.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Wire events
+    rangeSel.addEventListener('change', render);
+    pollSel.addEventListener('change', render);
+    exportBtn.addEventListener('click', exportCSV);
+
+    // Live updates when other tabs change data
+    window.addEventListener('storage', function(e){
+      if (!e) return;
+      if (['customPolls','pollVotes','activityLog','pollComments'].indexOf(e.key) !== -1){
+        render();
+      }
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
