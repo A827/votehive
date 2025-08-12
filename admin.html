@@ -6,10 +6,7 @@
   <title>Admin Dashboard – VoteHive</title>
   <link rel="icon" href="/favicon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-
-  <style>
-    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
-  </style>
+  <style>.chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}</style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
@@ -19,7 +16,7 @@
   <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <!-- Demo password gate (shown only if not logged in as admin) -->
+  <!-- Demo password gate (only if not logged in as admin/superadmin) -->
   <section id="loginGate" class="max-w-md mx-auto px-4 py-16 hidden">
     <h1 class="text-2xl font-bold mb-2">Admin Login</h1>
     <p class="text-gray-600 mb-6">You’re not logged in as an admin. Use the demo password to continue.</p>
@@ -148,15 +145,19 @@
     const loginErr  = document.getElementById("loginError");
     const whoEl     = document.getElementById("who");
 
-    function getSession(){ try { return window.VHAuth?.current?.() || JSON.parse(localStorage.getItem('currentUser')||'null'); } catch { return null; } }
-    function isRoleAdmin(u){ return !!(u && u.role === 'admin'); }
+    function getSession(){
+      try { return (window.VHAuth && window.VHAuth.current) ? window.VHAuth.current() : JSON.parse(localStorage.getItem('currentUser')||'null'); }
+      catch { return null; }
+    }
+    // treat superadmin as admin here
+    function isRoleAdmin(u){ return !!(u && (u.role === 'admin' || u.role === 'superadmin')); }
     function showGate(){ loginGate.classList.remove("hidden"); adminApp.classList.add("hidden"); }
     function showApp(){  loginGate.classList.add("hidden"); adminApp.classList.remove("hidden"); render(); }
 
     (function gate(){
       const me = getSession();
       if (isRoleAdmin(me)) {
-        whoEl.textContent = `Logged in as ${me.username} (admin)`;
+        whoEl.textContent = `Logged in as ${me.username} (${me.role})`;
         showApp();
       } else if (localStorage.getItem("vh_is_admin") === "1") {
         whoEl.textContent = `Demo admin session (password gate)`;
@@ -166,7 +167,7 @@
       }
     })();
 
-    loginBtn?.addEventListener("click", ()=>{
+    loginBtn && loginBtn.addEventListener("click", ()=>{
       loginErr.classList.add("hidden");
       if (adminPass.value === ADMIN_PASSWORD){
         localStorage.setItem("vh_is_admin", "1");
@@ -178,14 +179,12 @@
       }
     });
 
-    document.getElementById("logoutBtn")?.addEventListener("click", ()=>{
-      // end both kinds of sessions
-      try { window.VHAuth?.logout?.(); } catch {}
+    document.getElementById("logoutBtn") && document.getElementById("logoutBtn").addEventListener("click", ()=>{
+      try { window.VHAuth && window.VHAuth.logout && window.VHAuth.logout(); } catch {}
       localStorage.removeItem("vh_is_admin");
       showGate();
-      // also update the shared header
       try { localStorage.setItem('__vh_emit__', 'logout:' + Date.now()); } catch {}
-      window.VHHeader?.render?.();
+      window.VHHeader && window.VHHeader.render && window.VHHeader.render();
     });
 
     // ============== STORAGE HELPERS ==============
@@ -227,15 +226,13 @@
         return titleOk && stateOk;
       });
 
-      // Stats
       statTotal.textContent = Object.keys(polls).length;
       statOpen.textContent  = Object.values(polls).filter(p => {
         const end = new Date(p.endTime);
         return !isNaN(end) && Date.now() < end.getTime();
       }).length;
-      statFeat.textContent  = Object.values(polls).filter(p => p && p.featured).length;
+      statFeatured.textContent  = Object.values(polls).filter(p => p && p.featured).length;
 
-      // List
       pollsWrap.innerHTML = '';
       if (!entries.length){
         pollsWrap.innerHTML = '<div class="p-6 text-gray-600 text-sm">No polls found.</div>';
@@ -273,7 +270,6 @@
             pollsWrap.appendChild(row);
           });
 
-        // Bind actions
         pollsWrap.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', ()=> loadEditor(b.getAttribute('data-id'))));
         pollsWrap.querySelectorAll('.act-feature').forEach(b => b.addEventListener('click', ()=> toggleFeature(b.getAttribute('data-id'))));
         pollsWrap.querySelectorAll('.act-close').forEach(b => b.addEventListener('click', ()=> closeNow(b.getAttribute('data-id'))));
@@ -305,7 +301,7 @@
       editForm.classList.remove('hidden');
     }
 
-    document.getElementById('saveBtn')?.addEventListener('click', (e)=>{
+    document.getElementById('saveBtn') && document.getElementById('saveBtn').addEventListener('click', (e)=>{
       e.preventDefault();
       const id = editId.value;
       const polls = getPolls();
@@ -341,7 +337,7 @@
     }
 
     // ============== EXPORT / IMPORT ==============
-    document.getElementById('exportBtn')?.addEventListener('click', ()=>{
+    exportBtn && exportBtn.addEventListener('click', ()=>{
       const data = JSON.stringify(getPolls(), null, 2);
       const blob = new Blob([data], {type:'application/json'});
       const url = URL.createObjectURL(blob);
@@ -351,8 +347,8 @@
       URL.revokeObjectURL(url);
     });
 
-    document.getElementById('importInput')?.addEventListener('change', async (e)=>{
-      const file = e.target.files?.[0]; if (!file) return;
+    importInput && importInput.addEventListener('change', async (e)=>{
+      const file = e.target.files && e.target.files[0]; if (!file) return;
       try{
         const text = await file.text();
         const data = JSON.parse(text);
@@ -368,8 +364,8 @@
     });
 
     // ============== FILTERS ==============
-    document.getElementById('search')?.addEventListener('input', render);
-    document.getElementById('filterState')?.addEventListener('change', render);
+    searchEl && searchEl.addEventListener('input', render);
+    filterState && filterState.addEventListener('change', render);
   </script>
 </body>
 </html>
