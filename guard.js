@@ -26,6 +26,20 @@
     return encodeURIComponent(path);
   }
 
+  function getQueryParam(name) {
+    // Simple query param reader without URLSearchParams
+    var q = location.search.replace(/^\?/, '');
+    if (!q) return null;
+    var parts = q.split('&');
+    for (var i = 0; i < parts.length; i++) {
+      var kv = parts[i].split('=');
+      if (decodeURIComponent(kv[0] || '') === name) {
+        return decodeURIComponent(kv[1] || '');
+      }
+    }
+    return null;
+  }
+
   function goLogin() {
     var next = buildNextParam();
     location.href = 'login.html?next=' + next;
@@ -37,7 +51,7 @@
       if (window.VHAuth && typeof window.VHAuth.ready === 'function') {
         var p = window.VHAuth.ready();
         if (p && typeof p.then === 'function') {
-          return p.catch(function(){});
+          return p['catch'](function(){});
         }
       }
     } catch (e) {}
@@ -77,8 +91,7 @@
     waitAuthReadyIfAny().then(function () {
       var me = currentSession();
       if (me) {
-        var params = new URLSearchParams(location.search);
-        var next = params.get('next') || 'index.html';
+        var next = getQueryParam('next') || 'index.html';
         location.href = next;
       }
     });

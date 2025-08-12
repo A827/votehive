@@ -8,6 +8,8 @@
   <!-- LOAD ORDER MATTERS -->
   <script src="auth.js"></script>
   <script src="guard.js"></script>
+  <!-- Optional hard gate: uncomment if you want an immediate redirect for non-superadmins -->
+  <!-- <script>requireSuperadmin();</script> -->
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <div id="vh-header"></div>
@@ -71,24 +73,25 @@
     }
 
     async function loadAndRender(){
-      const ok = await ensureSuperadmin();
-      const alert = document.getElementById('alert');
+      const alertBox = document.getElementById('alert');   // renamed
       const wrap  = document.getElementById('wrap');
 
+      const ok = await ensureSuperadmin();
       if (!ok){
-        alert.classList.remove('hidden');
+        alertBox.textContent = 'Superadmin required.';
+        alertBox.classList.remove('hidden');
         wrap.classList.add('hidden');
         return;
       }
-      alert.classList.add('hidden');
+      alertBox.classList.add('hidden');
       wrap.classList.remove('hidden');
 
       let users = [];
       try{
-        users = await window.VHAuth.listUsers(); // requires superadmin (auth.js checks again)
+        users = await window.VHAuth.listUsers(); // requires superadmin (auth.js enforces)
       }catch(e){
-        alert.textContent = e?.message || 'Failed to load users.'; 
-        alert.classList.remove('hidden');
+        alertBox.textContent = e?.message || 'Failed to load users.';
+        alertBox.classList.remove('hidden');
         return;
       }
 
@@ -138,8 +141,13 @@
           sel.disabled = true;
           try{
             await window.VHAuth.setRole(sel.getAttribute('data-u'), sel.value);
-          }catch(e){ alert.textContent = e?.message || 'Failed to set role'; alert.classList.remove('hidden'); }
-          finally{ sel.disabled = false; loadAndRender(); }
+          }catch(e){
+            alertBox.textContent = e?.message || 'Failed to set role';
+            alertBox.classList.remove('hidden');
+          } finally{
+            sel.disabled = false;
+            loadAndRender();
+          }
         });
       });
 
@@ -147,17 +155,29 @@
       rows.querySelectorAll('button.block').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           btn.disabled = true;
-          try{ await window.VHAuth.blockUser(btn.getAttribute('data-u')); }
-          catch(e){ alert.textContent = e?.message || 'Failed to block'; alert.classList.remove('hidden'); }
-          finally{ btn.disabled = false; loadAndRender(); }
+          try{
+            await window.VHAuth.blockUser(btn.getAttribute('data-u'));
+          } catch(e){
+            alertBox.textContent = e?.message || 'Failed to block';
+            alertBox.classList.remove('hidden');
+          } finally{
+            btn.disabled = false;
+            loadAndRender();
+          }
         });
       });
       rows.querySelectorAll('button.unblock').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           btn.disabled = true;
-          try{ await window.VHAuth.unblockUser(btn.getAttribute('data-u')); }
-          catch(e){ alert.textContent = e?.message || 'Failed to unblock'; alert.classList.remove('hidden'); }
-          finally{ btn.disabled = false; loadAndRender(); }
+          try{
+            await window.VHAuth.unblockUser(btn.getAttribute('data-u'));
+          } catch(e){
+            alertBox.textContent = e?.message || 'Failed to unblock';
+            alertBox.classList.remove('hidden');
+          } finally{
+            btn.disabled = false;
+            loadAndRender();
+          }
         });
       });
 
@@ -169,13 +189,12 @@
           if (np === null) return;
           try{
             await window.VHAuth.changePassword(u, np);
-            alert.classList.add('hidden');
-            alert.textContent = 'Superadmin required.'; // reset message text
-            alert('Password updated.');
+            alertBox.classList.add('hidden');
+            alertBox.textContent = 'Superadmin required.'; // reset message
+            window.alert('Password updated.'); // use window.alert explicitly
           }catch(e){
-            const a = document.getElementById('alert');
-            a.textContent = e?.message || 'Failed to update password';
-            a.classList.remove('hidden');
+            alertBox.textContent = e?.message || 'Failed to update password';
+            alertBox.classList.remove('hidden');
           }
         });
       });
@@ -187,8 +206,7 @@
 
     // initial
     (async function init(){
-      // If you prefer a hard gate, uncomment:
-      // window.requireSuperadmin();
+      try { if (window.VHAuth?.ready) await window.VHAuth.ready(); } catch {}
       await loadAndRender();
       // Refresh list if auth changes in another tab
       window.addEventListener('storage', (e)=>{

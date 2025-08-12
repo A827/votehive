@@ -1,10 +1,26 @@
 /*
-  VoteHive Auth (Local Demo) — robust version (+ready +events +superadmin tools)
+  VoteHive Auth (Local Demo) — robust version (+ready +events +superadmin tools +migration)
   - Users in localStorage: 'vh_users'
   - Session in 'currentUser'  ({ username, role })
   - Seeds: superadmin / admin123  (role: superadmin)
   - Cross-tab events via localStorage '__vh_emit__'
 */
+
+/* ---- tiny polyfills (safe to keep) ---- */
+if (!Object.entries) {
+  Object.entries = function (obj) {
+    var ownProps = Object.keys(obj), i = 0, res = [];
+    for (; i < ownProps.length; i++) res[i] = [ownProps[i], obj[ownProps[i]]];
+    return res;
+  };
+}
+if (!Object.values) {
+  Object.values = function (obj) {
+    var ownProps = Object.keys(obj), i = 0, res = [];
+    for (; i < ownProps.length; i++) res[i] = obj[ownProps[i]];
+    return res;
+  };
+}
 
 (function () {
   if (window.VHAuth) return; // don't override if already present
@@ -44,11 +60,11 @@
         if (window.crypto && window.crypto.subtle && window.TextEncoder) {
           var enc = new TextEncoder().encode(txt);
           window.crypto.subtle.digest('SHA-256', enc).then(function (buf) {
-            var out = Array.from(new Uint8Array(buf))
-              .map(function (b) { return b.toString(16).padStart(2, '0'); })
-              .join('');
+            var out = Array.prototype.map.call(new Uint8Array(buf), function (b) {
+              return b.toString(16).padStart(2, '0');
+            }).join('');
             resolve(out);
-          }).catch(function () { resolve(fallbackHash(txt)); });
+          }, function () { resolve(fallbackHash(txt)); });
           return;
         }
       } catch (e) {}
@@ -62,37 +78,69 @@
     return ('00000000' + (h >>> 0).toString(16)).slice(-8);
   }
 
+  // ---------- migration (fix older installs where superadmin wasn't 'superadmin') ----------
+  function migrateUsersIfNeeded() {
+    var db = loadUsers();
+    var changed = false;
+
+    if (db && db.superadmin) {
+      if (db.superadmin.role !== 'superadmin') {
+        db.superadmin.role = 'superadmin';
+        changed = true;
+      }
+      if (db.superadmin.blocked) {
+        db.superadmin.blocked = false;
+        changed = true;
+      }
+      if (changed) saveUsers(db);
+    }
+
+    // If the current session is superadmin but role is wrong, fix it
+    try {
+      var sess = getSession();
+      if (sess && sess.username === 'superadmin' && sess.role !== 'superadmin') {
+        setSession({ username: 'superadmin', role: 'superadmin' });
+        emit('login');
+      }
+    } catch (e) {}
+  }
+
   // ---------- seed admin ----------
   var _seedDoneResolve;
   var seedDone = new Promise(function (res) { _seedDoneResolve = res; });
 
   (function seed() {
-    (function () {
-      var db = loadUsers();
-      if (!Object.keys(db).length) {
-        // first run — create superadmin / admin123
-        sha256('admin123').then(function (hash) {
-          db['superadmin'] = {
-            passHash: hash,
-            role: 'superadmin',
-            blocked: false,
-            createdAt: new Date().toISOString(),
-            lastLogin: null
-          };
-          saveUsers(db);
-          _seedDoneResolve();
-        });
-        return;
-      }
-      _seedDoneResolve();
-    })();
+    var db = loadUsers();
+    if (!Object.keys(db).length) {
+      // first run — create superadmin / admin123
+      sha256('admin123').then(function (hash) {
+        db['superadmin'] = {
+          passHash: hash,
+          role: 'superadmin',
+          blocked: false,
+          createdAt: new Date().toISOString(),
+          lastLogin: null
+        };
+        saveUsers(db);
+        _seedDoneResolve();
+      });
+      return;
+    }
+    // existing DB: run migration
+    migrateUsersIfNeeded();
+    _seedDoneResolve();
   })();
 
   // ---------- guards & helpers ----------
   function isSuper(u) { return !!(u && u.role === 'superadmin'); }
   function isAdmin(u) { return !!(u && (u.role === 'admin' || u.role === 'superadmin')); }
   function superCount(db) {
-    return Object.values(db).filter(function (u) { return u.role === 'superadmin' && !u.blocked; }).length;
+    var arr = Object.values(db);
+    var i, c = 0;
+    for (i = 0; i < arr.length; i++) {
+      if (arr[i] && arr[i].role === 'superadmin' && !arr[i].blocked) c++;
+    }
+    return c;
   }
   function requireSuper() {
     var me = getSession();
@@ -101,12 +149,13 @@
 
   // ---------- API ----------
   window.VHAuth = {
-    // wait for seeding to finish
+    // wait for seeding/migration to finish
     ready: function () { return seedDone; },
 
     current: function () { return getSession(); },
     isSuper: isSuper,
     isAdmin: isAdmin,
+    whoami: function(){ return getSession(); },
 
     login: function (username, password) {
       return seedDone.then(function () { return sha256(password || ''); })
@@ -169,8 +218,8 @@
     listUsers: function () {
       requireSuper();
       var db = loadUsers();
-      return Object.entries(db).map(function (_ref) {
-        var u = _ref[0], rec = _ref[1];
+      return Object.entries(db).map(function (pair) {
+        var u = pair[0], rec = pair[1];
         return {
           username: u,
           role: rec.role || 'user',
