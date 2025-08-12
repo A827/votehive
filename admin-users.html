@@ -8,9 +8,16 @@
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <div id="vh-header"></div>
+
+  <!-- Load order matters: auth -> guard -> (guard call) -> header -->
   <script src="auth.js"></script>
   <script src="guard.js"></script>
-  <script>requireSuperAdmin();</script>
+  <script>
+    // FIX: the function is requireSuperadmin (lowercase "a"), not requireSuperAdmin
+    if (typeof requireSuperadmin === 'function') {
+      requireSuperadmin();
+    }
+  </script>
   <script src="header.js"></script>
 
   <main class="max-w-7xl mx-auto px-4 py-10">
@@ -74,7 +81,7 @@
       const state = sf.value;
 
       const data = fetchUsers().filter(u=>{
-        if (term && !u.username.toLowerCase().includes(term)) return false;
+        if (term && !(u.username||'').toLowerCase().includes(term)) return false;
         if (role && u.role !== role) return false;
         if (state === 'active' && u.blocked) return false;
         if (state === 'blocked' && !u.blocked) return false;
@@ -87,8 +94,9 @@
     }
 
     function rowHTML(u){
-      const stateBadge = u.blocked ? '<span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">Blocked</span>' :
-                                     '<span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">Active</span>';
+      const stateBadge = u.blocked
+        ? '<span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">Blocked</span>'
+        : '<span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">Active</span>';
       const created = u.createdAt ? new Date(u.createdAt).toLocaleString() : '—';
       const last = u.lastLogin ? new Date(u.lastLogin).toLocaleString() : '—';
 
@@ -153,11 +161,26 @@
       });
     }
 
+    // Initial render after auth seed is ready
+    (function init(){
+      try{
+        const ready = window.VHAuth && typeof window.VHAuth.ready === 'function' ? window.VHAuth.ready() : null;
+        if (ready && typeof ready.then === 'function') {
+          ready.then(render);
+        } else {
+          render();
+        }
+      } catch { render(); }
+
+      // update if auth changes in another tab
+      window.addEventListener('storage', (e)=>{
+        if (e.key === '__vh_emit__' || e.key === 'currentUser') render();
+      });
+    })();
+
     q.addEventListener('input', render);
     rf.addEventListener('change', render);
     sf.addEventListener('change', render);
-
-    render();
   </script>
 </body>
 </html>
