@@ -1,189 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Apply to Create – VoteHive</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Create a Poll – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-
-  <!-- Auth + Guards (ORDER MATTERS) -->
-  <script src="auth.js"></script>
-  <script src="guard.js"></script>
-  <script>requireLogin();</script>
+  <style>
+    .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .hint{font-size:12px;color:#6b7280}
+    .err{color:#b91c1c;font-size:12px}
+    .opt-item{display:flex;gap:.5rem;align-items:center;margin-top:.5rem}
+    .opt-item input{flex:1}
+  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
   <!-- Header -->
   <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
+  <script>requireLogin();</script>
   <script src="header.js"></script>
 
   <main class="max-w-3xl mx-auto px-4 py-10">
     <h1 class="text-2xl md:text-3xl font-bold mb-2">Apply to Create a Poll</h1>
-    <p class="text-gray-600 mb-6">Your submission will be reviewed. You’ll be notified in-app when approved.</p>
+    <p class="text-gray-600">Submit your idea. A moderator will review and approve it to go live.</p>
 
-    <form id="appForm" class="bg-white border border-gray-100 shadow rounded p-6 space-y-4" novalidate>
-      <div>
-        <label class="block text-sm font-medium" for="title">Title</label>
-        <input id="title" class="w-full border rounded px-3 py-2" required maxlength="140" placeholder="e.g., Should remote work be the default?" />
+    <div id="msg" class="hidden mt-4 p-3 rounded text-sm"></div>
+
+    <form id="form" class="bg-white border border-gray-100 shadow rounded p-6 mt-6">
+      <!-- Title -->
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Title <span class="hint">(max 120)</span></label>
+        <input id="title" maxlength="120" class="w-full border rounded px-3 py-2" placeholder="e.g., Which coffee chain wins in 2025?">
+        <div id="e_title" class="err hidden">Please enter a title (min 8 chars).</div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium" for="category">Category</label>
-        <select id="category" class="w-full border rounded px-3 py-2" aria-label="Category">
-          <option>Startups</option><option>Politics</option><option>Brands</option>
-          <option>Finance</option><option>Design</option><option>Parenting</option>
-          <option>Real Estate</option><option>Entertainment</option>
-        </select>
+      <!-- Category + Tags -->
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block font-semibold mb-1">Category</label>
+          <select id="category" class="w-full border rounded px-3 py-2">
+            <option value="">Choose…</option>
+            <option>Startups</option><option>Brands</option><option>Politics</option>
+            <option>Finance</option><option>Design</option><option>Parenting</option>
+            <option>Real Estate</option><option>Entertainment</option><option>General</option>
+          </select>
+          <div id="e_category" class="err hidden">Pick a category.</div>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Tags <span class="hint">(comma-separated, optional)</span></label>
+          <input id="tags" class="w-full border rounded px-3 py-2" placeholder="e.g., coffee, retail">
+        </div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium" for="options">Options (one per line, 2–6)</label>
-        <textarea id="options" rows="4" class="w-full border rounded px-3 py-2" placeholder="Option A&#10;Option B" required></textarea>
-        <p class="text-xs text-gray-500 mt-1">Tip: keep options short and mutually exclusive.</p>
+      <!-- Thumbnail -->
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Thumbnail URL <span class="hint">(optional)</span></label>
+        <input id="thumb" class="w-full border rounded px-3 py-2" placeholder="https://…">
+        <div class="hint mt-1">Used on cards/spotlights if provided.</div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium" for="close">Close Date</label>
-        <input id="close" type="datetime-local" class="w-full border rounded px-3 py-2" required/>
-        <p class="text-xs text-gray-500 mt-1">Must be in the future (e.g., 2–14 days from now).</p>
+      <!-- Options builder -->
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Options</label>
+        <div id="opts"></div>
+        <div class="flex gap-2 mt-2">
+          <button type="button" id="addOpt" class="px-3 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200">+ Add option</button>
+          <button type="button" id="clearOpts" class="px-3 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200">Clear</button>
+        </div>
+        <div id="e_opts" class="err hidden mt-1">Add at least 2 options.</div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium" for="reason">Why should this be featured? (optional)</label>
-        <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2" placeholder="Brief context for moderators…"></textarea>
+      <!-- Settings -->
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block font-semibold mb-1">Start (optional)</label>
+          <input id="startAt" type="datetime-local" class="w-full border rounded px-3 py-2">
+          <div class="hint mt-1">If set, your poll will be scheduled.</div>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Duration</label>
+          <select id="duration" class="w-full border rounded px-3 py-2">
+            <option value="1">1 day</option>
+            <option value="3">3 days</option>
+            <option value="7" selected>7 days</option>
+            <option value="14">14 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
       </div>
 
-      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Submit Application</button>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block font-semibold mb-1">Allow multiple selections?</label>
+          <select id="multi" class="w-full border rounded px-3 py-2">
+            <option value="no" selected>No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Comments</label>
+          <select id="comments" class="w-full border rounded px-3 py-2">
+            <option value="on" selected>Enabled</option>
+            <option value="off">Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Rationale -->
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Why this poll? <span class="hint">(optional, helps moderators)</span></label>
+        <textarea id="reason" rows="3" class="w-full border rounded px-3 py-2" placeholder="Short context, sources, or why this matters now."></textarea>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap gap-2">
+        <button id="submitBtn" class="px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Submit for review</button>
+        <button id="saveDraft" type="button" class="px-4 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200">Save draft</button>
+        <button id="loadDraft" type="button" class="px-4 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200">Load draft</button>
+        <button id="clearDraft" type="button" class="px-4 py-2 rounded text-sm bg-gray-100 hover:bg-gray-200">Clear draft</button>
+      </div>
     </form>
-
-    <p id="ok" class="hidden mt-4 text-green-600 font-medium">✅ Application submitted. You can see it below and it will appear in Moderation for admins.</p>
-    <p id="err" class="hidden mt-4 text-red-600 font-medium"></p>
-
-    <section class="mt-10">
-      <h2 class="text-lg font-semibold mb-3">My Submissions</h2>
-      <div id="mine" class="space-y-3"></div>
-      <div id="emptyMine" class="text-sm text-gray-500 hidden">No submissions yet.</div>
-    </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-8 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6"><a href="#" class="hover:underline">About</a><a href="#" class="hover:underline">Contact</a></div>
+  <footer class="bg-gray-50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2"><img src="/logo.svg" class="w-6 h-6" alt=""><span class="font-semibold">VoteHive</span></div>
+      <div class="text-gray-500">© 2025 VoteHive</div>
     </div>
   </footer>
 
   <script>
-    // ----- session/user -----
-    let me = null;
-    (async function resolveUser(){
-      try {
-        if (window.VHAuth && typeof VHAuth.ready === 'function') { await VHAuth.ready(); }
-        me = (window.VHAuth && typeof VHAuth.current === 'function') ? VHAuth.current() : null;
-      } catch {}
-      if (!me || !me.username) {
-        // Fallback: if somehow requireLogin didn't redirect, do it here
-        const next = encodeURIComponent(location.pathname + location.search);
-        location.href = 'login.html?next=' + next;
-        return;
+    // ---------- storage helpers ----------
+    function getUsers(){ try { return JSON.parse(localStorage.getItem('vh_users')||'{}'); } catch(e){ return {}; } }
+    function getSession(){ try { return JSON.parse(localStorage.getItem('currentUser')||'null'); } catch(e){ return null; } }
+    function getLog(){ try { return JSON.parse(localStorage.getItem('applicationLog')||'[]'); } catch(e){ return []; } }
+    function setLog(v){ localStorage.setItem('applicationLog', JSON.stringify(v)); }
+    function saveDraftObj(v){ localStorage.setItem('draftCreatePoll', JSON.stringify(v)); }
+    function loadDraftObj(){ try { return JSON.parse(localStorage.getItem('draftCreatePoll')||'null'); } catch(e){ return null; } }
+
+    // ---------- option builder ----------
+    var optsEl = document.getElementById('opts');
+    function makeOptRow(val){
+      var wrap = document.createElement('div'); wrap.className = 'opt-item';
+      var input = document.createElement('input'); input.className='border rounded px-3 py-2'; input.placeholder='Option'; input.value = val || '';
+      var up = document.createElement('button'); up.type='button'; up.className='px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded'; up.textContent='↑';
+      var dn = document.createElement('button'); dn.type='button'; dn.className='px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded'; dn.textContent='↓';
+      var del= document.createElement('button'); del.type='button'; del.className='px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded'; del.textContent='✕';
+      up.onclick=function(){ var p=wrap.previousElementSibling; if(p) optsEl.insertBefore(wrap,p); };
+      dn.onclick=function(){ var n=wrap.nextElementSibling; if(n) optsEl.insertBefore(n,wrap); };
+      del.onclick=function(){ optsEl.removeChild(wrap); };
+      wrap.appendChild(input); wrap.appendChild(up); wrap.appendChild(dn); wrap.appendChild(del);
+      return wrap;
+    }
+    function ensureMinOptions(){
+      if (!optsEl.children.length){
+        optsEl.appendChild(makeOptRow('Option A'));
+        optsEl.appendChild(makeOptRow('Option B'));
       }
-      me = me.username; // we only need the username string below
-      renderMine(); // initial render once user is known
-    })();
+    }
+    document.getElementById('addOpt').onclick = function(){ optsEl.appendChild(makeOptRow('')); };
+    document.getElementById('clearOpts').onclick = function(){ optsEl.innerHTML=''; ensureMinOptions(); };
+    ensureMinOptions();
 
-    // ----- storage helpers -----
-    const getLog = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
-    const setLog = (d) => { try { localStorage.setItem('applicationLog', JSON.stringify(d)); } catch {} };
-
-    // Prefill close datetime: now+3 days; min: now+1h
-    (function presetClose(){
-      const el = document.getElementById('close');
-      const now = new Date();
-      const min = new Date(now.getTime() + 3600000);
-      const def = new Date(now.getTime() + 3*86400000);
-      const toLocal = (d)=> new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-      el.min = toLocal(min);
-      el.value = toLocal(def);
-    })();
-
-    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-
-    function renderMine(){
-      if (!me) return; // wait until user resolved
-      const mine = getLog().filter(x => x.applicant === me).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
-      const wrap = document.getElementById('mine');
-      const empty = document.getElementById('emptyMine');
-      if (!mine.length){
-        wrap.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
+    // ---------- validation ----------
+    function valTrim(id){ return (document.getElementById(id).value||'').trim(); }
+    function showErr(id, show){ var el=document.getElementById(id); if(!el) return; if(show){ el.classList.remove('hidden'); } else { el.classList.add('hidden'); } }
+    function collectOptions(){
+      var out=[], i, kids = optsEl.children;
+      for (i=0;i<kids.length;i++){
+        var v = (kids[i].querySelector('input').value||'').trim();
+        if (v) out.push(v);
       }
-      empty.classList.add('hidden');
-      wrap.innerHTML = mine.map(x => `
-        <article class="bg-white border border-gray-100 shadow rounded p-4">
-          <div class="text-xs text-gray-500 mb-1">Submitted: ${new Date(x.createdAt).toLocaleString()}</div>
-          <h3 class="font-semibold">${esc(x.title)}</h3>
-          <div class="text-sm text-gray-600 mb-1">Category: ${esc(x.category)}</div>
-          <div class="text-sm mb-2">Options: ${x.options.map(esc).join(', ')}</div>
-          <div class="text-xs text-gray-500">Close: ${x.closeAt ? new Date(x.closeAt).toLocaleString() : 'N/A'}</div>
-          <div class="mt-2 text-xs">
-            Status:
-            ${x.status === 'approved'
-              ? '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700">Approved</span>'
-              : x.status === 'rejected'
-                ? '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700">Rejected</span>'
-                : '<span class="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Pending</span>'}
-          </div>
-        </article>
-      `).join('');
+      return out;
+    }
+    function isValidURL(url){
+      if (!url) return true;
+      try { var u = new URL(url); return !!u.protocol && !!u.hostname; } catch(e){ return false; }
+    }
+    function validate(){
+      var ok = true;
+      var title = valTrim('title');
+      var cat   = valTrim('category');
+      var thumb = valTrim('thumb');
+      var opts  = collectOptions();
+
+      showErr('e_title', !(title && title.length>=8));
+      if (!(title && title.length>=8)) ok=false;
+
+      showErr('e_category', !cat);
+      if (!cat) ok=false;
+
+      showErr('e_opts', !(opts && opts.length>=2));
+      if (!(opts && opts.length>=2)) ok=false;
+
+      if (thumb && !isValidURL(thumb)){ ok=false; var m=document.getElementById('msg'); m.className='mt-4 p-3 rounded text-sm bg-red-50 text-red-700 border border-red-200'; m.textContent='Thumbnail URL looks invalid.'; m.classList.remove('hidden'); }
+
+      return ok;
     }
 
-    // Submit handler
-    document.getElementById('appForm').addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const ok  = document.getElementById('ok');
-      const err = document.getElementById('err');
-      ok.classList.add('hidden'); err.classList.add('hidden'); err.textContent = '';
+    // ---------- submit ----------
+    function toISOOrNull(localDT){
+      if (!localDT) return null;
+      var dt = new Date(localDT);
+      if (isNaN(dt.getTime())) return null;
+      // local -> UTC ISO
+      return new Date(dt.getTime() + dt.getTimezoneOffset()*60000).toISOString();
+    }
 
-      // safety: ensure user still present (multi-tab cases)
-      const sess = (window.VHAuth && typeof VHAuth.current === 'function') ? VHAuth.current() : null;
-      if (!sess || !sess.username){
-        err.textContent = 'Your session expired. Please log in again.'; err.classList.remove('hidden');
-        return;
+    function submitApplication(){
+      if (!validate()) return;
+
+      var me = getSession();
+      var username = me && me.username ? me.username : 'guest';
+
+      var title = valTrim('title');
+      var category = valTrim('category');
+      var tags = valTrim('tags');
+      var thumb = valTrim('thumb');
+      var opts = collectOptions();
+      var startLocal = valTrim('startAt');
+      var durationDays = parseInt(document.getElementById('duration').value,10) || 7;
+      var startAt = toISOOrNull(startLocal);
+      var endTime;
+      if (startAt) {
+        endTime = new Date(new Date(startAt).getTime() + durationDays*24*60*60*1000).toISOString();
+      } else {
+        endTime = new Date(Date.now() + durationDays*24*60*60*1000).toISOString();
       }
+      var multi = document.getElementById('multi').value === 'yes';
+      var comments = document.getElementById('comments').value === 'on';
+      var reason = valTrim('reason');
 
-      const title = document.getElementById('title').value.trim();
-      const category = document.getElementById('category').value;
-      const options = document.getElementById('options').value.split('\n').map(s=>s.trim()).filter(Boolean);
-      const closeVal = document.getElementById('close').value;
-      const reason = document.getElementById('reason').value.trim();
-
-      if (!title) { err.textContent='Please enter a title.'; err.classList.remove('hidden'); return; }
-      if (options.length < 2 || options.length > 6) { err.textContent='Please provide 2 to 6 options.'; err.classList.remove('hidden'); return; }
-
-      const closeAt = closeVal ? new Date(closeVal) : null;
-      if (!closeAt || isNaN(closeAt) || closeAt <= new Date()) { err.textContent='Close date/time must be in the future.'; err.classList.remove('hidden'); return; }
-
-      const entry = {
+      // application record
+      var app = {
         id: 'app-' + Date.now() + Math.random().toString(36).slice(2),
-        applicant: sess.username,
-        title, category, options,
-        closeAt: closeAt.toISOString(),
-        reason,
+        applicant: username,
+        title: title,
+        category: category || 'General',
+        tags: tags ? tags.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+        thumbnail: thumb || '',
+        options: opts,
+        startAt: startAt,                // scheduling hint
+        requestedDays: durationDays,     // moderator can override
+        endTimeHint: endTime,            // helpful preview
+        multiSelect: !!multi,
+        commentsEnabled: !!comments,
+        reason: reason || '',
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-      const log = getLog(); log.push(entry); setLog(log);
 
-      e.target.reset();
-      ok.classList.remove('hidden');
-      renderMine();
-      setTimeout(()=> document.getElementById('mine').scrollIntoView({behavior:'smooth'}), 120);
+      var log = getLog();
+      log.push(app);
+      setLog(log);
+
+      // small UX: clear draft on successful submit
+      localStorage.removeItem('draftCreatePoll');
+
+      var m = document.getElementById('msg');
+      m.className = 'mt-4 p-3 rounded text-sm bg-green-50 text-green-800 border border-green-200';
+      m.textContent = 'Application submitted! A moderator will review it shortly.';
+      m.classList.remove('hidden');
+
+      // reset form (keep two option rows)
+      document.getElementById('form').reset();
+      optsEl.innerHTML=''; ensureMinOptions();
+      // optional redirect:
+      // setTimeout(function(){ location.href='applications.html'; }, 800);
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', function(e){
+      e.preventDefault();
+      submitApplication();
     });
 
-    // Live update "My Submissions" if another tab modifies applicationLog
-    window.addEventListener('storage', (e)=>{
-      if (e.key === 'applicationLog') renderMine();
+    // ---------- drafts ----------
+    function collectForm(){
+      return {
+        title: valTrim('title'),
+        category: valTrim('category'),
+        tags: valTrim('tags'),
+        thumb: valTrim('thumb'),
+        options: collectOptions(),
+        startAt: valTrim('startAt'),
+        duration: document.getElementById('duration').value,
+        multi: document.getElementById('multi').value,
+        comments: document.getElementById('comments').value,
+        reason: valTrim('reason')
+      };
+    }
+    function fillForm(d){
+      if (!d) return;
+      document.getElementById('title').value = d.title || '';
+      document.getElementById('category').value = d.category || '';
+      document.getElementById('tags').value = d.tags || '';
+      document.getElementById('thumb').value = d.thumb || '';
+      optsEl.innerHTML='';
+      var i, list = d.options && d.options.length ? d.options : ['Option A','Option B'];
+      for(i=0;i<list.length;i++) optsEl.appendChild(makeOptRow(list[i]));
+      document.getElementById('startAt').value = d.startAt || '';
+      document.getElementById('duration').value = d.duration || '7';
+      document.getElementById('multi').value = d.multi || 'no';
+      document.getElementById('comments').value = d.comments || 'on';
+      document.getElementById('reason').value = d.reason || '';
+    }
+
+    document.getElementById('saveDraft').addEventListener('click', function(){
+      var d = collectForm();
+      saveDraftObj(d);
+      var m = document.getElementById('msg');
+      m.className = 'mt-4 p-3 rounded text-sm bg-blue-50 text-blue-800 border border-blue-200';
+      m.textContent = 'Draft saved locally.';
+      m.classList.remove('hidden');
     });
+    document.getElementById('loadDraft').addEventListener('click', function(){
+      var d = loadDraftObj();
+      if (!d){
+        var m = document.getElementById('msg');
+        m.className = 'mt-4 p-3 rounded text-sm bg-yellow-50 text-yellow-800 border border-yellow-200';
+        m.textContent = 'No draft found.';
+        m.classList.remove('hidden');
+        return;
+      }
+      fillForm(d);
+      var m2 = document.getElementById('msg');
+      m2.className = 'mt-4 p-3 rounded text-sm bg-blue-50 text-blue-800 border border-blue-200';
+      m2.textContent = 'Draft loaded.';
+      m2.classList.remove('hidden');
+    });
+    document.getElementById('clearDraft').addEventListener('click', function(){
+      localStorage.removeItem('draftCreatePoll');
+      var m = document.getElementById('msg');
+      m.className = 'mt-4 p-3 rounded text-sm bg-gray-100 text-gray-800 border border-gray-200';
+      m.textContent = 'Draft cleared.';
+      m.classList.remove('hidden');
+    });
+
+    // Auto-fill from draft on first load
+    (function(){ var d=loadDraftObj(); if(d) fillForm(d); })();
   </script>
 </body>
 </html>

@@ -1,147 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Your Applications – VoteHive</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Applications – VoteHive</title>
   <link rel="icon" href="/favicon.ico"/>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <style>
     .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;line-height:20px}
+    .hint{font-size:12px;color:#6b7280}
+    .img{object-fit:cover}
   </style>
-
-  <!-- Auth & guards (order matters) -->
-  <script src="auth.js"></script>
-  <script src="guard.js"></script>
-  <script>requireLogin();</script>
 </head>
 <body class="bg-white text-gray-800 font-sans">
-
   <!-- Shared header -->
   <div id="vh-header"></div>
+  <script src="auth.js"></script>
+  <script src="guard.js"></script>
   <script src="header.js"></script>
 
-  <main class="max-w-5xl mx-auto px-4 py-12">
+  <main class="max-w-7xl mx-auto px-4 py-10">
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <h1 class="text-3xl font-bold mb-2">Your Applications</h1>
-        <p class="text-gray-600">Track the status of your poll applications and approvals.</p>
+        <h1 class="text-2xl md:text-3xl font-bold">Applications</h1>
+        <p class="text-gray-600">Track your submissions. Admins can review pending items here.</p>
       </div>
       <div class="flex gap-2">
-        <a href="create.html" class="inline-flex items-center justify-center px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Apply to Create</a>
-        <a href="browse.html" class="inline-flex items-center justify-center px-4 py-2 rounded text-sm bg-gray-100 text-gray-800 hover:bg-gray-200">Browse Polls</a>
+        <a href="create.html" class="px-4 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Apply to Create</a>
       </div>
     </div>
 
-    <div id="empty" class="hidden text-center bg-gray-50 rounded p-10 text-gray-600 mt-8">
-      <div class="text-lg font-semibold mb-2">No applications yet</div>
-      <p>When you apply to create a poll, it will appear here for tracking.</p>
-      <a href="create.html" class="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded">Apply to Create</a>
-    </div>
+    <!-- My Applications -->
+    <section class="mt-8">
+      <h2 class="text-xl font-semibold mb-2">My Submissions</h2>
+      <div id="mine" class="grid md:grid-cols-2 gap-4"></div>
+      <div id="mineEmpty" class="hidden text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded p-6">
+        You haven't submitted any applications yet.
+      </div>
+    </section>
 
-    <div id="wrap" class="space-y-8 mt-8">
-      <section id="pendingWrap" class="hidden">
-        <h2 class="text-xl font-semibold mb-2">Pending</h2>
-        <div id="pendingList" class="space-y-3"></div>
-      </section>
-
-      <section id="historyWrap" class="hidden">
-        <h2 class="text-xl font-semibold mb-2">History</h2>
-        <div id="historyList" class="space-y-3"></div>
-      </section>
-    </div>
+    <!-- Pending Review (admins only) -->
+    <section id="adminWrap" class="mt-10 hidden">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold">Pending Review</h2>
+        <span id="pendingCount" class="text-sm text-gray-500"></span>
+      </div>
+      <div id="pending" class="grid md:grid-cols-2 gap-4"></div>
+      <div id="pendingEmpty" class="hidden text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded p-6">
+        Nothing to review right now.
+      </div>
+    </section>
   </main>
 
-  <footer class="bg-gradient-to-r from-indigo-700 to-purple-700 text-white py-6 mt-16">
-    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
-      <span>© 2025 VoteHive</span>
-      <div class="flex gap-6">
-        <a href="#" class="hover:underline">About</a>
-        <a href="#" class="hover:underline">Contact</a>
-      </div>
+  <footer class="bg-gray-50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2"><img src="/logo.svg" class="w-6 h-6" alt=""><span class="font-semibold">VoteHive</span></div>
+      <div class="text-gray-500">© 2025 VoteHive</div>
     </div>
   </footer>
 
   <script>
-    // -------- helpers / storage --------
-    function me(){ try { return window.VHAuth?.current?.() || JSON.parse(localStorage.getItem('currentUser')||'null'); } catch { return null; } }
-    const getPending = () => { try { return JSON.parse(localStorage.getItem('pendingPolls') || '{}'); } catch { return {}; } };
-    const getLog     = () => { try { return JSON.parse(localStorage.getItem('applicationLog') || '[]'); } catch { return []; } };
+    // ------- helpers -------
+    function getSession(){ try { return (window.VHAuth && window.VHAuth.current && window.VHAuth.current()) || JSON.parse(localStorage.getItem('currentUser')||'null'); } catch(e){ return null; } }
+    function isAdmin(me){ return !!(me && (me.role==='admin' || me.role==='superadmin')); }
+    function esc(s){ return (s||'').replace(/[&<>"]/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]);}); }
 
-    function esc(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+    function getLog(){ try { return JSON.parse(localStorage.getItem('applicationLog')||'[]'); } catch(e){ return []; } }
+    function setLog(v){ localStorage.setItem('applicationLog', JSON.stringify(v)); }
 
-    function render(){
-      const user = me();
-      const username = user?.username || 'guest';
+    function getPolls(){ try { return JSON.parse(localStorage.getItem('customPolls')||'{}'); } catch(e){ return {}; } }
+    function setPolls(v){ localStorage.setItem('customPolls', JSON.stringify(v)); }
 
-      const pWrap = document.getElementById('pendingWrap');
-      const hWrap = document.getElementById('historyWrap');
-      const pList = document.getElementById('pendingList');
-      const hList = document.getElementById('historyList');
-      const empty = document.getElementById('empty');
+    function toLocalDate(s){ if(!s) return '—'; var d=new Date(s); return isNaN(d)?'—':d.toLocaleString(); }
 
-      pList.innerHTML = '';
-      hList.innerHTML = '';
+    // ------- render "My Submissions" -------
+    function renderMine(){
+      var me = getSession();
+      var user = me && me.username ? me.username : '';
+      var mineEl = document.getElementById('mine');
+      var mineEmpty = document.getElementById('mineEmpty');
+      mineEl.innerHTML = '';
 
-      const pending = Object.entries(getPending())
-        .filter(([id,p]) => (p.applicant || 'guest') === username)
-        .sort((a,b)=> new Date(b[1].submittedAt) - new Date(a[1].submittedAt));
+      var list = getLog().filter(function(a){ return user ? a.applicant===user : false; })
+        .sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); });
 
-      const history = getLog()
-        .filter(x => (x.applicant || 'guest') === username)
-        .sort((a,b)=> new Date(b.decidedAt || 0) - new Date(a.decidedAt || 0));
+      if (!list.length){ mineEmpty.classList.remove('hidden'); return; }
+      mineEmpty.classList.add('hidden');
 
-      // Visibility toggles
-      const hasPending = pending.length > 0;
-      const hasHistory = history.length > 0;
-      pWrap.classList.toggle('hidden', !hasPending);
-      hWrap.classList.toggle('hidden', !hasHistory);
-      empty.classList.toggle('hidden', hasPending || hasHistory);
+      for (var i=0;i<list.length;i++){
+        var a = list[i];
+        var badge = a.status==='approved' ? 'bg-green-100 text-green-700'
+                  : a.status==='rejected' ? 'bg-red-100 text-red-700'
+                  : 'bg-yellow-100 text-yellow-700';
+        var thumb = a.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
 
-      // Pending cards
-      if (hasPending){
-        pending.forEach(([id,p])=>{
-          const opts = (p.options || []).map(esc).join(', ');
-          pList.insertAdjacentHTML('beforeend', `
-            <article class="bg-white border border-gray-100 shadow rounded p-4">
-              <div class="text-sm text-gray-500 mb-1">Submitted: ${new Date(p.submittedAt).toLocaleString()}</div>
-              <h3 class="font-semibold">${esc(p.title)}</h3>
-              <div class="text-sm text-gray-600">Category: ${esc(p.category||'General')} • Requested: ${p.requestedDays||7} days</div>
-              <div class="text-sm text-gray-600">Options: ${opts || '—'}</div>
-              ${p.context ? `<p class="text-sm text-gray-500 mt-2">${esc(p.context)}</p>` : ''}
-              <div class="mt-2 text-xs"><span class="chip bg-yellow-100 text-yellow-700">Pending review</span></div>
-            </article>
-          `);
-        });
+        var card = document.createElement('article');
+        card.className = 'bg-white border border-gray-100 shadow rounded overflow-hidden';
+        card.innerHTML = ''+
+          '<div class="h-40 overflow-hidden"><img class="w-full h-full img" src="'+esc(thumb)+'" alt=""></div>'+
+          '<div class="p-4">'+
+            '<div class="flex items-center gap-2 text-xs mb-1">'+
+              '<span class="chip '+badge+'">'+esc(a.status||'pending')+'</span>'+
+              (a.category?'<span class="text-gray-500">'+esc(a.category)+'</span>':'')+
+            '</div>'+
+            '<h3 class="font-semibold">'+esc(a.title||'Untitled')+'</h3>'+
+            (a.tags && a.tags.length ? '<div class="mt-1 text-xs text-gray-500">Tags: '+a.tags.map(esc).join(', ')+'</div>' : '')+
+            '<div class="mt-2 text-xs text-gray-500">Submitted: '+toLocalDate(a.createdAt)+'</div>'+
+            (a.startAt?'<div class="text-xs text-gray-500">Requested start: '+toLocalDate(a.startAt)+'</div>':'')+
+            '<div class="text-xs text-gray-500">Requested duration: '+(a.requestedDays||7)+' days</div>'+
+            (a.reason?'<div class="mt-2 text-sm text-gray-600">'+esc(a.reason)+'</div>':'')+
+            (a.status==='approved' && a.pollId ? '<a href="poll.html?id='+encodeURIComponent(a.pollId)+'" class="inline-block mt-3 px-3 py-2 rounded text-sm bg-indigo-600 text-white hover:bg-indigo-700">Open Poll</a>' : '')+
+          '</div>';
+        mineEl.appendChild(card);
+      }
+    }
+
+    // ------- render "Pending Review" (admins) -------
+    function renderPending(){
+      var me = getSession();
+      var wrap = document.getElementById('adminWrap');
+      if (!isAdmin(me)){ wrap.classList.add('hidden'); return; }
+      wrap.classList.remove('hidden');
+
+      var list = getLog().filter(function(a){ return a && a.status==='pending'; })
+        .sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); });
+
+      var pendingEl = document.getElementById('pending');
+      var pendingEmpty = document.getElementById('pendingEmpty');
+      var pendingCount = document.getElementById('pendingCount');
+      pendingEl.innerHTML = '';
+      pendingCount.textContent = list.length ? (list.length+' pending') : '';
+
+      if (!list.length){ pendingEmpty.classList.remove('hidden'); return; }
+      pendingEmpty.classList.add('hidden');
+
+      for (var i=0;i<list.length;i++){
+        var a = list[i];
+        var thumb = a.thumbnail || 'https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=1200&auto=format&fit=crop';
+        var opts = (a.options||[]).slice(0,6).map(function(o){ return '<span class="chip bg-gray-100 text-gray-700 mr-1">'+esc(o)+'</span>'; }).join(' ');
+
+        var card = document.createElement('article');
+        card.className = 'bg-white border border-gray-100 shadow rounded overflow-hidden';
+        card.innerHTML = ''+
+          '<div class="h-40 overflow-hidden"><img class="w-full h-full img" src="'+esc(thumb)+'" alt=""></div>'+
+          '<div class="p-4">'+
+            '<div class="text-xs text-gray-500 mb-1">By <strong>'+esc(a.applicant||'guest')+'</strong> • '+toLocalDate(a.createdAt)+'</div>'+
+            '<h3 class="font-semibold">'+esc(a.title||'Untitled')+'</h3>'+
+            '<div class="text-xs text-gray-500 mt-1">'+esc(a.category||'General')+'</div>'+
+            (a.tags && a.tags.length ? '<div class="mt-1 text-xs text-gray-500">Tags: '+a.tags.map(esc).join(', ')+'</div>' : '')+
+            (opts ? '<div class="mt-2">'+opts+'</div>' : '')+
+            (a.startAt?'<div class="mt-2 text-xs text-gray-500">Requested start: '+toLocalDate(a.startAt)+'</div>':'')+
+            '<div class="text-xs text-gray-500">Requested duration: '+(a.requestedDays||7)+' days</div>'+
+            (a.reason?'<div class="mt-2 text-sm text-gray-600">'+esc(a.reason)+'</div>':'')+
+            '<div class="mt-3 flex items-center gap-2">'+
+              '<label class="text-sm">Approve for</label>'+
+              '<select class="dur border rounded px-2 py-1 text-sm" data-id="'+esc(a.id)+'">'+
+                '<option value="1">1 day</option>'+
+                '<option value="3">3 days</option>'+
+                '<option value="7" selected>7 days</option>'+
+                '<option value="14">14 days</option>'+
+                '<option value="30">30 days</option>'+
+              '</select>'+
+              '<button class="btn-approve px-3 py-1 rounded text-sm bg-green-600 text-white hover:bg-green-700" data-id="'+esc(a.id)+'">Approve</button>'+
+              '<button class="btn-reject px-3 py-1 rounded text-sm bg-red-600 text-white hover:bg-red-700" data-id="'+esc(a.id)+'">Reject</button>'+
+            '</div>'+
+          '</div>';
+        pendingEl.appendChild(card);
       }
 
-      // History cards
-      if (hasHistory){
-        history.forEach(item=>{
-          const statusOk = item.status === 'approved';
-          const badge = statusOk ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
-          const link = item.pollId ? `<a class="text-indigo-600 hover:underline" href="poll.html?id=${encodeURIComponent(item.pollId)}">Open poll</a>` : '';
-          hList.insertAdjacentHTML('beforeend', `
-            <article class="bg-white border border-gray-100 shadow rounded p-4">
-              <div class="flex items-start justify-between gap-3">
-                <h3 class="font-semibold">${esc(item.title)}</h3>
-                <span class="chip ${badge}">${esc(item.status)}</span>
-              </div>
-              <div class="text-sm text-gray-600">Category: ${esc(item.category||'General')}</div>
-              <div class="text-sm text-gray-500">Decided: ${item.decidedAt ? new Date(item.decidedAt).toLocaleString() : '—'}</div>
-              ${link ? `<div class="mt-2">${link}</div>` : ''}
-            </article>
-          `);
+      // bind actions
+      var approves = pendingEl.querySelectorAll('.btn-approve');
+      for (var j=0;j<approves.length;j++){
+        approves[j].addEventListener('click', function(ev){
+          var id = ev.currentTarget.getAttribute('data-id');
+          var sel = pendingEl.querySelector('select.dur[data-id="'+id+'"]');
+          var days = sel ? parseInt(sel.value,10) : 7;
+          approve(id, days);
+        });
+      }
+      var rejects = pendingEl.querySelectorAll('.btn-reject');
+      for (var k=0;k<rejects.length;k++){
+        rejects[k].addEventListener('click', function(ev){
+          var id = ev.currentTarget.getAttribute('data-id');
+          if (!confirm('Reject this application?')) return;
+          reject(id);
         });
       }
     }
 
-    // Initial
-    render();
+    // ------- decision helpers -------
+    function approve(appId, days){
+      var log = getLog();
+      var idx = -1, a = null, i;
+      for (i=0;i<log.length;i++){ if (log[i] && log[i].id===appId){ idx=i; a=log[i]; break; } }
+      if (idx<0 || !a){ alert('Application not found.'); return; }
 
-    // Re-render if auth state changes (e.g., user logs in/out in another tab)
-    window.addEventListener('storage', (e)=>{
-      if (e.key === 'currentUser' || e.key === '__vh_emit__') render();
+      // create poll
+      var polls = getPolls();
+      var slug = (a.title||'poll').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      if (!slug) slug = 'poll-'+Date.now();
+      if (polls[slug]) slug = slug + '-' + Date.now();
+
+      var start = a.startAt ? new Date(a.startAt).getTime() : Date.now();
+      var end = new Date(start + (days||7)*24*60*60*1000).toISOString();
+
+      polls[slug] = {
+        title: a.title,
+        category: a.category || 'General',
+        options: a.options || [],
+        createdAt: new Date().toISOString(),
+        createdBy: a.applicant || 'guest',
+        endTime: end,
+        featured: false,
+        hidden: false,
+        thumbnail: a.thumbnail || '',
+        multiSelect: !!a.multiSelect,
+        commentsEnabled: !!a.commentsEnabled
+      };
+      setPolls(polls);
+
+      // update log
+      log[idx] = {
+        id: a.id,
+        applicant: a.applicant,
+        title: a.title,
+        category: a.category,
+        tags: a.tags || [],
+        thumbnail: a.thumbnail || '',
+        options: a.options || [],
+        startAt: a.startAt || null,
+        requestedDays: a.requestedDays || days || 7,
+        multiSelect: !!a.multiSelect,
+        commentsEnabled: !!a.commentsEnabled,
+        reason: a.reason || '',
+        status: 'approved',
+        createdAt: a.createdAt,
+        decidedAt: new Date().toISOString(),
+        pollId: slug
+      };
+      setLog(log);
+
+      alert('Approved and published.');
+      renderAll();
+    }
+
+    function reject(appId){
+      var log = getLog();
+      var idx = -1, a = null, i;
+      for (i=0;i<log.length;i++){ if (log[i] && log[i].id===appId){ idx=i; a=log[i]; break; } }
+      if (idx<0 || !a){ alert('Application not found.'); return; }
+
+      log[idx].status = 'rejected';
+      log[idx].decidedAt = new Date().toISOString();
+      setLog(log);
+
+      renderAll();
+    }
+
+    function renderAll(){
+      renderMine();
+      renderPending();
+    }
+
+    // live updates across tabs
+    window.addEventListener('storage', function(e){
+      if (e && (e.key==='applicationLog' || e.key==='customPolls')) renderAll();
     });
+
+    // init
+    (function init(){
+      try { if (window.VHAuth && window.VHAuth.ready) { var p = window.VHAuth.ready(); if (p && p.then) { p.then(renderAll); return; } } } catch(e){}
+      renderAll();
+    })();
   </script>
 </body>
 </html>
